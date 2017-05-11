@@ -1,0 +1,3 @@
+package: github.com/potix/pdns-record-updater
+import:
+- package: github.com/BurntSushi/toml
