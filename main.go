@@ -1,11 +1,13 @@
 package main
+
 import (
+        "github.com/potix/belog"
         "github.com/potix/pdns-record-updater/configurator"
         "github.com/potix/pdns-record-updater/collector"
         "github.com/potix/pdns-record-updater/initializer"
         "github.com/potix/pdns-record-updater/updater"
         "github.com/potix/pdns-record-updater/server"
-        "github.com/potix/pdns-record-updater/checker"
+        "github.com/potix/pdns-record-updater/watcher"
 	"flag"
 	"fmt"
 )
@@ -18,26 +20,26 @@ func updater(config *configurator.Config) (err error) {
 	}
 	initializer := initializer.New(config, colletor)
 	updater := initializer.New(config, collector)
-	initializer.initialize()
+	initializer.Initialize()
 	for {
-		updator.update()
+		updator.Update()
 	}
 	return nil
 }
 
-func checker(config *configurator.Config) (err error) {
-	checker := checkerr.New(config)
-	err := checker.Run()
+func watcher(config *configurator.Config) (err error) {
+	watcher := watcher.New(config)
+	err := watcher.Run()
 	if err != nil {
 		return err
 	}
-	server := server.New(config, checker)
+	server := server.New(config, watcher)
 	err := server.Start()
 	if err != nil {
 		return err
 	}
 	for {
-		checker.check()
+		watcher.Watch()
 	}
 	return nil
 }
@@ -50,6 +52,7 @@ func main() {
 	if err != nil {
 		return err
 	}
+
 	if (mode == "updater") {
 		err := updator(config)
 	} else if (mode == "checker") {
@@ -59,6 +62,7 @@ func main() {
 	}
 	if err != nil {
 		fmt.Printf("%v\n", err)
+                os.Exit(1);
 	}
 }
 

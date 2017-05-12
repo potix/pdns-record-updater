@@ -6,7 +6,7 @@ import (
 
 // Configurator is struct of configurator
 type Configurator struct {
-	configPath *string
+	configPath string
 	reader     *reader
 }
 
