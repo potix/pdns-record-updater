@@ -1,12 +1,17 @@
 package configurator
 
+import (
+
+)
+
 // Target is config of target
 type Target struct {
 	Name        string
-	TargetType  string  `json:"type" toml:"type" yaml:"type"`
-	Destination string
-	Status      string
+	ProtoType   string
+	Dest        string
+	StatusList  []string
 	Regex       string
+	ResSize     uint32
 	Retry       uint32
 	RetryWait   uint32
 	Timeout     uint32

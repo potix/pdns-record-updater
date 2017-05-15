@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/pkg/errors"
         "github.com/potix/belog"
         "github.com/potix/pdns-record-updater/configurator"
         "github.com/potix/pdns-record-updater/collector"

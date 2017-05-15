@@ -2,6 +2,7 @@ package configurator
 
 import (
 	"github.com/BurntSushi/toml"
+        "github.com/pkg/errors"
 )
 
 type reader struct {

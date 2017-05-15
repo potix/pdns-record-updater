@@ -1,57 +1,94 @@
 package watcher
 
-func (w *Watcher) httpCheck(url string, codeList []string, bodyList []string, retryCount int, retryWait uint16, timeout uint16) (alive bool) {
-	for i := 0; i < retryCount; i++ {
+import (
+        "github.com/pkg/errors"
+	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
+	"net/http"
+	"io/ioutil"
+	"time"
+)
+
+type httpWatcher struct {
+        useRegex   bool
+        url        string
+        retry      uint32
+        retryWait  uint32
+        timeout    uint32
+	statusList []string
+        regex      *pcre.Regex
+        resSize    uint32
+}
+
+func (h *httpWatcher) check() (alive bool) {
+	for i := 0; i < h.retry; i++ {
 		httpClient := &http.Client{
-			Timeout: time.Duration(timeout) * time.Second,
+			Timeout: time.Duration(h.timeout) * time.Second,
 		}
-		resp, err := httpClient.Get(url)
+		res, err := httpClient.Get(url)
 		if err != nil {
+			// GET出来なかった
 			if retryWait > 0 {
 				time.Sleep(time.Duration(retryWait))
 			}
 			continue
 		}
-		if len(codeList) > 0 {
-			codeMatch := false
-			for _, code := range codeList {
-				if regexp.GetRegexpManager().IsMatch(code, resp.Status) {
-					codeMatch = true
+		defer res.Body.Close()
+		if h.statusList && len(h.statusList) > 0 {
+			match := false
+			for _, status := range h.statusList {
+				if status == res.Status {
+					match = true
 					break
 				}
 			}
-			if !codeMatch {
+			if !match {
+				return false
+			}
+		}
+		if h.useRegex {
+			rb := make([]byte, t.resSize)
+			_, err := res.Body.Read(rb)
+			if err != nil {
+				// bodyが読めなかった
 				if retryWait > 0 {
 					time.Sleep(time.Duration(retryWait))
 				}
 				continue
 			}
-		}
-		// retryCountがそこまで多くないこと想定
-		defer resp.Body.Close()
-		responseBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			if retryWait > 0 {
-				time.Sleep(time.Duration(retryWait))
-			}
-			continue
-		}
-		if len(bodyList) > 0 {
-			bodyMatch := false
-			for _, body := range bodyList {
-				if regexp.GetRegexpManager().IsMatch(body, string(responseBody)) {
-					bodyMatch = true
-					break
-				}
-			}
-			if !bodyMatch {
-				if retryWait > 0 {
-					time.Sleep(time.Duration(retryWait))
-				}
-				continue
-			}
+                        loc = h.regex.FindIndex(rb, 0)
+                        if loc == nil {
+                                // 正規表現に一致しなかった
+                                return false
+                        }
+
 		}
 		return true
 	}
+	// retryの最大に達した
 	return false
+}
+
+
+func httpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
+        return &httpWatcher {
+                useRegex:   false,
+                url:        target.Dest,
+                retry:      target.Retry,
+                retryWait:  target.RetryWait,
+                timeout:    target.Timeout,
+                statusList: target.StatusList,
+        }
+}
+
+func httpRegexWatcherNew(target *configurator.Target) (*protoWatcherIf) {
+        return &httpWatcher {
+                useRegex:   true,
+                url:        target.Dest,
+                retry:      target.Retry,
+                retryWait:  target.RetryWait,
+                timeout:    target.Timeout,
+                statusList: target.StatusList,
+                regex:      GetRegexFromCache(target.Regex, 0),
+                resSize:    target.ResSize,
+        }
 }

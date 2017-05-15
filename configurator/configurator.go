@@ -1,6 +1,7 @@
 package configurator
 
 import (
+        "github.com/pkg/errors"
 	"os"
 )
 

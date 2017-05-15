@@ -1,6 +1,7 @@
 package watcher
 
 import (
+        "github.com/pkg/errors"
 	"sync/atomic"
 )
 
@@ -16,13 +17,41 @@ type targetTask struct {
 	next     *targetTask
 }
 
+type protoWatcherIf interface {
+	check(*configurator.Target) bool
+}
+
+var protoWatcherNewFuncMap = map[string]func() (protoWatcherIf, error) {
+	"icmp":       icmpWatcherNew,
+	"udp":        udpWatcherNew,
+	"udpRegex":   udpRegexWatcherNew,
+	"tcp":        tcpWatcherNew,
+	"tcpRegex":   tcpRegexWatcherNew,
+	"http":       httpWatcherNew,
+	"httpRegex":  httpRegexWatcherNew,
+}
+
 func (w *Watcher) targetWatch(task *targetTask) {
-	make
+	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[task.target.TargetType]
+	if !ok {
+		// unsupported protocol type
+		task.target.alive = false
+		close(task.waitChan)
+		return
+	}
+	protoWatcher, err := protoWatcherNewFunc(task.target)
+	if err != nil {
+		// can not create protocol watcher
+		task.target.alive = false
+		close(task.waitChan)
+		return
+	}
+	task.target.alive = protoWatcher.check()
+	close(task.waitChan)
 }
 
 func (w *Watcher) recordWatch(record *configurator.Record) {
 	var firstTask *targetTask
-
 	// run target watch task
 	for _, target := range record.targets {
 		newTask := &targetTask {
@@ -38,9 +67,8 @@ func (w *Watcher) recordWatch(record *configurator.Record) {
 	}
 	// wait target watch task
 	for task := firstTask; task != nil; task := task.next {
-		_ <- task.waitChan
+		<-task.waitChan
 	}
-
 	atomic.StoreUint32(&record.progress, 0)
 }
 
