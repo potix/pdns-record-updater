@@ -2,6 +2,7 @@ package configurator
 
 import (
         "github.com/pkg/errors"
+        "github.com/potix/belog"
 	"os"
 )
 

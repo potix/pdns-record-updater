@@ -2,6 +2,7 @@ package watcher
 
 import (
         "github.com/pkg/errors"
+        "github.com/potix/belog"
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"sync/atomic"
 	"golang.org/x/net/icmp"
@@ -19,11 +20,11 @@ type icmpWatcher struct {
 	timeout    uint32
 }
 
-func (i *icmpWatcher) getSeqNumber() (uint) {
+func (i *icmpWatcher) getSeqNumber() (uint32) {
 	return atomic.AddUint32(&seq, 1);
 }
 
-func (i *icmpWatcher) check() (alive bool) {
+func (i *icmpWatcher) isAlive() (uint32) {
 	for i := 0; i < i.retry; i++ {
 		ipv := 0
 		switch len([]byte(ip)) {
@@ -85,7 +86,10 @@ func (i *icmpWatcher) check() (alive bool) {
 			}
 			continue
 		}
-		rb := make([]byte, 512)
+		if i.resSize == 0 {
+			i.resSize = 512
+		}
+		rb := make([]byte, i.resSize)
 	Read:
 		rlen, _ /* peer */, err := conn.ReadFrom(rb)
 		if err != nil {
@@ -124,10 +128,10 @@ func (i *icmpWatcher) check() (alive bool) {
 			// 読み込みからもう一度
 			goto Read
 		}
-		return true
+		return 1
 	}
 	// retryの最大に達した
-	return false
+	return 0
 }
 
 func icmpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
@@ -136,6 +140,7 @@ func icmpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
 		retry:     target.Retry,
 		retryWait: target.RetryWait,
 		timeout:   target.Timeout,
+		resSize:   target.ResSize,
 	}, nil
 }
 

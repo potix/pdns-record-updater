@@ -29,7 +29,8 @@ func updater(config *configurator.Config) (err error) {
 }
 
 func watcher(config *configurator.Config) (err error) {
-	watcher := watcher.New(config)
+	notifier := notifier.New(config)
+	watcher := watcher.New(config, notifier)
 	err := watcher.Run()
 	if err != nil {
 		return err
@@ -53,6 +54,7 @@ func main() {
 	if err != nil {
 		return err
 	}
+	belog.SetupLoggers(config.Logger)
 
 	if (mode == "updater") {
 		err := updator(config)

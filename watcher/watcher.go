@@ -2,13 +2,18 @@ package watcher
 
 import (
         "github.com/pkg/errors"
+        "github.com/potix/belog"
 	"sync/atomic"
+        "go/token"
+        "go/types"
+        "fmt"
 )
 
 // Watcher is struct of Watcher
 type Watcher struct {
-	config   *configurator.Config
-	runnning uint32
+	watcherConfig *configurator.Watcher
+	runnning      uint32
+	notifier      *notifier.Notifier
 }
 
 type targetTask struct {
@@ -18,21 +23,21 @@ type targetTask struct {
 }
 
 type protoWatcherIf interface {
-	check(*configurator.Target) bool
+	isAlive(*configurator.Target) uint32
 }
 
 var protoWatcherNewFuncMap = map[string]func() (protoWatcherIf, error) {
-	"icmp":       icmpWatcherNew,
-	"udp":        udpWatcherNew,
-	"udpRegex":   udpRegexWatcherNew,
-	"tcp":        tcpWatcherNew,
-	"tcpRegex":   tcpRegexWatcherNew,
-	"http":       httpWatcherNew,
-	"httpRegex":  httpRegexWatcherNew,
+	"ICMP":       icmpWatcherNew,
+//not implemented "UDP":        udpWatcherNew, 
+//not implemented "UDPREGEX":   udpRegexWatcherNew,
+	"TCP":        tcpWatcherNew,
+	"TCPREGEX":   tcpRegexWatcherNew,
+	"HTTP":       httpWatcherNew,
+	"HTTPREGEX":  httpRegexWatcherNew,
 }
 
 func (w *Watcher) targetWatch(task *targetTask) {
-	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[task.target.TargetType]
+	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.TargetType)]
 	if !ok {
 		// unsupported protocol type
 		task.target.alive = false
@@ -46,8 +51,29 @@ func (w *Watcher) targetWatch(task *targetTask) {
 		close(task.waitChan)
 		return
 	}
-	task.target.alive = protoWatcher.check()
+	atomic.StoreUint32(&task.target.Alive, protoWatcher.isAlive())
 	close(task.waitChan)
+}
+
+func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
+	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
+}
+
+func (w *Watcher) updateAlive(record *configurator.Record, newAlive uint32){
+	oldAlive := atomic.SwapUint32(&record.Alive, newAlive);
+	if strings.ToUpper(record.NotifyTrigger) == "CHANGED" {
+		if oldAlive != newAlive {
+			w.notifier.notify(record, oldAlive, newAlive)
+		}
+	} else if strings.ToUpper(record.NotifyTrigger) == "LATESTDOWN" {
+		if newAlive == 0 {
+			w.notifier.notify(record, oldAlive, newAlive)
+		}
+	} else if strings.ToUpper(record.NotifyTrigger) == "LATESTUP" {
+		if newAlive == 1 {
+			w.notifier.notify(record, oldAlive, newAlive)
+		}
+	}
 }
 
 func (w *Watcher) recordWatch(record *configurator.Record) {
@@ -69,13 +95,36 @@ func (w *Watcher) recordWatch(record *configurator.Record) {
 	for task := firstTask; task != nil; task := task.next {
 		<-task.waitChan
 	}
+	// create replacer
+	var replaceName []string
+	for _, target := range record.targets {
+		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", (atomic.LoadUint32(&target.Alive) != 0)))
+	}
+        replacer := strings.NewReplacer(replaceName...)
+
+	// exec eval
+	tv, err := eval(replacer.Replace(configurator.Record.EvalRule))
+	if err != nil {
+		// eval failure
+		w.updateAlive(record, 0)
+	}
+	val, ok := constant.BoolVal(tv.Value)
+	if !ok {
+		// convert failure
+		w.updateAlive(record, 0)
+	}
+	if val {
+		w.updateAlive(record, 1)
+	} else  {
+		w.updateAlive(record, 0)
+	}
 	atomic.StoreUint32(&record.progress, 0)
 }
 
 func (w *Watcher) watchLoop() {
 	for (atomic.LoadUint32(&w.running)) {
 		if (record.currentIntervalCount >= record.WatchInterval) {
-			for _, record := range w.config.records {
+			for _, record := range w.watcherConfig.records {
 				if (!atomic.CompareAndSwapUint32(&record.progress, 0, 1)) {
 					// run record waatch task
 					go recordWatch(record)
@@ -101,9 +150,10 @@ func (w *Watcher) Stop() {
 }
 
 // New is create Wathcer
-func New(config *configurator.Config) (*Watcher) {
+func New(config *configurator.Config, notifier *nofifier.Notifier) (*Watcher) {
 	return &Watcher{
-		config:         config,
+		wathcerConfig:  config.Watcher,
 		runnning:	0,
+		notifier:       notifier,
 	}
 }

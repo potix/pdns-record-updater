@@ -1,8 +1,9 @@
 package configurator
 
 import (
-	"github.com/BurntSushi/toml"
         "github.com/pkg/errors"
+        "github.com/potix/belog"
+	"github.com/BurntSushi/toml"
 )
 
 type reader struct {

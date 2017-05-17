@@ -2,6 +2,7 @@ package watcher
 
 import (
         "github.com/pkg/errors"
+        "github.com/potix/belog"
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"net/http"
 	"io/ioutil"
@@ -14,12 +15,12 @@ type httpWatcher struct {
         retry      uint32
         retryWait  uint32
         timeout    uint32
-	statusList []string
+	status     []string
         regex      *pcre.Regex
         resSize    uint32
 }
 
-func (h *httpWatcher) check() (alive bool) {
+func (h *httpWatcher) isAlive() (uint32) {
 	for i := 0; i < h.retry; i++ {
 		httpClient := &http.Client{
 			Timeout: time.Duration(h.timeout) * time.Second,
@@ -33,20 +34,23 @@ func (h *httpWatcher) check() (alive bool) {
 			continue
 		}
 		defer res.Body.Close()
-		if h.statusList && len(h.statusList) > 0 {
+		if h.status && len(h.status) > 0 {
 			match := false
-			for _, status := range h.statusList {
+			for _, status := range h.status {
 				if status == res.Status {
 					match = true
 					break
 				}
 			}
 			if !match {
-				return false
+				return 0
 			}
 		}
 		if h.useRegex {
-			rb := make([]byte, t.resSize)
+			if h.resSize == 0 {
+				t.resSize = 2048
+			}
+			rb := make([]byte, h.resSize)
 			_, err := res.Body.Read(rb)
 			if err != nil {
 				// bodyが読めなかった
@@ -58,14 +62,14 @@ func (h *httpWatcher) check() (alive bool) {
                         loc = h.regex.FindIndex(rb, 0)
                         if loc == nil {
                                 // 正規表現に一致しなかった
-                                return false
+                                return 0
                         }
 
 		}
-		return true
+		return 1
 	}
 	// retryの最大に達した
-	return false
+	return 0
 }
 
 
@@ -76,7 +80,7 @@ func httpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
                 retry:      target.Retry,
                 retryWait:  target.RetryWait,
                 timeout:    target.Timeout,
-                statusList: target.StatusList,
+                status:     target.HTTPStatus,
         }
 }
 
@@ -87,7 +91,7 @@ func httpRegexWatcherNew(target *configurator.Target) (*protoWatcherIf) {
                 retry:      target.Retry,
                 retryWait:  target.RetryWait,
                 timeout:    target.Timeout,
-                statusList: target.StatusList,
+                status:     target.HTTPStatus,
                 regex:      GetRegexFromCache(target.Regex, 0),
                 resSize:    target.ResSize,
         }

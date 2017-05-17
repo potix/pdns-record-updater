@@ -3,6 +3,7 @@ package watcher
 
 import (
         "github.com/pkg/errors"
+        "github.com/potix/belog"
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
         "net"
         "time"
@@ -18,7 +19,7 @@ type tcpWatcher struct {
         resSize   uint32
 }
 
-func (t *tcpWatcher) check() (alive bool) {
+func (t *tcpWatcher) isAlive() (uint32) {
 	for i := 0; i < t.retry; i++ {
 		dialer := &net.Dialer{
 			Timeout:   time.Duration(t.timeout) * time.Second,
@@ -35,6 +36,9 @@ func (t *tcpWatcher) check() (alive bool) {
 		}
 		defer conn.Close()
 		if (t.useRegex) {
+			if t.resSize == 0 {
+				t.resSize = 1024
+			}
 			rb := make([]byte, t.resSize)
 			_, err := conn.Read(rb)
 			if err != nil {
@@ -44,13 +48,13 @@ func (t *tcpWatcher) check() (alive bool) {
 			loc := t.regex.FindIndex(rb, 0)
 			if loc == nil {
 				// 読めたけど、正規表現に一致しなかった
-				return false
+				return 0
 			}
 		}
-		return true
+		return 1
 	}
 	// リトライの最大に達した
-	return false
+	return 0
 }
 
 func tcpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
