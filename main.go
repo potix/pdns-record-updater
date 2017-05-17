@@ -14,17 +14,17 @@ import (
 )
 
 func updater(config *configurator.Config) (err error) {
-	collector := collector.New(config)
-	err := collector.Run()
-	if err != nil {
-		return err
-	}
-	initializer := initializer.New(config, colletor)
-	updater := initializer.New(config, collector)
-	initializer.Initialize()
-	for {
-		updator.Update()
-	}
+//	collector := collector.New(config)
+//	err := collector.Run()
+//	if err != nil {
+//		return err
+//	}
+//	initializer := initializer.New(config, colletor)
+//	updater := initializer.New(config, collector)
+//	initializer.Initialize()
+//	for {
+//		updator.Update()
+//	}
 	return nil
 }
 
