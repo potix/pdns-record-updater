@@ -1,3 +1,15 @@
 package: github.com/potix/pdns-record-updater
 import:
 - package: github.com/BurntSushi/toml
+- package: github.com/braintree/manners
+- package: github.com/gin-gonic/gin
+- package: github.com/glenn-brown/golang-pkg-pcre
+  subpackages:
+  - src/pkg/pcre
+- package: github.com/pkg/errors
+- package: github.com/potix/belog
+- package: golang.org/x/net
+  subpackages:
+  - icmp
+  - ipv4
+  - ipv6
