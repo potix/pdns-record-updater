@@ -132,12 +132,12 @@ func (w *Watcher) recordWatch(zoneName string, record *configurator.Record) {
 	atomic.StoreUint32(&record.progress, 0)
 }
 
-func (w *Watcher) zoneWatch(zone *configurator.Zone) {
+func (w *Watcher) zoneWatch(zoneName string, zone *configurator.Zone) {
 	for _, record := range zone.Record {
 		if (record.currentIntervalCount >= record.WatchInterval) {
 			if (!atomic.CompareAndSwapUint32(&record.progress, 0, 1)) {
 				// run record waatch task
-				go recordWatch(zone.Name, record)
+				go recordWatch(zoneName, record)
 			} else {
 				// alresy progress last record watch task
 			}
@@ -148,8 +148,8 @@ func (w *Watcher) zoneWatch(zone *configurator.Zone) {
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) {
-		for _, zone := range w.watcherConfig.Zone {
-			go zoneWatch(zone)
+		for zoneName, zone := range w.watcherConfig.Zone {
+			go zoneWatch(zoneName, zone)
 		}
 		time.Sleep(time.Second)
 	}

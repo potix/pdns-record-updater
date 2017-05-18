@@ -20,7 +20,7 @@ func (r regexpCacher) getRegexp(pattern string, int flags) (regexp *pcre.Regexp,
 	if !ok {
 		regexp, compileError := pcre.Compile(pattern, flags)
 		if compileError != nil {
-			return nil, fmt.Errorf("%v, pattarn = %s, flags = %x", compileError, pattern, flags)
+			return nil, errors.Errorf("%v, pattarn = %s, flags = %x", compileError, pattern, flags)
 		}
 		r.compileCache[id] = &regexp
 	}

@@ -13,3 +13,4 @@ import:
   - icmp
   - ipv4
   - ipv6
+- package: gopkg.in/yaml.v2

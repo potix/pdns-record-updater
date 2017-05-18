@@ -3,12 +3,12 @@ package watcher
 import (
         "github.com/pkg/errors"
         "github.com/potix/belog"
-	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
 	"github.com/potix/pdns-record-updater/configurator"
 	"sync/atomic"
+	"net"
 	"time"
 )
 
@@ -25,7 +25,7 @@ func (i *icmpWatcher) getSeqNumber() (uint32) {
 	return atomic.AddUint32(&seq, 1);
 }
 
-func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32) {
+func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 	ipv := 0
 	var err error
 	switch len([]byte(ip)) {
@@ -36,14 +36,10 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32) {
 		ipv = 6
 		conn, err := icmp.ListenPacket("ip6:icmp", "::")
 	default:
-		return 0, fmt.Errorf("unsupported protocol version (%v)", i.ipAddr)
+		return 0, false, errors.Errorf("unsupported protocol version (%v)", i.ipAddr)
 	}
 	if err != nil {
-		belog.Notice("can not create icmp connection (%v)", i.ipAddr)
-		if i.retryWait > 0 {
-			time.Sleep(time.Duration(i.retryWait))
-		}
-		return 0
+		return 0, true, errors.Wrap(err, fmt.Sprintf("can not create icmp connection (%v)", i.ipAddr))
 	}
 	defer conn.Close()
 	echoReq := &icmp.Echo{
@@ -66,25 +62,13 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32) {
 	}
 	wb, err := wm.Marshal(nil)
 	if err != nil {
-		belog.Notice("can not marshal message (%v)", wm)
-		if i.retryWait > 0 {
-			time.Sleep(time.Duration(i.retryWait))
-		}
-		return 0
+		return 0, false, errors.Wrap(err, fmt.Sprintf("can not marshal message (%v)", wm))
 	}
 	if _, err := conn.WriteTo(wb, &net.IPAddr{IP: ip}); err != nil {
-		belog.Notice("can not write message to connection (%v)", i.ipAddr)
-		if i.retryWait > 0 {
-			time.Sleep(time.Duration(i.retryWait))
-		}
-		return 0
+		return 0, true, errors.Wrap(err, fmt.Sprintf("can not write message to connection (%v)", i.ipAddr))
 	}
 	if err := conn.SetReadDeadline(time.Now().Add(time.Duration(i.timeout) * time.Second)); err != nil {
-		belog.Notice("can not write message to connection (%v)", i.ipAddr)
-		if i.retryWait > 0 {
-			time.Sleep(time.Duration(i.retryWait))
-		}
-		return 0
+		return 0, false, errors.Wrap(err, fmt.Sprintf("can not set deadline (%v)", i.ipAddr))
 	}
 	if i.resSize == 0 {
 		i.resSize = 512
@@ -93,11 +77,7 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32) {
 Read:
 	rlen, _ /* peer */, err := conn.ReadFrom(rb)
 	if err != nil {
-		// レスポンスを読み込みめなかった
-		if i.retryWait > 0 {
-			time.Sleep(time.Duration(i.retryWait))
-		}
-		continue
+		return 0, true, errors.Wrap(err, fmt.Sprintf("can not read response (%v)", i.ipAddr))
 	}
 	var proto int
 	switch ipv {
@@ -110,25 +90,21 @@ Read:
 	}
 	rm, err := icmp.ParseMessage(proto, rb[:rlen])
 	if err != nil {
-		// レスポンスのパースに失敗した
-		if i.retryWait > 0 {
-			time.Sleep(time.Duration(i.retryWait))
-		}
-		// 読み込みからもう一度
+		belog.Notice("can not parse response (%v)", i.ipAddr)
 		goto Read
 	}
 	switch rm.Type {
 	case ipv4.ICMPTypeEchoReply, ipv6.ICMPTypeEchoReply:
 		echoReply := (rm.Body).(*icmp.Echo)
 		if echoReply.ID != echoReq.ID || echoReply.Seq != echoReq.Seq {
+			belog.Debug("id or seq mismtach (%v <> %v) (%v <> %v)", echoReply.ID, echoReq.ID, echoReply.Seq, echoReq.Seq)
 			goto Read
 		}
 	default:
-		// 何か違うタイプのICMPを拾った
-		// 読み込みからもう一度
+		belog.Debug("unexpected icmp type (%v)", rm.Type)
 		goto Read
 	}
-	return 1
+	return 1, false, nil
 }
 
 func (i *icmpWatcher) isAlive() (uint32) {
@@ -138,9 +114,18 @@ func (i *icmpWatcher) isAlive() (uint32) {
 		return 0
 	}
 	for i := 0; i < i.retry; i++ {
-		i.sendIcmp(ip)
+                alive, retryble, err := h.sendIcmp(ip)
+                if err != nil {
+                        belog.Error("%v", err)
+                }
+                if !retryable {
+                        return alive
+                }
+                if h.retryWait > 0 {
+                        time.Sleep(time.Duration(h.retryWait))
+                }
 	}
-	// retryの最大に達した
+        belog.Notice("retry count is exceeded limit", h.ipAddr)
 	return 0
 }
 
