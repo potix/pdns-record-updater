@@ -7,7 +7,6 @@ import (
         "github.com/potix/pdns-record-updater/collector"
         "github.com/potix/pdns-record-updater/initializer"
         "github.com/potix/pdns-record-updater/updater"
-        "github.com/potix/pdns-record-updater/notifier"
         "github.com/potix/pdns-record-updater/watcher"
         "github.com/potix/pdns-record-updater/server"
 	"flag"
@@ -30,8 +29,7 @@ func updater(config *configurator.Config) (err error) {
 }
 
 func watcher(config *configurator.Config) (err error) {
-	notifier := notifier.New(config)
-	watcher := watcher.New(config, notifier)
+	watcher := watcher.New(config)
 	err := watcher.Run()
 	if err != nil {
 		return err
@@ -42,6 +40,8 @@ func watcher(config *configurator.Config) (err error) {
 		return err
 	}
 	for {
+		// XXX TODO finish
+		// XXX TODO loop break
 		watcher.Watch()
 	}
 	return nil
@@ -49,11 +49,12 @@ func watcher(config *configurator.Config) (err error) {
 
 func main() {
 	mode := flag.String("mode", nil, "run mode (updater|checker)")
-	configPath := flag.String("config", "/etc/pdns-record-updater.conf", "config file path")
+	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")
 	configurator := configurator.New(configPath)
 	config, err := configurator.Load()
 	if err != nil {
-		return err
+		belog.Error("%v", err)
+                os.Exit(1);
 	}
 	belog.SetupLoggers(config.Logger)
 
@@ -65,7 +66,7 @@ func main() {
 		err := errors.New("unexpected run mode")
 	}
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		belog.Error("%v", err)
                 os.Exit(1);
 	}
 }

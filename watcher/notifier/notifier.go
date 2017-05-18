@@ -1,4 +1,4 @@
-package watcher
+package notifier
 
 import (
 	"github.com/pkg/errors"

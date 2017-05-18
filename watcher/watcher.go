@@ -4,9 +4,11 @@ import (
         "github.com/pkg/errors"
         "github.com/potix/belog"
 	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/watcher/notifier"
 	"sync/atomic"
         "go/token"
         "go/types"
+        "strings"
         "fmt"
 )
 
@@ -30,10 +32,10 @@ type targetTask struct {
 }
 
 type protoWatcherIf interface {
-	isAlive(*configurator.Target) uint32
+	isAlive() (uint32)
 }
 
-var protoWatcherNewFuncMap = map[string]func() (protoWatcherIf, error) {
+var protoWatcherNewFuncMap = map[string]func(*configurator.Target) (protoWatcherIf, error) {
 	"ICMP":       icmpWatcherNew,
 //not implemented "UDP":        udpWatcherNew, 
 //not implemented "UDPREGEXP":   udpRegexpWatcherNew,
@@ -44,17 +46,17 @@ var protoWatcherNewFuncMap = map[string]func() (protoWatcherIf, error) {
 }
 
 func (w *Watcher) targetWatch(task *targetTask) {
-	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.TargetType)]
+	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.ProtoType)]
 	if !ok {
-		belog.Error("unsupported protocol type (%v)", task.target.TargetType)
-		task.target.alive = false
+		belog.Error("unsupported protocol type (%v)", task.target.ProtoType)
+		atomic.StoreUint32(&task.target.Alive, 0)
 		close(task.waitChan)
 		return
 	}
 	protoWatcher, err := protoWatcherNewFunc(task.target)
 	if err != nil {
-		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.TargetType)))
-		task.target.alive = false
+		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.ProtoType)))
+		atomic.StoreUint32(&task.target.Alive, 0)
 		close(task.waitChan)
 		return
 	}
@@ -70,20 +72,20 @@ func (w *Watcher) updateAlive(zoneName string, record *configurator.Record, newA
 	oldAlive := atomic.SwapUint32(&record.Alive, newAlive);
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTrigger {
-		if strings.ToUpper(record.NotifyTrigger) == "CHANGED" {
+		if strings.ToUpper(trigger) == "CHANGED" {
 			triggerFlags |= tfChanged
-		} else if strings.ToUpper(record.NotifyTrigger) == "LATESTDOWN" {
+		} else if strings.ToUpper(trigger) == "LATESTDOWN" {
 			triggerFlags |= tfLatestUp
-		} else if strings.ToUpper(record.NotifyTrigger) == "LATESTUP" {
+		} else if strings.ToUpper(trigger) == "LATESTUP" {
 			triggerFlags |= tfLatestDown
 		}
 	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
-		w.notifier.notify(zoneName, record, oldAlive, newAlive)
+		w.notifier.Notify(zoneName, record, oldAlive, newAlive)
 	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == 0 {
-		w.notifier.notify(zoneName, record, oldAlive, newAlive)
+		w.notifier.Notify(zoneName, record, oldAlive, newAlive)
 	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == 1  {
-		w.notifier.notify(zoneName, record, oldAlive, newAlive)
+		w.notifier.Notify(zoneName, record, oldAlive, newAlive)
 	}
 }
 
@@ -167,10 +169,10 @@ func (w *Watcher) Stop() {
 }
 
 // New is create Wathcer
-func New(config *configurator.Config, notifier *nofifier.Notifier) (*Watcher) {
+func New(config *configurator.Config) (*Watcher) {
 	return &Watcher{
 		wathcerConfig:  config.Watcher,
 		runnning:	0,
-		notifier:       notifier,
+		notifier:       notifier.New(config),
 	}
 }

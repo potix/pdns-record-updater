@@ -5,76 +5,94 @@ import (
         "github.com/pkg/errors"
         "github.com/potix/belog"
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
+	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/cacher"
         "net"
         "time"
+	"fmt"
 )
 
 type tcpWatcher struct {
-	useRegex  bool
+	useRegexp bool
 	ipPort    string
 	retry     uint32
 	retryWait uint32
 	timeout   uint32
-	regex     *pcre.Regex
+	regexp    *pcre.Regexp
+	regexpStr string
         resSize   uint32
 }
 
-func (t *tcpWatcher) isAlive() (uint32) {
-	for i := 0; i < t.retry; i++ {
-		dialer := &net.Dialer{
-			Timeout:   time.Duration(t.timeout) * time.Second,
-			DualStack: true,
-			Deadline:  time.Now().Add(time.Duration(t.timeout) * time.Second),
-		}
-		conn, err := dialer.Dial("tcp", t.ipPort)
-		if err != nil {
-			// コネクションが張れなかった
-			if t.retryWait > 0 {
-				time.Sleep(time.Duration(t.retryWait))
-			}
-			continue
-		}
-		defer conn.Close()
-		if (t.useRegex) {
-			if t.resSize == 0 {
-				t.resSize = 1024
-			}
-			rb := make([]byte, t.resSize)
-			_, err := conn.Read(rb)
-			if err != nil {
-				// レスポンスが読めなかった
-				continue;
-			}
-			loc := t.regex.FindIndex(rb, 0)
-			if loc == nil {
-				// 読めたけど、正規表現に一致しなかった
-				return 0
-			}
-		}
-		return 1
+func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
+	dialer := &net.Dialer{
+		Timeout:   time.Duration(t.timeout) * time.Second,
+		DualStack: true,
+		Deadline:  time.Now().Add(time.Duration(t.timeout) * time.Second),
 	}
-	// リトライの最大に達した
-	return 0
+	conn, err := dialer.Dial("tcp", t.ipPort)
+	if err != nil {
+		return 0, true, errors.Wrap(err, fmt.Sprintf("can not connect (%v)", t.ipPort))
+	}
+	defer conn.Close()
+	if (t.useRegexp) {
+		if t.resSize == 0 {
+			t.resSize = 1024
+		}
+		rb := make([]byte, t.resSize)
+		_, err := conn.Read(rb)
+		if err != nil {
+			return 0, true, errors.Wrap(err, fmt.Sprintf("can not read response (%v)", t.ipPort))
+		}
+		loc := t.regexp.FindIndex(rb, 0)
+		if loc == nil {
+			belog.Debug("not match regexp (%v) (%v)", t.regexpStr, rb)
+			return 0, false, nil
+		}
+	}
+	return 1, false, nil
 }
 
-func tcpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
+func (t *tcpWatcher) isAlive() (uint32) {
+	var i uint32
+        for i = 0; i < t.retry; i++ {
+                alive, retryable, err := t.connectTCP()
+                if err != nil {
+                        belog.Error("%v", err)
+                }
+                if !retryable {
+                        return alive
+                }
+                if t.retryWait > 0 {
+                        time.Sleep(time.Duration(t.retryWait))
+                }
+        }
+        belog.Error("retry count is exceeded limit", t.ipPort)
+        return 0
+}
+
+func tcpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
         return &tcpWatcher {
-		useRegex:  false,
+		useRegexp: false,
                 ipPort:    target.Dest,
                 retry:     target.Retry,
                 retryWait: target.RetryWait,
                 timeout:   target.Timeout,
-        }
+        }, nil
 }
 
-func tcpRegexWatcherNew(target *configurator.Target) (*protoWatcherIf) {
+func tcpRegexpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
+	regexp, err := cacher.GetRegexpFromCache(target.Regexp, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("can not get compiled regexp (%v)", target.Regexp))
+	}
         return &tcpWatcher {
-		useRegex:  true,
-                ipPort:  target.Dest,
+		useRegexp: true,
+                ipPort:    target.Dest,
                 retry:     target.Retry,
                 retryWait: target.RetryWait,
                 timeout:   target.Timeout,
-		regex:     GetRegexFromCache(target.Regex, 0),
+		regexp:    regexp,
+		regexpStr: target.Regexp,
 		resSize:   target.ResSize,
-        }
+        }, nil
 }

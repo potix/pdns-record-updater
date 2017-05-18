@@ -2,9 +2,9 @@ package cacher
 
 import (
 	"github.com/pkg/errors"
-	"github.com/potix/belog"
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"sync"
+	"fmt"
 )
 
 type regexpCacher struct {
@@ -12,8 +12,8 @@ type regexpCacher struct {
 	mutex         *sync.Mutex
 }
 
-func (r regexpCacher) getRegexp(pattern string, int flags) (regexp *pcre.Regexp, err error) {
-	id = Sprintf("%x:%s", flag, string)
+func (r regexpCacher) getRegexp(pattern string, flags int) (regexp *pcre.Regexp, err error) {
+	id := fmt.Sprintf("%x:%s", flags, pattern)
         r.mutex.Lock()
         defer r.mutex.Unlock()
 	regexp, ok := r.compiledCache[id]
@@ -22,20 +22,20 @@ func (r regexpCacher) getRegexp(pattern string, int flags) (regexp *pcre.Regexp,
 		if compileError != nil {
 			return nil, errors.Errorf("%v, pattarn = %s, flags = %x", compileError, pattern, flags)
 		}
-		r.compileCache[id] = &regexp
+		r.compiledCache[id] = &regexp
 	}
 	return regexp, nil
 }
 
-var globalRegexCacher *regexCacher
+var globalRegexpCacher *regexpCacher
 
 // GetRegexpFromCache is get regexp from cache
 func GetRegexpFromCache(pattern string, flags int) (regexp *pcre.Regexp, err error) {
-	return globalRegexCacher.regexpCacher(pattern, flags)
+	return globalRegexpCacher.getRegexp(pattern, flags)
 }
 
 func init() {
-	globalRegexpCacher = &RegexpManager{
+	globalRegexpCacher = &regexpCacher{
 		compiledCache:  make(map[string]*pcre.Regexp),
 		mutex:          new(sync.Mutex),
 	}

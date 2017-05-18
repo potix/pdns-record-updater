@@ -10,7 +10,7 @@ type Target struct {
 	ProtoType   string   // プロトコルタイプ icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
 	Dest        string   // 宛先
 	HTTPStatus  []string // OKとみなすHTTPステータスコード
-	Regex       string   // OKとみなす正規表現 
+	Regexp      string   // OKとみなす正規表現 
 	ResSize     uint32   // 受信する最大レスポンスサイズ
 	Retry       uint32   // リトライ回数
 	RetryWait   uint32   // 次のリトライまでの待ち時間

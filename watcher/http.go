@@ -5,8 +5,10 @@ import (
         "github.com/potix/belog"
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/cacher"
 	"net/http"
 	"time"
+	"fmt"
 )
 
 type httpWatcher struct {
@@ -27,10 +29,10 @@ func (h *httpWatcher) getHTTP() (uint32, bool, error) {
 	}
 	res, err := httpClient.Get(h.url)
 	if err != nil {
-		return 0, true, errors.Wrap(err, fmt.Sprintf("can not get url (%v) (%v)", url, err))
+		return 0, true, errors.Wrap(err, fmt.Sprintf("can not get url (%v) (%v)", h.url, err))
 	}
 	defer res.Body.Close()
-	if h.status && len(h.status) > 0 {
+	if h.status != nil && len(h.status) > 0 {
 		match := false
 		for _, status := range h.status {
 			if status == res.Status {
@@ -45,14 +47,14 @@ func (h *httpWatcher) getHTTP() (uint32, bool, error) {
 	}
 	if h.useRegexp {
 		if h.resSize == 0 {
-			t.resSize = 2048
+			h.resSize = 2048
 		}
 		rb := make([]byte, h.resSize)
 		_, err := res.Body.Read(rb)
 		if err != nil {
-			return 0, true, errors.Wrap(err, fmt.Sprintf("can not read body (%v) (%v)", url, err))
+			return 0, true, errors.Wrap(err, fmt.Sprintf("can not read body (%v) (%v)", h.url, err))
 		}
-		loc = h.regexp.FindIndex(rb, 0)
+		loc := h.regexp.FindIndex(rb, 0)
 		if loc == nil {
 			belog.Debug("not match regexp (%v) (%v)", h.regexpStr, rb)
 			return 0, false, nil
@@ -62,8 +64,9 @@ func (h *httpWatcher) getHTTP() (uint32, bool, error) {
 }
 
 func (h *httpWatcher) isAlive() (uint32) {
-	for i := 0; i < h.retry; i++ {
-		alive, retryble, err := h.getHTTP()
+	var i uint32
+	for i = 0; i < h.retry; i++ {
+		alive, retryable, err := h.getHTTP()
 		if err != nil {
 			belog.Error("%v", err)
 		}
@@ -74,31 +77,35 @@ func (h *httpWatcher) isAlive() (uint32) {
 			time.Sleep(time.Duration(h.retryWait))
 		}
 	}
-	belog.Notice("retry count is exceeded limit", h.url)
+	belog.Error("retry count is exceeded limit", h.url)
 	return 0
 }
 
-func httpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
+func httpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
         return &httpWatcher {
-                useRegexp:   false,
+                useRegexp:  false,
                 url:        target.Dest,
                 retry:      target.Retry,
                 retryWait:  target.RetryWait,
                 timeout:    target.Timeout,
                 status:     target.HTTPStatus,
-        }
+        }, nil
 }
 
-func httpRegexpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
+func httpRegexpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
+	regexp, err := cacher.GetRegexpFromCache(target.Regexp, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("can not get compiled regexp (%v)", target.Regexp))
+	}
         return &httpWatcher {
-                useRegexp:   true,
+                useRegexp:  true,
                 url:        target.Dest,
                 retry:      target.Retry,
                 retryWait:  target.RetryWait,
                 timeout:    target.Timeout,
                 status:     target.HTTPStatus,
-                regexpStr:   target.Regexp,
-                regexp:      GetRegexpFromCache(target.Regexp, 0),
+                regexpStr:  target.Regexp,
+                regexp:     regexp,
                 resSize:    target.ResSize,
-        }
+        }, nil
 }

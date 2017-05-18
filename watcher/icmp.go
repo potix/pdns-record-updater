@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"net"
 	"time"
+	"fmt"
+	"os"
 )
 
 var seq uint32 = 0xFFFFFFFF;
@@ -19,6 +21,7 @@ type icmpWatcher struct {
 	retry      uint32
 	retryWait  uint32
 	timeout    uint32
+	resSize    uint32
 }
 
 func (i *icmpWatcher) getSeqNumber() (uint32) {
@@ -27,6 +30,7 @@ func (i *icmpWatcher) getSeqNumber() (uint32) {
 
 func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 	ipv := 0
+	var conn *icmp.PacketConn
 	var err error
 	switch len([]byte(ip)) {
 	case 4:
@@ -47,11 +51,12 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 		Seq:  int(i.getSeqNumber() & 0xFFFF),
 		Data: []byte("Are you alive?"),
 	}
+	var icmpType icmp.Type
 	switch ipv {
 	case 4:
-		icmpType := ipv4.ICMPTypeEcho
+		icmpType = ipv4.ICMPTypeEcho
 	case 6:
-		icmpType := ipv6.ICMPTypeEchoRequest
+		icmpType = ipv6.ICMPTypeEchoRequest
 	default:
 		panic("not reached")
 	}
@@ -113,23 +118,24 @@ func (i *icmpWatcher) isAlive() (uint32) {
 		belog.Error("can not parse ip address (%v)", i.ipAddr)
 		return 0
 	}
-	for i := 0; i < i.retry; i++ {
-                alive, retryble, err := h.sendIcmp(ip)
+	var j uint32
+	for j = 0; j < i.retry; j++ {
+                alive, retryable, err := i.sendIcmp(ip)
                 if err != nil {
                         belog.Error("%v", err)
                 }
                 if !retryable {
                         return alive
                 }
-                if h.retryWait > 0 {
-                        time.Sleep(time.Duration(h.retryWait))
+                if i.retryWait > 0 {
+                        time.Sleep(time.Duration(i.retryWait))
                 }
 	}
-        belog.Notice("retry count is exceeded limit", h.ipAddr)
+        belog.Error("retry count is exceeded limit", i.ipAddr)
 	return 0
 }
 
-func icmpWatcherNew(target *configurator.Target) (*protoWatcherIf) {
+func icmpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
 	return &icmpWatcher {
 		ipAddr:    target.Dest,
 		retry:     target.Retry,
