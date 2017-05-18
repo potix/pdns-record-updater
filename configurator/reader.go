@@ -11,6 +11,7 @@ type reader struct {
 }
 
 func (r *reader) read(configPath string) (*Config, error) {
+	// XXX TODO support yaml json
 	_, err := toml.DecodeFile(configPath, r.config)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can not decode file with toml (%v)", configPath))
