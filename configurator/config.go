@@ -26,8 +26,8 @@ type Record struct {
 	Target               []*Target // ターゲットリスト
 	EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
 	WatchInterval        uint32    // 監視する間隔
-	currentIntervalCount uint32    // 現在の時間
-	progress             uint32    // 監視中を示すフラグ
+	CurrentIntervalCount uint32    // 現在の時間
+	Progress             uint32    // 監視中を示すフラグ
 	Alive                uint32    // 生存フラグ
 	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
 }

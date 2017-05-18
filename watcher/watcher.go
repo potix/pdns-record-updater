@@ -8,8 +8,10 @@ import (
 	"sync/atomic"
         "go/token"
         "go/types"
+        "go/constant"
         "strings"
         "fmt"
+        "time"
 )
 
 const (
@@ -21,7 +23,7 @@ const (
 // Watcher is struct of Watcher
 type Watcher struct {
 	watcherConfig *configurator.Watcher
-	runnning      uint32
+	running       uint32
 	notifier      *notifier.Notifier
 }
 
@@ -92,17 +94,17 @@ func (w *Watcher) updateAlive(zoneName string, record *configurator.Record, newA
 func (w *Watcher) recordWatch(zoneName string, record *configurator.Record) {
 	var firstTask *targetTask
 	// run target watch task
-	for _, target := range record.targets {
+	for _, target := range record.Target {
 		newTask := &targetTask {
 			target: target,
-		        finishWaitChan: make(chan bool),
+		        waitChan: make(chan bool),
 			next: nil,
 		}
 		if firstTask != nil {
 			newTask.next = firstTask
 		}
 		firstTask = newTask
-		go targetWatch(newTask)
+		go w.targetWatch(newTask)
 	}
 	// wait target watch task
 	for task := firstTask; task != nil; task = task.next {
@@ -110,48 +112,43 @@ func (w *Watcher) recordWatch(zoneName string, record *configurator.Record) {
 	}
 	// create replacer
 	var replaceName []string
-	for _, target := range record.targets {
+	for _, target := range record.Target {
 		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", (atomic.LoadUint32(&target.Alive) != 0)))
 	}
         replacer := strings.NewReplacer(replaceName...)
 
 	// exec eval
-	tv, err := eval(replacer.Replace(configurator.Record.EvalRule))
+	tv, err := w.eval(replacer.Replace(record.EvalRule))
 	if err != nil {
-		belog.Error("can not evalute (%v)", replacer.Replace(configurator.Record.EvalRule))
+		belog.Error("can not evalute (%v)", replacer.Replace(record.EvalRule))
 		w.updateAlive(zoneName, record, 0)
 	}
-	val, ok := constant.BoolVal(tv.Value)
-	if !ok {
-		belog.Error("can not convert to Bool from Value type (%v)", val)
-		w.updateAlive(zoneName, record, 0)
-	}
-	if val {
+	if constant.BoolVal(tv.Value) {
 		w.updateAlive(zoneName, record, 1)
 	} else  {
 		w.updateAlive(zoneName, record, 0)
 	}
-	atomic.StoreUint32(&record.progress, 0)
+	atomic.StoreUint32(&record.Progress, 0)
 }
 
 func (w *Watcher) zoneWatch(zoneName string, zone *configurator.Zone) {
 	for _, record := range zone.Record {
-		if (record.currentIntervalCount >= record.WatchInterval) {
-			if (!atomic.CompareAndSwapUint32(&record.progress, 0, 1)) {
+		if (record.CurrentIntervalCount >= record.WatchInterval) {
+			if (!atomic.CompareAndSwapUint32(&record.Progress, 0, 1)) {
 				// run record waatch task
-				go recordWatch(zoneName, record)
+				go w.recordWatch(zoneName, record)
 			} else {
 				// alresy progress last record watch task
 			}
 		}
-		record.currentIntervalCount++
+		record.CurrentIntervalCount++
 	}
 }
 
 func (w *Watcher) watchLoop() {
-	for atomic.LoadUint32(&w.running) {
+	for atomic.LoadUint32(&w.running) == 1 {
 		for zoneName, zone := range w.watcherConfig.Zone {
-			go zoneWatch(zoneName, zone)
+			go w.zoneWatch(zoneName, zone)
 		}
 		time.Sleep(time.Second)
 	}
@@ -160,7 +157,7 @@ func (w *Watcher) watchLoop() {
 // Run is run 
 func (w *Watcher) Run() {
 	atomic.StoreUint32(&w.running, 1)
-	go Watcher.watchLoop()
+	go w.watchLoop()
 }
 
 // Stop is stop
@@ -171,8 +168,8 @@ func (w *Watcher) Stop() {
 // New is create Wathcer
 func New(config *configurator.Config) (*Watcher) {
 	return &Watcher{
-		wathcerConfig:  config.Watcher,
-		runnning:	0,
+		watcherConfig:  config.Watcher,
+		running:	0,
 		notifier:       notifier.New(config),
 	}
 }

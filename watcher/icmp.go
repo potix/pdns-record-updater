@@ -35,10 +35,10 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 	switch len([]byte(ip)) {
 	case 4:
 		ipv = 4
-		conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+		conn, err = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	case 16:
 		ipv = 6
-		conn, err := icmp.ListenPacket("ip6:icmp", "::")
+		conn, err = icmp.ListenPacket("ip6:icmp", "::")
 	default:
 		return 0, false, errors.Errorf("unsupported protocol version (%v)", i.ipAddr)
 	}
