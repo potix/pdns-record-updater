@@ -41,14 +41,13 @@ type NegativeRecord struct {
 
 // Zone is zone
 type Zone struct {
-	Name           string            // ゾーン名
 	Record         []*Record         // レコードリスト
 	NegativeRecord []*NegativeRecord // レコードが全て死んだ場合に有効になるレコード
 }
 
 // Watcher is watcher
 type Watcher struct {
-	Zone []*Zone
+	Zone map[string]*Zone
 }
 
 // Mail is Mail

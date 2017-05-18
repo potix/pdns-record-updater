@@ -33,6 +33,7 @@ func (s *Server) watcherResult(context *gin.Context) {
 			}
 			newWatcherResult.recordResult = append(newWatcherResult.recordResult, newRecordResult)
 		}
+		// XXX TODO negative record handling
 		context.JSON(newWatcherResult, newWatcherResult)
 	}
 }
