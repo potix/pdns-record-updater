@@ -3,10 +3,17 @@ package watcher
 import (
         "github.com/pkg/errors"
         "github.com/potix/belog"
+	"github.com/potix/pdns-record-updater/configurator"
 	"sync/atomic"
         "go/token"
         "go/types"
         "fmt"
+)
+
+const (
+	tfChanged     uint32 = 0x01
+	tfLatestDown uint32 = 0x02
+	tfLatestUp   uint32 = 0x04
 )
 
 // Watcher is struct of Watcher
@@ -29,24 +36,24 @@ type protoWatcherIf interface {
 var protoWatcherNewFuncMap = map[string]func() (protoWatcherIf, error) {
 	"ICMP":       icmpWatcherNew,
 //not implemented "UDP":        udpWatcherNew, 
-//not implemented "UDPREGEX":   udpRegexWatcherNew,
+//not implemented "UDPREGEXP":   udpRegexpWatcherNew,
 	"TCP":        tcpWatcherNew,
-	"TCPREGEX":   tcpRegexWatcherNew,
+	"TCPREGEXP":   tcpRegexpWatcherNew,
 	"HTTP":       httpWatcherNew,
-	"HTTPREGEX":  httpRegexWatcherNew,
+	"HTTPREGEXP":  httpRegexpWatcherNew,
 }
 
 func (w *Watcher) targetWatch(task *targetTask) {
 	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.TargetType)]
 	if !ok {
-		// unsupported protocol type
+		belog.Error("unsupported protocol type (%v)", task.target.TargetType)
 		task.target.alive = false
 		close(task.waitChan)
 		return
 	}
 	protoWatcher, err := protoWatcherNewFunc(task.target)
 	if err != nil {
-		// can not create protocol watcher
+		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.TargetType)))
 		task.target.alive = false
 		close(task.waitChan)
 		return
@@ -61,18 +68,22 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 
 func (w *Watcher) updateAlive(record *configurator.Record, newAlive uint32){
 	oldAlive := atomic.SwapUint32(&record.Alive, newAlive);
-	if strings.ToUpper(record.NotifyTrigger) == "CHANGED" {
-		if oldAlive != newAlive {
-			w.notifier.notify(record, oldAlive, newAlive)
+	var triggerFlags uint32
+	for _, trigger := range record.NotifyTrigger {
+		if strings.ToUpper(record.NotifyTrigger) == "CHANGED" {
+			triggerFlags |= tfChanged
+		} else if strings.ToUpper(record.NotifyTrigger) == "LATESTDOWN" {
+			triggerFlags |= tfLatestUp
+		} else if strings.ToUpper(record.NotifyTrigger) == "LATESTUP" {
+			triggerFlags |= tfLatestDown
 		}
-	} else if strings.ToUpper(record.NotifyTrigger) == "LATESTDOWN" {
-		if newAlive == 0 {
-			w.notifier.notify(record, oldAlive, newAlive)
-		}
-	} else if strings.ToUpper(record.NotifyTrigger) == "LATESTUP" {
-		if newAlive == 1 {
-			w.notifier.notify(record, oldAlive, newAlive)
-		}
+	}
+	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
+		w.notifier.notify(record, oldAlive, newAlive)
+	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == 0 {
+		w.notifier.notify(record, oldAlive, newAlive)
+	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == 1  {
+		w.notifier.notify(record, oldAlive, newAlive)
 	}
 }
 
@@ -92,7 +103,7 @@ func (w *Watcher) recordWatch(record *configurator.Record) {
 		go targetWatch(newTask)
 	}
 	// wait target watch task
-	for task := firstTask; task != nil; task := task.next {
+	for task := firstTask; task != nil; task = task.next {
 		<-task.waitChan
 	}
 	// create replacer
@@ -105,12 +116,12 @@ func (w *Watcher) recordWatch(record *configurator.Record) {
 	// exec eval
 	tv, err := eval(replacer.Replace(configurator.Record.EvalRule))
 	if err != nil {
-		// eval failure
+		belog.Error("can not evalute (%v)", replacer.Replace(configurator.Record.EvalRule))
 		w.updateAlive(record, 0)
 	}
 	val, ok := constant.BoolVal(tv.Value)
 	if !ok {
-		// convert failure
+		belog.Error("can not convert to Bool from Value type (%v)", val)
 		w.updateAlive(record, 0)
 	}
 	if val {
@@ -122,7 +133,7 @@ func (w *Watcher) recordWatch(record *configurator.Record) {
 }
 
 func (w *Watcher) watchLoop() {
-	for (atomic.LoadUint32(&w.running)) {
+	for atomic.LoadUint32(&w.running) {
 		if (record.currentIntervalCount >= record.WatchInterval) {
 			for _, record := range w.watcherConfig.records {
 				if (!atomic.CompareAndSwapUint32(&record.progress, 0, 1)) {

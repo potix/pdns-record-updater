@@ -5,6 +5,7 @@ import (
         "github.com/potix/belog"
         "github.com/braintree/manners"
         "github.com/gin-gonic/gin"
+	"github.com/potix/pdns-record-updater/configurator"
         "net/http"
         "time"
 )
@@ -60,7 +61,7 @@ func (s *Server) Start() (err error) {
                 go c.startServer(gracefulServer)
                 select {
                 case err = <-gracefulServer.startChan:
-			return err
+			return errors.Wrap(err, fmt.Sprintf("can not start server (%s)", gracefulserver.server.Addr))
 		case <-time.After(time.Second):
 			// ok
                 }
@@ -78,6 +79,6 @@ func (s *Server) Stop() {
 // New is create Server
 func New(config *configurator.config) (s *Server) {
         return &Server{
-		serverConfig:  config.Server,
+		serverConfig: config.Server,
         }
 }

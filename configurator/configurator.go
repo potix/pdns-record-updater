@@ -1,9 +1,9 @@
 package configurator
 
 import (
-        "github.com/pkg/errors"
-        "github.com/potix/belog"
+	"github.com/pkg/errors"
 	"os"
+	"fmt"
 )
 
 // Configurator is struct of configurator
@@ -14,18 +14,18 @@ type Configurator struct {
 
 // Load is load config
 func (c *Configurator) Load() (config *Config, err error) {
-	return Configurator.reader.read()
+	return c.reader.read(c.configPath)
 }
 
 // New is create Configurator
-func New(onfigPath string) (configurator *Configurator, err error) {
-	configurator = new(Configurator)
-	_, err := os.Stat(configPAth)
+func New(configPath string) (configurator *Configurator, err error) {
+	_, err = os.Stat(configPath)
 	if err != nil {
+		errors.Wrap(err, fmt.Sprintf("not exists config file (%v)", configPath))
 		return nil, err
 	}
 	return &Configurator{
-		reader : reader.New(),
+		reader : newReader(),
 		configPath : configPath,
 	}, nil
 }

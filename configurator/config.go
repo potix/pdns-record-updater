@@ -7,7 +7,7 @@ import (
 // Target is config of target
 type Target struct {
 	Name        string   // target名
-	ProtoType   string   // プロトコルタイプ icmp, udp, udpRegex, tcp, tcpRegex, http, httpRegex
+	ProtoType   string   // プロトコルタイプ icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
 	Dest        string   // 宛先
 	HTTPStatus  []string // OKとみなすHTTPステータスコード
 	Regex       string   // OKとみなす正規表現 
@@ -29,7 +29,7 @@ type Record struct {
 	currentIntervalCount uint32    // 現在の時間
 	progress             uint32    // 監視中を示すフラグ
 	Alive                uint32    // 生存フラグ
-	NotifyTrigger        string    // notifierを送信するトリガー changed, latestDown, latestUp
+	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
 }
 
 // Watcher is watcher

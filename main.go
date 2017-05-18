@@ -7,8 +7,9 @@ import (
         "github.com/potix/pdns-record-updater/collector"
         "github.com/potix/pdns-record-updater/initializer"
         "github.com/potix/pdns-record-updater/updater"
-        "github.com/potix/pdns-record-updater/server"
+        "github.com/potix/pdns-record-updater/notifier"
         "github.com/potix/pdns-record-updater/watcher"
+        "github.com/potix/pdns-record-updater/server"
 	"flag"
 	"fmt"
 )

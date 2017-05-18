@@ -2,23 +2,22 @@ package configurator
 
 import (
         "github.com/pkg/errors"
-        "github.com/potix/belog"
 	"github.com/BurntSushi/toml"
+	"fmt"
 )
 
 type reader struct {
 	config *Config
 }
 
-func (r *reader) read(configPath *string) (*Config, error) {
-	var err error
-	_, err = toml.DecodeFile(configPath, reader.config)
+func (r *reader) read(configPath string) (*Config, error) {
+	_, err := toml.DecodeFile(configPath, r.config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf("can not decode file with toml (%v)", configPath))
 	}
-	return reader.config, nil
+	return r.config, nil
 }
 
-func new() {
+func newReader() (*reader) {
 	return &reader{}
 }
