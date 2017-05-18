@@ -19,9 +19,10 @@ type Notifier struct {
 	notifierConfig *configurator.Notifier
 }
 
-func (n *Notifier) sendMail(mailConfig *configurator.Mail, t time.Time, record *configurator.Record, oldAlive uint32, newAlive uint32) (error) {
+func (n *Notifier) sendMail(mailConfig *configurator.Mail, t time.Time, zoneName string, record *configurator.Record, oldAlive uint32, newAlive uint32) (error) {
         replacer := strings.NewReplacer(
                 "%(time)", t.Format("2006-01-02 15:04:05"),
+                "%(zone)", zoneName,
                 "%(name)", record.Name,
                 "%(type)", record.Type,
                 "%(content)", record.Content,
@@ -38,12 +39,12 @@ func (n *Notifier) sendMail(mailConfig *configurator.Mail, t time.Time, record *
 	message += fmt.Sprintf("To: %s\r\n", mailConfig.To)
 	subject := mailConfig.Subject
 	if subject == "" {
-		subject = "%(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+		subject = "%(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
 	message += fmt.Sprintf("Subject: %s\r\n", replacer.Replace(subject))
 	body := mailConfig.Body
 	if body == "" {
-		subject = "%(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+		subject = "%(zone) %(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
 	message += "\r\n" + replacer.Replace(body)
 
@@ -134,10 +135,10 @@ func (n *Notifier) sendMail(mailConfig *configurator.Mail, t time.Time, record *
 	return nil
 }
 
-func (n *Notifier) notifyMain(t time.Time, record *configurator.Record, oldAlive uint32, newAlive uint32) {
+func (n *Notifier) notifyMain(t time.Time, zoneName string, record *configurator.Record, oldAlive uint32, newAlive uint32) {
 	// send mail
 	for _, mailConfig := range n.notifierConfig.Mail {
-		err := n.sendMail(mailConfig, t, record, oldAlive, newAlive)
+		err := n.sendMail(mailConfig, t, zoneName, record, oldAlive, newAlive)
 		if err != nil {
 			belog.Error("%v", err)
 		}
@@ -145,8 +146,8 @@ func (n *Notifier) notifyMain(t time.Time, record *configurator.Record, oldAlive
 }
 
 // Notify is Notify
-func (n *Notifier) Notify(record *configurator.Record, oldAlive uint32, newAlive uint32) {
-	go n.notifyMain(time.Now(), record, oldAlive, newAlive)
+func (n *Notifier) Notify(zoneName string, record *configurator.Record, oldAlive uint32, newAlive uint32) {
+	go n.notifyMain(time.Now(), zoneName, record, oldAlive, newAlive)
 }
 
 // New is create notifier

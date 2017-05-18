@@ -32,9 +32,23 @@ type Record struct {
 	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
 }
 
+// NegativeRecord is negative record
+type NegativeRecord struct {
+	Name                 string    // DNSレコード名
+	Type                 string    // DNSレコードタイプ
+	Content              string    // DNSレコード内容
+}
+
+// Zone is zone
+type Zone struct {
+	Name           string            // ゾーン名
+	Record         []*Record         // レコードリスト
+	NegativeRecord []*NegativeRecord // レコードが全て死んだ場合に有効になるレコード
+}
+
 // Watcher is watcher
 type Watcher struct {
-	Record []*Record // レコードリスト
+	Zone []*Zone
 }
 
 // Mail is Mail

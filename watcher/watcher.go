@@ -66,7 +66,7 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w *Watcher) updateAlive(record *configurator.Record, newAlive uint32){
+func (w *Watcher) updateAlive(zoneName string, record *configurator.Record, newAlive uint32){
 	oldAlive := atomic.SwapUint32(&record.Alive, newAlive);
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTrigger {
@@ -79,15 +79,15 @@ func (w *Watcher) updateAlive(record *configurator.Record, newAlive uint32){
 		}
 	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
-		w.notifier.notify(record, oldAlive, newAlive)
+		w.notifier.notify(zoneName, record, oldAlive, newAlive)
 	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == 0 {
-		w.notifier.notify(record, oldAlive, newAlive)
+		w.notifier.notify(zoneName, record, oldAlive, newAlive)
 	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == 1  {
-		w.notifier.notify(record, oldAlive, newAlive)
+		w.notifier.notify(zoneName, record, oldAlive, newAlive)
 	}
 }
 
-func (w *Watcher) recordWatch(record *configurator.Record) {
+func (w *Watcher) recordWatch(zoneName string, record *configurator.Record) {
 	var firstTask *targetTask
 	// run target watch task
 	for _, target := range record.targets {
@@ -117,34 +117,40 @@ func (w *Watcher) recordWatch(record *configurator.Record) {
 	tv, err := eval(replacer.Replace(configurator.Record.EvalRule))
 	if err != nil {
 		belog.Error("can not evalute (%v)", replacer.Replace(configurator.Record.EvalRule))
-		w.updateAlive(record, 0)
+		w.updateAlive(zoneName, record, 0)
 	}
 	val, ok := constant.BoolVal(tv.Value)
 	if !ok {
 		belog.Error("can not convert to Bool from Value type (%v)", val)
-		w.updateAlive(record, 0)
+		w.updateAlive(zoneName, record, 0)
 	}
 	if val {
-		w.updateAlive(record, 1)
+		w.updateAlive(zoneName, record, 1)
 	} else  {
-		w.updateAlive(record, 0)
+		w.updateAlive(zoneName, record, 0)
 	}
 	atomic.StoreUint32(&record.progress, 0)
 }
 
-func (w *Watcher) watchLoop() {
-	for atomic.LoadUint32(&w.running) {
+func (w *Watcher) zoneWatch(zone *configurator.Zone) {
+	for _, record := range zone.Record {
 		if (record.currentIntervalCount >= record.WatchInterval) {
-			for _, record := range w.watcherConfig.records {
-				if (!atomic.CompareAndSwapUint32(&record.progress, 0, 1)) {
-					// run record waatch task
-					go recordWatch(record)
-				} else {
-					// alresy progress last record watch task
-				}
+			if (!atomic.CompareAndSwapUint32(&record.progress, 0, 1)) {
+				// run record waatch task
+				go recordWatch(zone.Name, record)
+			} else {
+				// alresy progress last record watch task
 			}
 		}
 		record.currentIntervalCount++
+	}
+}
+
+func (w *Watcher) watchLoop() {
+	for atomic.LoadUint32(&w.running) {
+		for _, zone := range w.watcherConfig.Zone {
+			go zoneWatch(zone)
+		}
 		time.Sleep(time.Second)
 	}
 }
