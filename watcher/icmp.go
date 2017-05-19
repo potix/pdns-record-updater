@@ -32,15 +32,14 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 	ipv := 0
 	var conn *icmp.PacketConn
 	var err error
-	switch len([]byte(ip)) {
-	case 4:
+	if (ip.To4() != nil) {
+		belog.Debug("icmp ipv4 (%v)", i.ipAddr)
 		ipv = 4
 		conn, err = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
-	case 16:
+	} else {
+		belog.Debug("icmp ipv6 (%v)", i.ipAddr)
 		ipv = 6
 		conn, err = icmp.ListenPacket("ip6:icmp", "::")
-	default:
-		return 0, false, errors.Errorf("unsupported protocol version (%v)", i.ipAddr)
 	}
 	if err != nil {
 		return 0, true, errors.Wrap(err, fmt.Sprintf("can not create icmp connection (%v)", i.ipAddr))
@@ -70,7 +69,7 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 		return 0, false, errors.Wrap(err, fmt.Sprintf("can not marshal message (%v)", wm))
 	}
 	if _, err := conn.WriteTo(wb, &net.IPAddr{IP: ip}); err != nil {
-		return 0, true, errors.Wrap(err, fmt.Sprintf("can not write message to connection (%v)", i.ipAddr))
+		return 0, true, errors.Wrap(err, fmt.Sprintf("can not write message (%v)", i.ipAddr))
 	}
 	if err := conn.SetReadDeadline(time.Now().Add(time.Duration(i.timeout) * time.Second)); err != nil {
 		return 0, false, errors.Wrap(err, fmt.Sprintf("can not set deadline (%v)", i.ipAddr))
@@ -109,6 +108,7 @@ Read:
 		belog.Debug("unexpected icmp type (%v)", rm.Type)
 		goto Read
 	}
+	belog.Debug("icmp ok (%v)", i.ipAddr)
 	return 1, false, nil
 }
 

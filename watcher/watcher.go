@@ -140,6 +140,7 @@ func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 			if (record.CompareAndSwapProgress(0, 1)) {
 				// run record waatch task
 				go w.recordWatch(domain, record)
+				record.ClearCurrentIntervalCount()
 			} else {
 				// already progress last record watch task
 			}

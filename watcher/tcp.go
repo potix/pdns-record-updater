@@ -41,9 +41,11 @@ func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
 	var conn connIf
 	var err error
 	if t.useTLS {
+		belog.Debug("tls (%v)", t.ipPort)
 		tlsConfig := &tls.Config{ InsecureSkipVerify: t.tlsSkipVerify }
 		conn, err = tls.DialWithDialer(dialer, "tcp", t.ipPort, tlsConfig)
 	} else {
+		belog.Debug("tcp (%v)", t.ipPort)
 		conn, err = dialer.Dial("tcp", t.ipPort)
 	}
 	if err != nil {
@@ -66,6 +68,7 @@ func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
 			return 0, false, nil
 		}
 	}
+	belog.Debug("tcp ok (%v)", t.ipPort)
 	return 1, false, nil
 }
 

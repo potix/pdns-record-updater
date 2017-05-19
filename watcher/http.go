@@ -64,7 +64,7 @@ func (h *httpWatcher) getHTTP() (uint32, bool, error) {
 	if h.status != nil && len(h.status) > 0 {
 		match := false
 		for _, status := range h.status {
-			if status == res.Status {
+			if len(status) <= len(res.Status) && status == res.Status[0:len(status)] {
 				match = true
 				break
 			}
@@ -89,6 +89,7 @@ func (h *httpWatcher) getHTTP() (uint32, bool, error) {
 			return 0, false, nil
 		}
 	}
+	belog.Debug("http ok (%v)", h.url)
 	return 1, false, nil
 }
 

@@ -79,6 +79,11 @@ func (r *Record) IncrementCurrentIntervalCount() {
 	r.currentIntervalCount++
 }
 
+//ClearCurrentIntervalCount is clear currentIntervalCount
+func (r *Record) ClearCurrentIntervalCount() {
+	r.currentIntervalCount = 0
+}
+
 // NegativeRecord is negative record
 type NegativeRecord struct {
 	Name                 string    // DNSレコード名
