@@ -2,12 +2,12 @@ package server
 
 import (
         "github.com/pkg/errors"
-        "github.com/potix/belog"
         "github.com/braintree/manners"
         "github.com/gin-gonic/gin"
 	"github.com/potix/pdns-record-updater/configurator"
         "net/http"
         "time"
+        "fmt"
 )
 
 // GracefulServer is GracefulServer
@@ -23,12 +23,12 @@ type Server struct {
 	watcherConfig     *configurator.Watcher
 }
 
-func (s *Server) addHandlers(group *gin.RouterGroup, resource string, handler gin.HandlerFunc, flag addHandlersFlag) {
+func (s *Server) addHandlers(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
         group.HEAD(resource, handler)
         group.GET(resource, handler)
 }
 
-func (s *Server) startServer(gracefulServer *Gracefulserver) {
+func (s *Server) startServer(gracefulServer *GracefulServer) {
         err := gracefulServer.server.ListenAndServe()
         if err != nil {
                 gracefulServer.startChan <- err
@@ -41,7 +41,7 @@ func (s *Server) Start() (err error) {
                 errors.Errorf("not found linten port")
         }
 	engine := gin.Default()
-	newGroup := engine.Group("/v1", c.commonHandler)
+	newGroup := engine.Group("/v1", s.commonHandler)
 	s.addHandlers(newGroup, "/v1/watcher/result", s.watcherResult)
 
 	// XXX TODO https
@@ -55,17 +55,17 @@ func (s *Server) Start() (err error) {
                 })
 		newGracefulServer := &GracefulServer{
 			server: server,
-			startChan: make(chan err),
+			startChan: make(chan error),
 		}
                 s.gracefulServers = append(s.gracefulServers, newGracefulServer)
         }
 
 	// start server
         for _, gracefulServer := range s.gracefulServers {
-                go c.startServer(gracefulServer)
+                go s.startServer(gracefulServer)
                 select {
                 case err = <-gracefulServer.startChan:
-			return errors.Wrap(err, fmt.Sprintf("can not start server (%s)", gracefulserver.server.Addr))
+			return errors.Wrap(err, fmt.Sprintf("can not start server (%s)", gracefulServer.server.Addr))
 		case <-time.After(time.Second):
 			// ok
                 }
@@ -76,12 +76,12 @@ func (s *Server) Start() (err error) {
 // Stop is Stop
 func (s *Server) Stop() {
         for _, gracefulServer := range s.gracefulServers {
-                gracefulServer.BlockingClose()
+                gracefulServer.server.BlockingClose()
         }
 }
 
 // New is create Server
-func New(config *configurator.config) (s *Server) {
+func New(config *configurator.Config) (s *Server) {
         return &Server{
 		serverConfig: config.Server,
 		watcherConfig: config.Watcher,

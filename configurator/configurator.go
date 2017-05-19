@@ -21,8 +21,7 @@ func (c *Configurator) Load() (config *Config, err error) {
 func New(configPath string) (configurator *Configurator, err error) {
 	_, err = os.Stat(configPath)
 	if err != nil {
-		errors.Wrap(err, fmt.Sprintf("not exists config file (%v)", configPath))
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf("not exists config file (%v)", configPath))
 	}
 	return &Configurator{
 		reader : newReader(),

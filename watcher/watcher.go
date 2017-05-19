@@ -154,8 +154,17 @@ func (w *Watcher) watchLoop() {
 	}
 }
 
-// Run is run 
-func (w *Watcher) Run() {
+// Init is Init
+func (w *Watcher) Init() {
+	for zoneName, zone := range w.watcherConfig.Zone {
+		for _, record := range zone.Record {
+			w.recordWatch(zoneName, record)
+		}
+	}
+}
+
+// Start is run 
+func (w *Watcher) Start() {
 	atomic.StoreUint32(&w.running, 1)
 	go w.watchLoop()
 }

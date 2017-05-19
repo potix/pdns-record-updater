@@ -8,6 +8,20 @@ import (
 	"net/http"
 )
 
+func (s *Server) commonHandler(context *gin.Context) {
+        context.Header("Content-Type", gin.MIMEJSON)
+        switch context.Request.Method {
+        case http.MethodHead:
+		context.Status(http.StatusInternalServerError)
+        case http.MethodGet:
+		context.Status(http.StatusInternalServerError)
+        default:
+                context.Status(http.StatusMethodNotAllowed)
+                return
+        }
+        context.Next()
+}
+
 type recordResult struct {
 	Name    string
 	Type    string
@@ -24,10 +38,10 @@ type watcherResult struct {
 }
 
 func (s *Server) watcherResult(context *gin.Context) {
-	switch context.Request.Method {
-	case http.MethodHead:
-		context.String(http.StatusNoContent, "")
-	case http.MethodGet:
+        switch context.Request.Method {
+        case http.MethodHead:
+		context.Status(http.StatusNoContent)
+        case http.MethodGet:
 		newWatcherResult := &watcherResult {
 			ZoneResult : make(map[string]*zoneResult),
 		}
