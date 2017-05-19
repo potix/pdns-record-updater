@@ -1,49 +1,49 @@
 watcher:
   zone:
-    "example.jp":
-      record:
-      - name: "foo"
-        type: "a"
-        content: "192.168.0.1"
-        watchinterval: 5
-        alive: 1
-        notifytrigger:
-        - changed
-        - latestDown
-        target:
-        - name: t1
-          protocol: icmp
-          dest: 192.168.0.1
-          retry: 3
-          retrywait: 1
-          timeout: 1
-          tlsskipverify: true
-        - name: t2
-          protocol: tcpRegexp
-          dest: 192.168.0.1:80
-          regexp: "hogehoge2"
-          ressize: 2000
-          retry: 3
-          retrywait: 1
-          timeout: 2
-          tcptls: true
-          tlsskipverify: true
-        - name: t3
-          protocol: httpRegexp
-          dest: 192.168.0.1:80
-          regexp: "hogehoge3"
-          ressize: 3000
-          httpmethod: "GET"
-          httpstatus: ["200"]
-          retry: 3
-          retrywait: 1
-          timeout: 3
-          tlsskipverify: true
-        evalrule: "%(t1) && %(t2) && %(t3)"
-      negativerecord:
-      - name: "foo"
-        type: "a"
-        content: "192.168.0.254"
+  - domain: "example.jp"
+    record:
+    - name: "foo"
+      type: "a"
+      content: "192.168.0.1"
+      watchinterval: 5
+      alive: 1
+      notifytrigger:
+      - changed
+      - latestDown
+      target:
+      - name: t1
+        protocol: icmp
+        dest: 192.168.0.1
+        retry: 3
+        retrywait: 1
+        timeout: 1
+        tlsskipverify: true
+      - name: t2
+        protocol: tcpRegexp
+        dest: 192.168.0.1:80
+        regexp: "hogehoge2"
+        ressize: 2000
+        retry: 3
+        retrywait: 1
+        timeout: 2
+        tcptls: true
+        tlsskipverify: true
+      - name: t3
+        protocol: httpRegexp
+        dest: 192.168.0.1:80
+        regexp: "hogehoge3"
+        ressize: 3000
+        httpmethod: "GET"
+        httpstatus: ["200"]
+        retry: 3
+        retrywait: 1
+        timeout: 3
+        tlsskipverify: true
+      evalrule: "%(t1) && %(t2) && %(t3)"
+    negativerecord:
+    - name: "foo"
+      type: "a"
+      content: "192.168.0.254"
 notifier:
   mail:
   - hostport: smtp.example.com:25
@@ -55,8 +55,8 @@ notifier:
     usestarttls: true
     usetls: true
     tlsskipverify: true
-    subject: "[pdns updater] %(zone) %(name) %(content): old alive = %(oldalive) -> new alive = %(newalive)"
-    body: "event\n%(zone) %(time) %(name) %(type) %(content): old alive = %(oldalive) -> new alive = %(newalive)\n"
+    subject: "%(hostname) %(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+    body: "hostname: %(hostname)\nzone: %(zone)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n%(detail)"
 server:
   debug: true
   listen:

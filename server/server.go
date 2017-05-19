@@ -42,7 +42,7 @@ func (s *Server) Start() (err error) {
         }
 	engine := gin.Default()
 	newGroup := engine.Group("/v1", s.commonHandler)
-	s.addHandlers(newGroup, "/v1/watcher/result", s.watcherResult)
+	s.addHandlers(newGroup, "/watch/result", s.watchResult)
 
 	// XXX TODO https
 	// XXX TODO user password

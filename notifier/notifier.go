@@ -10,24 +10,27 @@ import (
 	"net/smtp"
 	"strings"
 	"time"
+	"os"
 	"fmt"
 )
 
-
 // Notifier is notifier
 type Notifier struct {
+	hostname string
 	notifierContext *contexter.Notifier
 }
 
-func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName string, record *contexter.Record, oldAlive uint32, newAlive uint32) (error) {
+func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, domain string, record *contexter.Record, targetResult string, oldAlive uint32, newAlive uint32) (error) {
         replacer := strings.NewReplacer(
+		"%(hostname)", n.hostname,
                 "%(time)", t.Format("2006-01-02 15:04:05"),
-                "%(zone)", zoneName,
+                "%(zone)", domain,
                 "%(name)", record.Name,
                 "%(type)", record.Type,
                 "%(content)", record.Content,
                 "%(oldAlive)", fmt.Sprintf("%v", (oldAlive != 0)),
-                "%(newAlive)", fmt.Sprintf("%v", (newAlive != 0)))
+                "%(newAlive)", fmt.Sprintf("%v", (newAlive != 0)),
+                "%(detail)", targetResult)
 
 	from := mail.Address{"", mailContext.From}
 	toList, err := mail.ParseAddressList(mailContext.To)
@@ -39,12 +42,12 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName s
 	message += fmt.Sprintf("To: %s\r\n", mailContext.To)
 	subject := mailContext.Subject
 	if subject == "" {
-		subject = "%(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+		subject = "%(hostname) %(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
 	message += fmt.Sprintf("Subject: %s\r\n", replacer.Replace(subject))
 	body := mailContext.Body
 	if body == "" {
-		body = "%(zone) %(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+		body = "hostname: %(hostname)\nzone: %(zone)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n%(detail)"
 	}
 	message += "\r\n" + replacer.Replace(body)
 
@@ -59,7 +62,6 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName s
 
 	var conn net.Conn
 	if mailContext.UseTLS {
-		// TLS config
 		tlsContext := &tls.Config {
 			ServerName: host,
 			InsecureSkipVerify: mailContext.TLSSkipVerify,
@@ -91,7 +93,6 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName s
 		}
 	    }
 
-	// Auth
 	if err = client.Auth(auth); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("can not authentication (%v) (%v)", mailContext.Username, mailContext.Password))
 	}
@@ -109,13 +110,11 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName s
 		return errors.Wrap(err, fmt.Sprintf("can not send RCPT command (%v)", recept))
 	}
 
-	// Data
 	w, err := client.Data()
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("can not send DATA command"))
 	}
 
-	// write message
 	_, err = w.Write([]byte(message))
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("can not write message (%v)", message))
@@ -126,7 +125,6 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName s
 		return errors.Wrap(err, fmt.Sprintf("can not close message writer"))
 	}
 
-	// quit
 	err = client.Quit()
 	if err != nil {
 		belog.Notice("%v", errors.Wrap(err, fmt.Sprintf("can not send QUIT command")))
@@ -135,10 +133,10 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName s
 	return nil
 }
 
-func (n *Notifier) notifyMain(t time.Time, zoneName string, record *contexter.Record, oldAlive uint32, newAlive uint32) {
+func (n *Notifier) notifyMain(t time.Time, domain string, record *contexter.Record, targetResult string, oldAlive uint32, newAlive uint32) {
 	// send mail
 	for _, mailContext := range n.notifierContext.Mail {
-		err := n.sendMail(mailContext, t, zoneName, record, oldAlive, newAlive)
+		err := n.sendMail(mailContext, t, domain, record, targetResult, oldAlive, newAlive)
 		if err != nil {
 			belog.Error("%v", err)
 		}
@@ -146,13 +144,18 @@ func (n *Notifier) notifyMain(t time.Time, zoneName string, record *contexter.Re
 }
 
 // Notify is Notify
-func (n *Notifier) Notify(zoneName string, record *contexter.Record, oldAlive uint32, newAlive uint32) {
-	go n.notifyMain(time.Now(), zoneName, record, oldAlive, newAlive)
+func (n *Notifier) Notify(domain string, record *contexter.Record, targetResult string, oldAlive uint32, newAlive uint32) {
+	go n.notifyMain(time.Now(), domain, record, targetResult, oldAlive, newAlive)
 }
 
 // New is create notifier
 func New(context *contexter.Context) (n *Notifier) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
 	return &Notifier{
+		hostname : hostname,
 		notifierContext: context.Notifier,
 	}
 }

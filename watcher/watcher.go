@@ -70,7 +70,7 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w *Watcher) updateAlive(zoneName string, record *contexter.Record, newAlive uint32){
+func (w *Watcher) updateAlive(domain string, record *contexter.Record, targetResult string, newAlive uint32){
 	oldAlive := record.SwapAlive(newAlive);
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTrigger {
@@ -83,15 +83,15 @@ func (w *Watcher) updateAlive(zoneName string, record *contexter.Record, newAliv
 		}
 	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
-		w.notifier.Notify(zoneName, record, oldAlive, newAlive)
+		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
 	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == 0 {
-		w.notifier.Notify(zoneName, record, oldAlive, newAlive)
+		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
 	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == 1  {
-		w.notifier.Notify(zoneName, record, oldAlive, newAlive)
+		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
 	}
 }
 
-func (w *Watcher) recordWatch(zoneName string, record *contexter.Record) {
+func (w *Watcher) recordWatch(domain string, record *contexter.Record) {
 	var firstTask *targetTask
 	// run target watch task
 	for _, target := range record.Target {
@@ -111,9 +111,11 @@ func (w *Watcher) recordWatch(zoneName string, record *contexter.Record) {
 		<-task.waitChan
 	}
 	// create replacer
-	var replaceName []string
+	replaceName := make([]string, 0, 2 * len(record.Target))
+	targetResult := ""
 	for _, target := range record.Target {
 		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", (target.GetAlive() != 0)))
+		targetResult = targetResult + fmt.Sprintf("%v %v %v\n", target.Name, target.Dest, (target.GetAlive() != 0))
 	}
         replacer := strings.NewReplacer(replaceName...)
 
@@ -121,23 +123,23 @@ func (w *Watcher) recordWatch(zoneName string, record *contexter.Record) {
 	tv, err := w.eval(replacer.Replace(record.EvalRule))
 	if err != nil {
 		belog.Error("can not evalute (%v)", replacer.Replace(record.EvalRule))
-		w.updateAlive(zoneName, record, 0)
+		w.updateAlive(domain, record, targetResult, 0)
 	} else {
 		if constant.BoolVal(tv.Value) {
-			w.updateAlive(zoneName, record, 1)
+			w.updateAlive(domain, record, targetResult, 1)
 		} else  {
-			w.updateAlive(zoneName, record, 0)
+			w.updateAlive(domain, record, targetResult, 0)
 		}
 	}
 	record.SetProgress(0)
 }
 
-func (w *Watcher) zoneWatch(zoneName string, zone *contexter.Zone) {
+func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 	for _, record := range zone.Record {
 		if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
 			if (record.CompareAndSwapProgress(0, 1)) {
 				// run record waatch task
-				go w.recordWatch(zoneName, record)
+				go w.recordWatch(domain, record)
 			} else {
 				// already progress last record watch task
 			}
@@ -148,8 +150,8 @@ func (w *Watcher) zoneWatch(zoneName string, zone *contexter.Zone) {
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) == 1 {
-		for zoneName, zone := range w.watcherContext.Zone {
-			go w.zoneWatch(zoneName, zone)
+		for _, zone := range w.watcherContext.Zone {
+			go w.zoneWatch(zone.Domain, zone)
 		}
 		time.Sleep(time.Second)
 	}
@@ -157,9 +159,9 @@ func (w *Watcher) watchLoop() {
 
 // Init is Init
 func (w *Watcher) Init() {
-	for zoneName, zone := range w.watcherContext.Zone {
+	for _, zone := range w.watcherContext.Zone {
 		for _, record := range zone.Record {
-			w.recordWatch(zoneName, record)
+			w.recordWatch(zone.Domain, record)
 		}
 	}
 }

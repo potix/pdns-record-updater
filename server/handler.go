@@ -29,53 +29,58 @@ type recordResult struct {
 }
 
 type zoneResult struct {
-	RecordResult []*recordResult  `json:"Record"`
+	Domain string
+	Record []*recordResult
 }
 
-type watcherResult struct {
-	ZoneResult   map[string]*zoneResult  `json:"Zone"`
+type result struct {
+	Zone []*zoneResult
 }
 
-func (s *Server) watcherResult(context *gin.Context) {
+func (s *Server) watchResult(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
 		context.Status(http.StatusNoContent)
         case http.MethodGet:
-		newWatcherResult := &watcherResult {
-			ZoneResult : make(map[string]*zoneResult),
+		newResult := &result {
+			Zone : make([]*zoneResult, 0, len(s.watcherContext.Zone)),
 		}
-		for zoneName, zone := range s.watcherContext.Zone {
+		for _, zone := range s.watcherContext.Zone {
+			newZoneResult := &zoneResult {
+				Domain: zone.Domain,
+				Record : make([]*recordResult, 0, len(zone.Record) + len(zone.NegativeRecord)),
+			}
+			newResult.Zone = append(newResult.Zone, newZoneResult)
 			var aliveRecordCount uint32
-			newRecordResult := make([]*recordResult, 0, len(zone.Record))
 			for _, record := range zone.Record {
-				r := &recordResult {
+				newRecordResult := &recordResult {
 					Name:    record.Name,
 					Type:    record.Type,
 					Content: record.Content,
 					Alive:   record.GetAlive(),
 				}
-				if r.Alive == 1 {
+				newZoneResult.Record = append(newZoneResult.Record, newRecordResult)
+				if newRecordResult.Alive == 1 {
 					aliveRecordCount++
 				}
-				newRecordResult = append(newRecordResult, r)
 			}
+			var negativeRecordActive uint32
 			if aliveRecordCount == 0 {
-				for _, record := range zone.NegativeRecord {
-					r := &recordResult {
-						Name:    record.Name,
-						Type:    record.Type,
-						Content: record.Content,
-						Alive:   1,
-					}
-					newRecordResult = append(newRecordResult, r)
-                                }
-                        }
-			newWatcherResult.ZoneResult[zoneName] = &zoneResult {
-				RecordResult : newRecordResult,
+				negativeRecordActive = 1
+			} else {
+				negativeRecordActive = 0
 			}
-
+			for _, record := range zone.NegativeRecord {
+				newRecordResult := &recordResult {
+					Name:    record.Name,
+					Type:    record.Type,
+					Content: record.Content,
+					Alive:   negativeRecordActive,
+				}
+				newZoneResult.Record = append(newZoneResult.Record, newRecordResult)
+			}
 		}
-		response, err := json.Marshal(newWatcherResult)
+		response, err := json.Marshal(newResult)
 	        if err != nil {
 	                belog.Error("can not marshal object with json")
 			context.String(http.StatusInternalServerError, "")
