@@ -50,6 +50,10 @@ Loop:
         for {
                 sig := <-sigChan
                 switch sig {
+                case syscall.SIGINT:
+			fallthrough
+                case syscall.SIGQUIT:
+			fallthrough
                 case syscall.SIGTERM:
                         break Loop
                 default:
@@ -63,8 +67,9 @@ Loop:
 
 func main() {
 	var err error
-	mode := flag.String("mode", "watcher", "run mode (updater|checker)")
+	mode := flag.String("mode", "", "run mode (updater|checker)")
 	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")
+	flag.Parse()
 	configurator, err := configurator.New(*configPath)
 	if err != nil {
 		belog.Error("%v", err)
@@ -75,6 +80,13 @@ func main() {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
+
+	dump, err := context.Dump()
+	if err != nil {
+		belog.Error("%v", err)
+                os.Exit(1);
+	}
+	belog.Info("%v", dump)
 	err = belog.SetupLoggers(context.Logger)
 	if err != nil {
 		belog.Error("%v", err)

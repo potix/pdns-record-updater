@@ -82,8 +82,12 @@ func (s *Server) Stop() {
 
 // New is create Server
 func New(context *contexter.Context) (s *Server) {
-        return &Server{
+	s = &Server{
 		serverContext: context.Server,
 		watcherContext: context.Watcher,
         }
+	if context.Server.ReleaseMode {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	return s
 }

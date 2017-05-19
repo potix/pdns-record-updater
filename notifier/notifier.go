@@ -44,7 +44,7 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName s
 	message += fmt.Sprintf("Subject: %s\r\n", replacer.Replace(subject))
 	body := mailContext.Body
 	if body == "" {
-		subject = "%(zone) %(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+		body = "%(zone) %(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
 	message += "\r\n" + replacer.Replace(body)
 

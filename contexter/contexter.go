@@ -1,14 +1,17 @@
 package contexter
 
 import (
+	"github.com/pkg/errors"
         "github.com/potix/belog"
+	"github.com/BurntSushi/toml"
 	"sync/atomic"
+	"bytes"
 )
 
 // Target is config of target
 type Target struct {
 	Name        string   // target名
-	ProtoType   string   // プロトコルタイプ icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
+	Protocol    string   // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
 	Dest        string   // 宛先
 	HTTPStatus  []string // OKとみなすHTTPステータスコード
 	Regexp      string   // OKとみなす正規表現 
@@ -118,7 +121,8 @@ type Listen struct {
 
 // Server is server
 type Server struct {
-	Listen []*Listen // リッスンリスト
+	ReleaseMode  bool      // リリースモードにする
+	Listen       []*Listen // リッスンリスト
 }
 
 // Context is Context
@@ -127,4 +131,15 @@ type Context struct {
 	Notifier *Notifier            // 通知設定
 	Server   *Server              // サーバー設定
 	Logger   *belog.ConfigLoggers // ログ設定
+}
+
+// Dump is cump
+func (c *Context) Dump() (string, error) {
+	var buffer bytes.Buffer
+	 encoder := toml.NewEncoder(&buffer)
+	 err := encoder.Encode(c)
+	 if err != nil {
+	     return "", errors.Wrap(err, "can not dump context")
+	 }
+	 return buffer.String(), nil
 }

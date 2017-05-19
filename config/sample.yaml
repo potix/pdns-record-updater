@@ -1,216 +1,75 @@
-package configurator
-
-import (
-        "github.com/potix/belog"
-)
-
-// Target is config of target
-type Target struct {
-	Name        string   // target名
-	ProtoType   string   // プロトコルタイプ icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
-	Dest        string   // 宛先
-	HTTPStatus  []string // OKとみなすHTTPステータスコード
-	Regexp      string   // OKとみなす正規表現 
-	ResSize     uint32   // 受信する最大レスポンスサイズ
-	Retry       uint32   // リトライ回数
-	RetryWait   uint32   // 次のリトライまでの待ち時間
-	Timeout     uint32   // タイムアウトしたとみなす時間
-	Alive       uint32   // 生存フラグ
-}
-
-// Record is config of record
-type Record struct {
-	Name                 string    // DNSレコード名
-	Type                 string    // DNSレコードタイプ
-	Content              string    // DNSレコード内容
-	Target               []*Target // ターゲットリスト
-	EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
-	WatchInterval        uint32    // 監視する間隔
-	CurrentIntervalCount uint32    // 現在の時間
-	Progress             uint32    // 監視中を示すフラグ
-	Alive                uint32    // 生存フラグ
-	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
-}
-
-// NegativeRecord is negative record
-type NegativeRecord struct {
-	Name                 string    // DNSレコード名
-	Type                 string    // DNSレコードタイプ
-	Content              string    // DNSレコード内容
-}
-
-// Zone is zone
-type Zone struct {
-	Record         []*Record         // レコードリスト
-	NegativeRecord []*NegativeRecord // レコードが全て死んだ場合に有効になるレコード
-}
-
-// Watcher is watcher
-type Watcher struct {
-	Zone map[string]*Zone
-}
-
-// Mail is Mail
-type Mail struct {
-	HostPort      string   // smtp接続先ホストとポート
-	Username      string   // ユーザ名
-	Password      string   // パスワード
-	To            string   // 宛先メールアドレス 複数書く場合は,で区切る
-	From          string   // 送り元メールアドレス
-	AuthType      string   // 認証タイプ  cram-md5, plain
-	UseStartTLS   bool     // startTLSの使用フラグ
-	UseTLS        bool     // TLS接続の使用フラグ
-	TLSSkipVerify bool     // TLSの検証をスキップする
-	Subject       string   // 題名テンプレート
-	Body          string   // bodyテンプレート
-}
-
-// Notifier is Notifier
-type Notifier struct {
-	Mail []*Mail // メールリスト
-}
-
-// Listen is listen
-type Listen struct {
-	AddrPort string // リッスンするアドレスとポート
-}
-
-// Server is server
-type Server struct {
-	Listen []*Listen // リッスンリスト
-}
-
-// Config is config
-type Config struct {
-	Watcher  *Watcher             // 監視設定
-	Notifier *Notifier            // 通知設定
-	Server   *Server              // サーバー設定
-	Logger   *belog.ConfigLoggers // ログ設定
-}
-
-type Record struct {
-                Name                 string    // DNSレコード名
-                        Type                 string    // DNSレコードタイプ
-                                Content              string    // DNSレコード内容
-                                        Target               []*Target // ターゲットリスト
-                                                EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
-                                                                WatchInterval        uint32    // 監視する間隔
-                                                                        CurrentIntervalCount uint32    // 現在の時間
-                                                                                Progress             uint32    // 監視中を示すフラグ
-                                                                                        Alive                uint32    // 生存フラグ
-                                                                                                NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
-
-// Target is config of target
-type Target struct {
-	Name        string   // target名
-	ProtoType   string   // プロトコルタイプ icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
-	Dest        string   // 宛先
-	HTTPStatus  []string // OKとみなすHTTPステータスコード
-	Regexp      string   // OKとみなす正規表現 
-	ResSize     uint32   // 受信する最大レスポンスサイズ
-	Retry       uint32   // リトライ回数
-	RetryWait   uint32   // 次のリトライまでの待ち時間
-	Timeout     uint32   // タイムアウトしたとみなす時間
-	Alive       uint32   // 生存フラグ
-}
-
-Watcher:
-  "example.jp":
-    Record:
-      - Name: "foo"
-        Type: "A"
-        Content: "192.168.0.1"
-        WatchInterval: 5
-        Alive: true
-        NotifyTrigger:
-        Target:
-          - Name: t1
-            ProtoType: icmp
-            Dest: 192.168.0.1
-            Alive: true
-            retry: 3
-            retryWait: 0
-            Timeout: 1
-          - Name: t2
-            ProtoType: tcp
-            Dest: 192.168.0.1:80
-            Alive: true
-            retry: 3
-            retryWait: 0
-            Timeout: 2
-          - Name: t3
-            ProtoType: http
-            Dest: 192.168.0.1:80
-            HTTPStatus: ["200"]
-            Alive: true
-            retry: 3
-            retryWait: 0
-            Timeout: 3
-        EvalRule: "%(t1) && %(t2) && %(t3)"
-    NativeRecord:
-      - Name: "foo"
-        Type: "A"
-        Content: "192.168.0.254"
-
-
-
- "Record" : [
-//        {
-//           "Name": "hoge.com"
-//           "Type": "A"
-//           "Content": "2.2.2.2"
-//           "target": [
-//              { 
-//                  "Name": "a",
-//                  "ProtoType"; httpRegex, 
-//                  "Dest": http://2.2.2.2/hoge, 
-//                  "Status": [ "200" ], 
-//                  "Regex": "^.+", 
-//                  "ResSize": 1000, 
-//                  "Retry": 10, 
-//                  "RetryWait": 1, 
-//                  "Timeout": 2, 
-//              },
-//              { 
-//                  "Name": "b",
-//                  "ProtoType"; icmp, 
-//                  "Dest": http://2.2.2.2/hoge, 
-//                  "Retry": 10, 
-//                  "RetryWait": 1, 
-//                  "Timeout": 2, 
-//              },
-//           ]
-//           "EvalRule" :  "a & b"
-//        },
-//    ],
-//},
-//"Server" : {
-//   "Listen" : [
-//	{
-//           addressPort: "2.2.2.2:8080"
-//      }
-//   ]
-//},
-Logger:
+watcher:
+  zone:
+    "example.jp":
+      record:
+        - name: "foo"
+          type: "a"
+          content: "192.168.0.1"
+          watchInterval: 5
+          alive: 1
+          notifyTrigger:
+          target:
+            - name: t1
+              protocol: icmp
+              dest: 192.168.0.1
+              retry: 3
+              retryWait: 0
+              timeout: 1
+            - name: t2
+              protocol: tcp
+              dest: 192.168.0.1:80
+              retry: 3
+              retryWait: 0
+              timeout: 2
+            - name: t3
+              protocol: http
+              dest: 192.168.0.1:80
+              hTTPStatus: ["200"]
+              retry: 3
+              retryWait: 0
+              timeout: 3
+          evalRule: "%(t1) && %(t2) && %(t3)"
+      nativeRecord:
+        - name: "foo"
+          type: "a"
+          content: "192.168.0.254"
+notifier:
+  mail:
+    - hostPort: smtp.example.com:25
+      username: bob
+      password: password
+      to: alice@example.com
+      from: bob@example.com
+      aithType: plain
+      useStartTLS: false
+      useTLS: true
+      tLSSkipVerify: false
+      subject: "%(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+      body: "%(zone) %(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+server:
+  releaseMode: false
+  listen:
+    - addrPort: 0.0.0.0:80
+logger:
   "default":
     filter:
-      structname: LogLevelFilter
-      structsetters:
-      - settername: SetLogLevel
-        setterparams:
+      structName: logLevelFilter
+      structSetters:
+      - setterName: setLogLevel
+        setterParams:
         - "8"
     formatter:
-      structname: StandardFormatter
-      structsetters:
-      - settername: SetDateTimeLayout
-        setterparams:
-        - 2006-01-02 15:04:05 -0700 MST
-      - settername: SetLayout
-        setterparams:
+      structName: standardFormatter
+      structSetters:
+      - setterName: setDateTimeLayout
+        setterParams:
+        - 2006-01-02 15:04:05 -0700 mST
+      - setterName: setLayout
+        setterParams:
         - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName) %(lineNum) %(message)'
     handlers:
-    - structname: ConsoleHandler
-      structsetters:
-      - settername: SetOutputType
-        setterparams:
+    - structName: consoleHandler
+      structSetters:
+      - setterName: setOutputType
+        setterParams:
         - "1"

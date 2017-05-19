@@ -48,16 +48,16 @@ var protoWatcherNewFuncMap = map[string]func(*contexter.Target) (protoWatcherIf,
 }
 
 func (w *Watcher) targetWatch(task *targetTask) {
-	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.ProtoType)]
+	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.Protocol)]
 	if !ok {
-		belog.Error("unsupported protocol type (%v)", task.target.ProtoType)
+		belog.Error("unsupported protocol type (%v)", task.target.Protocol)
 		task.target.SetAlive(0)
 		close(task.waitChan)
 		return
 	}
 	protoWatcher, err := protoWatcherNewFunc(task.target)
 	if err != nil {
-		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.ProtoType)))
+		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.Protocol)))
 		task.target.SetAlive(0)
 		close(task.waitChan)
 		return
