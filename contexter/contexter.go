@@ -10,16 +10,19 @@ import (
 
 // Target is config of target
 type Target struct {
-	Name        string   // target名
-	Protocol    string   // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
-	Dest        string   // 宛先
-	HTTPStatus  []string // OKとみなすHTTPステータスコード
-	Regexp      string   // OKとみなす正規表現 
-	ResSize     uint32   // 受信する最大レスポンスサイズ
-	Retry       uint32   // リトライ回数
-	RetryWait   uint32   // 次のリトライまでの待ち時間
-	Timeout     uint32   // タイムアウトしたとみなす時間
-	alive       uint32   // 生存フラグ
+	Name          string   // target名
+	Protocol      string   // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
+	Dest          string   // 宛先
+	TCPTLS        bool     // TCPにTLSを使う
+	HTTPMethod    string   // HTTPメソッド
+	HTTPStatus    []string // OKとみなすHTTPステータスコード
+	Regexp        string   // OKとみなす正規表現 
+	ResSize       uint32   // 受信する最大レスポンスサイズ
+	Retry         uint32   // リトライ回数
+	RetryWait     uint32   // 次のリトライまでの待ち時間
+	Timeout       uint32   // タイムアウトしたとみなす時間
+	TLSSkipVerify bool     // TLSの検証をスキップする
+	alive         uint32   // 生存フラグ
 }
 
 //SetAlive is set alive

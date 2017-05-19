@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	tfChanged     uint32 = 0x01
+	tfChanged    uint32 = 0x01
 	tfLatestDown uint32 = 0x02
 	tfLatestUp   uint32 = 0x04
 )
@@ -42,9 +42,9 @@ var protoWatcherNewFuncMap = map[string]func(*contexter.Target) (protoWatcherIf,
 //not implemented "UDP":        udpWatcherNew, 
 //not implemented "UDPREGEXP":   udpRegexpWatcherNew,
 	"TCP":        tcpWatcherNew,
-	"TCPREGEXP":   tcpRegexpWatcherNew,
+	"TCPREGEXP":  tcpRegexpWatcherNew,
 	"HTTP":       httpWatcherNew,
-	"HTTPREGEXP":  httpRegexpWatcherNew,
+	"HTTPREGEXP": httpRegexpWatcherNew,
 }
 
 func (w *Watcher) targetWatch(task *targetTask) {

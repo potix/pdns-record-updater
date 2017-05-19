@@ -17,6 +17,7 @@ watcher:
           retry: 3
           retrywait: 1
           timeout: 1
+          tlsskipverify: true
         - name: t2
           protocol: tcpRegexp
           dest: 192.168.0.1:80
@@ -25,20 +26,24 @@ watcher:
           retry: 3
           retrywait: 1
           timeout: 2
+          tcptls: true
+          tlsskipverify: true
         - name: t3
           protocol: httpRegexp
           dest: 192.168.0.1:80
           regexp: "hogehoge3"
           ressize: 3000
+          httpmethod: "GET"
           httpstatus: ["200"]
           retry: 3
           retrywait: 1
           timeout: 3
+          tlsskipverify: true
         evalrule: "%(t1) && %(t2) && %(t3)"
-        negativerecord:
-        - name: "foo"
-          type: "a"
-          content: "192.168.0.254"
+      negativerecord:
+      - name: "foo"
+        type: "a"
+        content: "192.168.0.254"
 notifier:
   mail:
   - hostport: smtp.example.com:25

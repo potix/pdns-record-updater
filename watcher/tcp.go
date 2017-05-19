@@ -7,20 +7,28 @@ import (
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/cacher"
+	"crypto/tls"
         "net"
         "time"
 	"fmt"
 )
 
 type tcpWatcher struct {
-	useRegexp bool
-	ipPort    string
-	retry     uint32
-	retryWait uint32
-	timeout   uint32
-	regexp    *pcre.Regexp
-	regexpStr string
-        resSize   uint32
+	useRegexp     bool
+	ipPort        string
+	retry         uint32
+	retryWait     uint32
+	timeout       uint32
+	regexp        *pcre.Regexp
+	regexpStr     string
+        resSize       uint32
+	useTLS        bool
+	tlsSkipVerify bool
+}
+
+type connIf interface {
+	Close() (error)
+	Read(b []byte) (n int, err error)
 }
 
 func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
@@ -29,11 +37,20 @@ func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
 		DualStack: true,
 		Deadline:  time.Now().Add(time.Duration(t.timeout) * time.Second),
 	}
-	conn, err := dialer.Dial("tcp", t.ipPort)
+
+	var conn connIf
+	var err error
+	if t.useTLS {
+		tlsConfig := &tls.Config{ InsecureSkipVerify: t.tlsSkipVerify }
+		conn, err = tls.DialWithDialer(dialer, "tcp", t.ipPort, tlsConfig)
+	} else {
+		conn, err = dialer.Dial("tcp", t.ipPort)
+	}
 	if err != nil {
 		return 0, true, errors.Wrap(err, fmt.Sprintf("can not connect (%v)", t.ipPort))
 	}
 	defer conn.Close()
+
 	if (t.useRegexp) {
 		if t.resSize == 0 {
 			t.resSize = 1024
@@ -72,11 +89,13 @@ func (t *tcpWatcher) isAlive() (uint32) {
 
 func tcpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
         return &tcpWatcher {
-		useRegexp: false,
-                ipPort:    target.Dest,
-                retry:     target.Retry,
-                retryWait: target.RetryWait,
-                timeout:   target.Timeout,
+		useRegexp:     false,
+                ipPort:        target.Dest,
+                retry:         target.Retry,
+                retryWait:     target.RetryWait,
+                timeout:       target.Timeout,
+		useTLS:        target.TCPTLS,
+		tlsSkipVerify: target.TLSSkipVerify,
         }, nil
 }
 
@@ -87,12 +106,14 @@ func tcpRegexpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
 	}
         return &tcpWatcher {
 		useRegexp: true,
-                ipPort:    target.Dest,
-                retry:     target.Retry,
-                retryWait: target.RetryWait,
-                timeout:   target.Timeout,
-		regexp:    regexp,
-		regexpStr: target.Regexp,
-		resSize:   target.ResSize,
+                ipPort:        target.Dest,
+                retry:         target.Retry,
+                retryWait:     target.RetryWait,
+                timeout:       target.Timeout,
+		regexp:        regexp,
+		regexpStr:     target.Regexp,
+		resSize:       target.ResSize,
+		useTLS:        target.TCPTLS,
+		tlsSkipVerify: target.TLSSkipVerify,
         }, nil
 }
