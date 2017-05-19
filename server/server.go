@@ -86,7 +86,7 @@ func New(context *contexter.Context) (s *Server) {
 		serverContext: context.Server,
 		watcherContext: context.Watcher,
         }
-	if context.Server.ReleaseMode {
+	if !context.Server.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	return s

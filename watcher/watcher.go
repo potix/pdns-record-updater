@@ -122,11 +122,12 @@ func (w *Watcher) recordWatch(zoneName string, record *contexter.Record) {
 	if err != nil {
 		belog.Error("can not evalute (%v)", replacer.Replace(record.EvalRule))
 		w.updateAlive(zoneName, record, 0)
-	}
-	if constant.BoolVal(tv.Value) {
-		w.updateAlive(zoneName, record, 1)
-	} else  {
-		w.updateAlive(zoneName, record, 0)
+	} else {
+		if constant.BoolVal(tv.Value) {
+			w.updateAlive(zoneName, record, 1)
+		} else  {
+			w.updateAlive(zoneName, record, 0)
+		}
 	}
 	record.SetProgress(0)
 }

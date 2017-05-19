@@ -66,7 +66,7 @@ func (t *tcpWatcher) isAlive() (uint32) {
                         time.Sleep(time.Duration(t.retryWait))
                 }
         }
-        belog.Error("retry count is exceeded limit", t.ipPort)
+        belog.Error("retry count is exceeded limit (%v)", t.ipPort)
         return 0
 }
 

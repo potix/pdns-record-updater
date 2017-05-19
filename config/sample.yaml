@@ -2,74 +2,84 @@ watcher:
   zone:
     "example.jp":
       record:
-        - name: "foo"
-          type: "a"
-          content: "192.168.0.1"
-          watchInterval: 5
-          alive: 1
-          notifyTrigger:
-          target:
-            - name: t1
-              protocol: icmp
-              dest: 192.168.0.1
-              retry: 3
-              retryWait: 0
-              timeout: 1
-            - name: t2
-              protocol: tcp
-              dest: 192.168.0.1:80
-              retry: 3
-              retryWait: 0
-              timeout: 2
-            - name: t3
-              protocol: http
-              dest: 192.168.0.1:80
-              hTTPStatus: ["200"]
-              retry: 3
-              retryWait: 0
-              timeout: 3
-          evalRule: "%(t1) && %(t2) && %(t3)"
-      nativeRecord:
+      - name: "foo"
+        type: "a"
+        content: "192.168.0.1"
+        watchinterval: 5
+        alive: 1
+        notifytrigger:
+        - changed
+        - latestDown
+        target:
+        - name: t1
+          protocol: icmp
+          dest: 192.168.0.1
+          retry: 3
+          retrywait: 1
+          timeout: 1
+        - name: t2
+          protocol: tcpRegexp
+          dest: 192.168.0.1:80
+          regexp: "hogehoge2"
+          ressize: 2000
+          retry: 3
+          retrywait: 1
+          timeout: 2
+        - name: t3
+          protocol: httpRegexp
+          dest: 192.168.0.1:80
+          regexp: "hogehoge3"
+          ressize: 3000
+          httpstatus: ["200"]
+          retry: 3
+          retrywait: 1
+          timeout: 3
+        evalrule: "%(t1) && %(t2) && %(t3)"
+        negativerecord:
         - name: "foo"
           type: "a"
           content: "192.168.0.254"
 notifier:
   mail:
-    - hostPort: smtp.example.com:25
-      username: bob
-      password: password
-      to: alice@example.com
-      from: bob@example.com
-      aithType: plain
-      useStartTLS: false
-      useTLS: true
-      tLSSkipVerify: false
-      subject: "%(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
-      body: "%(zone) %(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+  - hostport: smtp.example.com:25
+    username: bob
+    password: password
+    to: alice@example.com
+    from: bob@example.com
+    authtype: plain
+    usestarttls: true
+    usetls: true
+    tlsskipverify: true
+    subject: "[pdns updater] %(zone) %(name) %(content): old alive = %(oldalive) -> new alive = %(newalive)"
+    body: "event\n%(zone) %(time) %(name) %(type) %(content): old alive = %(oldalive) -> new alive = %(newalive)\n"
 server:
-  releaseMode: false
+  debug: true
   listen:
-    - addrPort: 0.0.0.0:80
+  - addrport: 0.0.0.0:28080
 logger:
-  "default":
-    filter:
-      structName: logLevelFilter
-      structSetters:
-      - setterName: setLogLevel
-        setterParams:
-        - "8"
-    formatter:
-      structName: standardFormatter
-      structSetters:
-      - setterName: setDateTimeLayout
-        setterParams:
-        - 2006-01-02 15:04:05 -0700 mST
-      - setterName: setLayout
-        setterParams:
-        - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName) %(lineNum) %(message)'
-    handlers:
-    - structName: consoleHandler
-      structSetters:
-      - setterName: setOutputType
-        setterParams:
-        - "1"
+  loggers:
+    "default":
+      filter:
+        structname: LogLevelFilter
+        structsetters:
+        - settername: SetLogLevel
+          setterparams:
+          - "8"
+      formatter:
+        structname: StandardFormatter
+        structsetters:
+        - settername: SetAppendNewLine
+          setterparams:
+          - "true"
+        - settername: SetDateTimeLayout
+          setterparams:
+          - 2006-01-02 15:04:05 -0700 mst
+        - settername: SetLayout
+          setterparams:
+          - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName) %(lineNum) %(message)'
+      handlers:
+      - structname: ConsoleHandler
+        structsetters:
+        - settername: SetOutputType
+          setterparams:
+          - "1"

@@ -121,7 +121,7 @@ type Listen struct {
 
 // Server is server
 type Server struct {
-	ReleaseMode  bool      // リリースモードにする
+	Debug        bool      // デバッグモードにする
 	Listen       []*Listen // リッスンリスト
 }
 
@@ -134,12 +134,13 @@ type Context struct {
 }
 
 // Dump is cump
-func (c *Context) Dump() (string, error) {
+func (c *Context) Dump() {
 	var buffer bytes.Buffer
-	 encoder := toml.NewEncoder(&buffer)
-	 err := encoder.Encode(c)
-	 if err != nil {
-	     return "", errors.Wrap(err, "can not dump context")
-	 }
-	 return buffer.String(), nil
+	encoder := toml.NewEncoder(&buffer)
+	err := encoder.Encode(c)
+	if err != nil {
+	    belog.Error("%v", errors.Wrap(err, "can not dump context"))
+	    return
+	}
+	belog.Debug("%v", buffer.String())
 }

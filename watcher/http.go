@@ -77,7 +77,7 @@ func (h *httpWatcher) isAlive() (uint32) {
 			time.Sleep(time.Duration(h.retryWait))
 		}
 	}
-	belog.Error("retry count is exceeded limit", h.url)
+	belog.Error("retry count is exceeded limit (%v)", h.url)
 	return 0
 }
 

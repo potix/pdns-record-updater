@@ -80,18 +80,12 @@ func main() {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-
-	dump, err := context.Dump()
-	if err != nil {
-		belog.Error("%v", err)
-                os.Exit(1);
-	}
-	belog.Info("%v", dump)
 	err = belog.SetupLoggers(context.Logger)
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
+	context.Dump()
 	if (strings.ToUpper(*mode) == "UPDATER") {
 		err = runUpdater(context)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
