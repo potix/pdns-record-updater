@@ -20,6 +20,7 @@ type GracefulServer struct {
 type Server struct {
 	gracefulServers []*GracefulServer
 	serverConfig     *configurator.Server
+	watcherConfig     *configurator.Watcher
 }
 
 func (s *Server) addHandlers(group *gin.RouterGroup, resource string, handler gin.HandlerFunc, flag addHandlersFlag) {
@@ -42,6 +43,9 @@ func (s *Server) Start() (err error) {
 	engine := gin.Default()
 	newGroup := engine.Group("/v1", c.commonHandler)
 	s.addHandlers(newGroup, "/v1/watcher/result", s.watcherResult)
+
+	// XXX TODO https
+	// XXX TODO user password
 
 	// create server
         for _, listen := range s.serverConfig.Listen {
@@ -80,5 +84,6 @@ func (s *Server) Stop() {
 func New(config *configurator.config) (s *Server) {
         return &Server{
 		serverConfig: config.Server,
+		watcherConfig: config.Watcher,
         }
 }
