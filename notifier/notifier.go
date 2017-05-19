@@ -151,8 +151,8 @@ func (n *Notifier) Notify(zoneName string, record *contexter.Record, oldAlive ui
 }
 
 // New is create notifier
-func New(watcherContext *contexter.Watcher) (n *Notifier) {
+func New(context *contexter.Context) (n *Notifier) {
 	return &Notifier{
-		notifierContext: watcherContext.Notifier,
+		notifierContext: context.Notifier,
 	}
 }

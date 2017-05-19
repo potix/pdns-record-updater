@@ -4,7 +4,7 @@ import (
         "github.com/pkg/errors"
         "github.com/potix/belog"
 	"github.com/potix/pdns-record-updater/contexter"
-	"github.com/potix/pdns-record-updater/watcher/notifier"
+	"github.com/potix/pdns-record-updater/notifier"
         "go/token"
         "go/types"
         "go/constant"
@@ -179,6 +179,6 @@ func New(context *contexter.Context) (*Watcher) {
 	return &Watcher{
 		watcherContext: context.Watcher,
 		running:	0,
-		notifier:       notifier.New(context.Watcher),
+		notifier:       notifier.New(context),
 	}
 }
