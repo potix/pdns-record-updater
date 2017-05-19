@@ -2,6 +2,7 @@ package configurator
 
 import (
 	"github.com/pkg/errors"
+	"github.com/potix/pdns-record-updater/contexter"
 	"os"
 	"fmt"
 )
@@ -13,7 +14,7 @@ type Configurator struct {
 }
 
 // Load is load config
-func (c *Configurator) Load() (config *Config, err error) {
+func (c *Configurator) Load() (context *contexter.Context, err error) {
 	return c.reader.read(c.configPath)
 }
 

@@ -1,4 +1,4 @@
-package configurator
+package contenxter
 
 import (
         "github.com/potix/belog"
@@ -27,8 +27,8 @@ type Record struct {
 	EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
 	WatchInterval        uint32    // 監視する間隔
 	CurrentIntervalCount uint32    // 現在の時間
-	Progress             uint32    // 監視中を示すフラグ
-	Alive                uint32    // 生存フラグ
+	progress             uint32    // 監視中を示すフラグ
+	alive                uint32    // 生存フラグ
 	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
 }
 
@@ -87,102 +87,3 @@ type Config struct {
 	Server   *Server              // サーバー設定
 	Logger   *belog.ConfigLoggers // ログ設定
 }
-
-
-//---------------------------------------------------------------------------
-//"Watcher": {
-//    "Record" : [
-//        {
-//           "Name": "hoge.com"
-//           "Type": "A"
-//           "Content": "2.2.2.2"
-//           "target": [
-//              { 
-//                  "Name": "a",
-//                  "ProtoType"; httpRegex, 
-//                  "Dest": http://2.2.2.2/hoge, 
-//                  "Status": [ "200" ], 
-//                  "Regex": "^.+", 
-//                  "ResSize": 1000, 
-//                  "Retry": 10, 
-//                  "RetryWait": 1, 
-//                  "Timeout": 2, 
-//              },
-//              { 
-//                  "Name": "b",
-//                  "ProtoType"; icmp, 
-//                  "Dest": http://2.2.2.2/hoge, 
-//                  "Retry": 10, 
-//                  "RetryWait": 1, 
-//                  "Timeout": 2, 
-//              },
-//           ]
-//           "EvalRule" :  "a & b"
-//        },
-//    ],
-//},
-//"Server" : {
-//   "Listen" : [
-//	{
-//           addressPort: "2.2.2.2:8080"
-//      }
-//   ]
-//},
-//Logger:
-//  "":
-//    filter:
-//      structname: LogLevelFilter
-//      structsetters:
-//      - settername: SetLogLevel
-//        setterparams:
-//        - "8"
-//    formatter:
-//      structname: StandardFormatter
-//      structsetters:
-//      - settername: SetDateTimeLayout
-//        setterparams:
-//        - 2006-01-02 15:04:05 -0700 MST
-//      - settername: SetLayout
-//        setterparams:
-//        - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(fileName) %(lineNum) %(message)'
-//    handlers:
-//    - structname: ConsoleHandler
-//      structsetters:
-//      - settername: SetOutputType
-//        setterparams:
-//        - "2"
-//    - structname: SyslogHandler
-//      structsetters:
-//      - settername: SetNetworkAndAddr
-//        setterparams:
-//        - ""
-//        - ""
-//      - settername: SetTag
-//        setterparams:
-//        - "test"
-//      - settername: SetFacility
-//        setterparams:
-//        - "Daemon"
-//    - structname: RotationFileHandler
-//      structsetters:
-//      - settername: SetLogFileName
-//        setterparams:
-//        - belog-test.log
-//      - settername: SetLogDirPath
-//        setterparams:
-//        - /var/tmp/belog-test
-//      - settername: SetMaxAge
-//        setterparams:
-//        - "3"
-//      - settername: SetMaxSize
-//        setterparams:
-//        - "65535"
-//      - settername: SetAsync
-//        setterparams:
-//        - "true"
-//      - settername: SetAsyncFlushInterval
-//        setterparams:
-//        - "2"
-//      - settername: SetBufferSize
-//        setterparams:
-//        - "1024"
