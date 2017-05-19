@@ -3,12 +3,12 @@ package watcher
 import (
         "github.com/pkg/errors"
         "github.com/potix/belog"
-	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/watcher/notifier"
-	"sync/atomic"
         "go/token"
         "go/types"
         "go/constant"
+	"sync/atomic"
         "strings"
         "fmt"
         "time"
@@ -22,13 +22,13 @@ const (
 
 // Watcher is struct of Watcher
 type Watcher struct {
-	watcherConfig *configurator.Watcher
-	running       uint32
-	notifier      *notifier.Notifier
+	watcherContext *contexter.Watcher
+	running         uint32
+	notifier        *notifier.Notifier
 }
 
 type targetTask struct {
-	target   *configurator.Target
+	target   *contexter.Target
 	waitChan chan bool
 	next     *targetTask
 }
@@ -37,7 +37,7 @@ type protoWatcherIf interface {
 	isAlive() (uint32)
 }
 
-var protoWatcherNewFuncMap = map[string]func(*configurator.Target) (protoWatcherIf, error) {
+var protoWatcherNewFuncMap = map[string]func(*contexter.Target) (protoWatcherIf, error) {
 	"ICMP":       icmpWatcherNew,
 //not implemented "UDP":        udpWatcherNew, 
 //not implemented "UDPREGEXP":   udpRegexpWatcherNew,
@@ -51,18 +51,18 @@ func (w *Watcher) targetWatch(task *targetTask) {
 	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.ProtoType)]
 	if !ok {
 		belog.Error("unsupported protocol type (%v)", task.target.ProtoType)
-		atomic.StoreUint32(&task.target.Alive, 0)
+		task.target.SetAlive(0)
 		close(task.waitChan)
 		return
 	}
 	protoWatcher, err := protoWatcherNewFunc(task.target)
 	if err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.ProtoType)))
-		atomic.StoreUint32(&task.target.Alive, 0)
+		task.target.SetAlive(0)
 		close(task.waitChan)
 		return
 	}
-	atomic.StoreUint32(&task.target.Alive, protoWatcher.isAlive())
+	task.target.SetAlive(protoWatcher.isAlive())
 	close(task.waitChan)
 }
 
@@ -70,8 +70,8 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w *Watcher) updateAlive(zoneName string, record *configurator.Record, newAlive uint32){
-	oldAlive := atomic.SwapUint32(&record.Alive, newAlive);
+func (w *Watcher) updateAlive(zoneName string, record *contexter.Record, newAlive uint32){
+	oldAlive := record.SwapAlive(newAlive);
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTrigger {
 		if strings.ToUpper(trigger) == "CHANGED" {
@@ -91,7 +91,7 @@ func (w *Watcher) updateAlive(zoneName string, record *configurator.Record, newA
 	}
 }
 
-func (w *Watcher) recordWatch(zoneName string, record *configurator.Record) {
+func (w *Watcher) recordWatch(zoneName string, record *contexter.Record) {
 	var firstTask *targetTask
 	// run target watch task
 	for _, target := range record.Target {
@@ -113,7 +113,7 @@ func (w *Watcher) recordWatch(zoneName string, record *configurator.Record) {
 	// create replacer
 	var replaceName []string
 	for _, target := range record.Target {
-		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", (atomic.LoadUint32(&target.Alive) != 0)))
+		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", (target.GetAlive() != 0)))
 	}
         replacer := strings.NewReplacer(replaceName...)
 
@@ -128,26 +128,26 @@ func (w *Watcher) recordWatch(zoneName string, record *configurator.Record) {
 	} else  {
 		w.updateAlive(zoneName, record, 0)
 	}
-	atomic.StoreUint32(&record.Progress, 0)
+	record.SetProgress(0)
 }
 
-func (w *Watcher) zoneWatch(zoneName string, zone *configurator.Zone) {
+func (w *Watcher) zoneWatch(zoneName string, zone *contexter.Zone) {
 	for _, record := range zone.Record {
-		if (record.CurrentIntervalCount >= record.WatchInterval) {
-			if (!atomic.CompareAndSwapUint32(&record.Progress, 0, 1)) {
+		if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
+			if (record.CompareAndSwapProgress(0, 1)) {
 				// run record waatch task
 				go w.recordWatch(zoneName, record)
 			} else {
-				// alresy progress last record watch task
+				// already progress last record watch task
 			}
 		}
-		record.CurrentIntervalCount++
+		record.IncrementCurrentIntervalCount()
 	}
 }
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) == 1 {
-		for zoneName, zone := range w.watcherConfig.Zone {
+		for zoneName, zone := range w.watcherContext.Zone {
 			go w.zoneWatch(zoneName, zone)
 		}
 		time.Sleep(time.Second)
@@ -156,7 +156,7 @@ func (w *Watcher) watchLoop() {
 
 // Init is Init
 func (w *Watcher) Init() {
-	for zoneName, zone := range w.watcherConfig.Zone {
+	for zoneName, zone := range w.watcherContext.Zone {
 		for _, record := range zone.Record {
 			w.recordWatch(zoneName, record)
 		}
@@ -175,10 +175,10 @@ func (w *Watcher) Stop() {
 }
 
 // New is create Wathcer
-func New(config *configurator.Config) (*Watcher) {
+func New(context *contexter.Context) (*Watcher) {
 	return &Watcher{
-		watcherConfig:  config.Watcher,
+		watcherContext: context.Watcher,
 		running:	0,
-		notifier:       notifier.New(config),
+		notifier:       notifier.New(context.Watcher),
 	}
 }

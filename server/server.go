@@ -4,7 +4,7 @@ import (
         "github.com/pkg/errors"
         "github.com/braintree/manners"
         "github.com/gin-gonic/gin"
-	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/contexter"
         "net/http"
         "time"
         "fmt"
@@ -12,15 +12,15 @@ import (
 
 // GracefulServer is GracefulServer
 type GracefulServer struct {
-	server *manners.GracefulServer
+	server    *manners.GracefulServer
 	startChan chan error
 }
 
 // Server is Server
 type Server struct {
 	gracefulServers []*GracefulServer
-	serverConfig     *configurator.Server
-	watcherConfig     *configurator.Watcher
+	serverContext   *contexter.Server
+	watcherContext  *contexter.Watcher
 }
 
 func (s *Server) addHandlers(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
@@ -37,7 +37,7 @@ func (s *Server) startServer(gracefulServer *GracefulServer) {
 
 // Start is Start
 func (s *Server) Start() (err error) {
-        if s.serverConfig.Listen == nil || len(s.serverConfig.Listen) == 0 {
+        if s.serverContext.Listen == nil || len(s.serverContext.Listen) == 0 {
                 errors.Errorf("not found linten port")
         }
 	engine := gin.Default()
@@ -48,7 +48,7 @@ func (s *Server) Start() (err error) {
 	// XXX TODO user password
 
 	// create server
-        for _, listen := range s.serverConfig.Listen {
+        for _, listen := range s.serverContext.Listen {
                 server := manners.NewWithServer(&http.Server{
                         Addr:    listen.AddrPort,
                         Handler: engine,
@@ -81,9 +81,9 @@ func (s *Server) Stop() {
 }
 
 // New is create Server
-func New(config *configurator.Config) (s *Server) {
+func New(context *contexter.Context) (s *Server) {
         return &Server{
-		serverConfig: config.Server,
-		watcherConfig: config.Watcher,
+		serverContext: context.Server,
+		watcherContext: context.Watcher,
         }
 }

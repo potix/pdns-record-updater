@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
-	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/contexter"
 	"sync/atomic"
 	"net"
 	"time"
@@ -135,7 +135,7 @@ func (i *icmpWatcher) isAlive() (uint32) {
 	return 0
 }
 
-func icmpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
+func icmpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
 	return &icmpWatcher {
 		ipAddr:    target.Dest,
 		retry:     target.Retry,

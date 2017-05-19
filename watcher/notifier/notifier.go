@@ -3,7 +3,7 @@ package notifier
 import (
 	"github.com/pkg/errors"
 	"github.com/potix/belog"
-	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/contexter"
 	"net"
 	"crypto/tls"
 	"net/mail"
@@ -16,10 +16,10 @@ import (
 
 // Notifier is notifier
 type Notifier struct {
-	notifierConfig *configurator.Notifier
+	notifierContext *contexter.Notifier
 }
 
-func (n *Notifier) sendMail(mailConfig *configurator.Mail, t time.Time, zoneName string, record *configurator.Record, oldAlive uint32, newAlive uint32) (error) {
+func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, zoneName string, record *contexter.Record, oldAlive uint32, newAlive uint32) (error) {
         replacer := strings.NewReplacer(
                 "%(time)", t.Format("2006-01-02 15:04:05"),
                 "%(zone)", zoneName,
@@ -29,71 +29,71 @@ func (n *Notifier) sendMail(mailConfig *configurator.Mail, t time.Time, zoneName
                 "%(oldAlive)", fmt.Sprintf("%v", (oldAlive != 0)),
                 "%(newAlive)", fmt.Sprintf("%v", (newAlive != 0)))
 
-	from := mail.Address{"", mailConfig.From}
-	toList, err := mail.ParseAddressList(mailConfig.To)
+	from := mail.Address{"", mailContext.From}
+	toList, err := mail.ParseAddressList(mailContext.To)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("can not parse mail address list (%v)", mailConfig.To))
+		return errors.Wrap(err, fmt.Sprintf("can not parse mail address list (%v)", mailContext.To))
 	}
 	message := ""
-	message += fmt.Sprintf("From: %s\r\n", mailConfig.From)
-	message += fmt.Sprintf("To: %s\r\n", mailConfig.To)
-	subject := mailConfig.Subject
+	message += fmt.Sprintf("From: %s\r\n", mailContext.From)
+	message += fmt.Sprintf("To: %s\r\n", mailContext.To)
+	subject := mailContext.Subject
 	if subject == "" {
 		subject = "%(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
 	message += fmt.Sprintf("Subject: %s\r\n", replacer.Replace(subject))
-	body := mailConfig.Body
+	body := mailContext.Body
 	if body == "" {
 		subject = "%(zone) %(time) %(name) %(type) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
 	message += "\r\n" + replacer.Replace(body)
 
-	host, _, _ := net.SplitHostPort(mailConfig.HostPort)
+	host, _, _ := net.SplitHostPort(mailContext.HostPort)
 
 	var auth smtp.Auth
-	if strings.ToUpper(mailConfig.AuthType) == "PLAIN" {
-		auth = smtp.PlainAuth("", mailConfig.Username, mailConfig.Password, host)
-	} else if strings.ToUpper(mailConfig.AuthType) == "CRAM-MD5" {
-		auth = smtp.CRAMMD5Auth(mailConfig.Username, mailConfig.Password)
+	if strings.ToUpper(mailContext.AuthType) == "PLAIN" {
+		auth = smtp.PlainAuth("", mailContext.Username, mailContext.Password, host)
+	} else if strings.ToUpper(mailContext.AuthType) == "CRAM-MD5" {
+		auth = smtp.CRAMMD5Auth(mailContext.Username, mailContext.Password)
 	}
 
 	var conn net.Conn
-	if mailConfig.UseTLS {
+	if mailContext.UseTLS {
 		// TLS config
-		tlsConfig := &tls.Config {
+		tlsContext := &tls.Config {
 			ServerName: host,
-			InsecureSkipVerify: mailConfig.TLSSkipVerify,
+			InsecureSkipVerify: mailContext.TLSSkipVerify,
 		}
-		conn, err = tls.Dial("tcp", mailConfig.HostPort, tlsConfig)
+		conn, err = tls.Dial("tcp", mailContext.HostPort, tlsContext)
 		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("can not connect mail host with tls (%v)", mailConfig.HostPort))
+			return errors.Wrap(err, fmt.Sprintf("can not connect mail host with tls (%v)", mailContext.HostPort))
 		}
 	} else {
-		conn, err = net.Dial("tcp", mailConfig.HostPort)
+		conn, err = net.Dial("tcp", mailContext.HostPort)
 		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("can not connect mail host (%v)", mailConfig.HostPort))
+			return errors.Wrap(err, fmt.Sprintf("can not connect mail host (%v)", mailContext.HostPort))
 		}
 	}
 	defer conn.Close()
 
 	client, err := smtp.NewClient(conn, host)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("can not create smtp client (%v)", mailConfig.HostPort))
+		return errors.Wrap(err, fmt.Sprintf("can not create smtp client (%v)", mailContext.HostPort))
 	}
 
-	if mailConfig.UseStartTLS {
+	if mailContext.UseStartTLS {
 		tlsconfig := &tls.Config {
 			ServerName: host,
-			InsecureSkipVerify: mailConfig.TLSSkipVerify,
+			InsecureSkipVerify: mailContext.TLSSkipVerify,
 		}
 		if err := client.StartTLS(tlsconfig); err != nil {
-			return errors.Wrap(err, fmt.Sprintf("can not start tls (%v)", mailConfig.HostPort))
+			return errors.Wrap(err, fmt.Sprintf("can not start tls (%v)", mailContext.HostPort))
 		}
 	    }
 
 	// Auth
 	if err = client.Auth(auth); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("can not authentication (%v) (%v)", mailConfig.Username, mailConfig.Password))
+		return errors.Wrap(err, fmt.Sprintf("can not authentication (%v) (%v)", mailContext.Username, mailContext.Password))
 	}
 
 	if err = client.Mail(from.Address); err != nil {
@@ -135,10 +135,10 @@ func (n *Notifier) sendMail(mailConfig *configurator.Mail, t time.Time, zoneName
 	return nil
 }
 
-func (n *Notifier) notifyMain(t time.Time, zoneName string, record *configurator.Record, oldAlive uint32, newAlive uint32) {
+func (n *Notifier) notifyMain(t time.Time, zoneName string, record *contexter.Record, oldAlive uint32, newAlive uint32) {
 	// send mail
-	for _, mailConfig := range n.notifierConfig.Mail {
-		err := n.sendMail(mailConfig, t, zoneName, record, oldAlive, newAlive)
+	for _, mailContext := range n.notifierContext.Mail {
+		err := n.sendMail(mailContext, t, zoneName, record, oldAlive, newAlive)
 		if err != nil {
 			belog.Error("%v", err)
 		}
@@ -146,13 +146,13 @@ func (n *Notifier) notifyMain(t time.Time, zoneName string, record *configurator
 }
 
 // Notify is Notify
-func (n *Notifier) Notify(zoneName string, record *configurator.Record, oldAlive uint32, newAlive uint32) {
+func (n *Notifier) Notify(zoneName string, record *contexter.Record, oldAlive uint32, newAlive uint32) {
 	go n.notifyMain(time.Now(), zoneName, record, oldAlive, newAlive)
 }
 
 // New is create notifier
-func New(config *configurator.Config) (n *Notifier) {
+func New(watcherContext *contexter.Watcher) (n *Notifier) {
 	return &Notifier{
-		notifierConfig: config.Notifier,
+		notifierContext: watcherContext.Notifier,
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
         "github.com/potix/belog"
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
-	"github.com/potix/pdns-record-updater/configurator"
+	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/cacher"
 	"net/http"
 	"time"
@@ -81,7 +81,7 @@ func (h *httpWatcher) isAlive() (uint32) {
 	return 0
 }
 
-func httpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
+func httpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
         return &httpWatcher {
                 useRegexp:  false,
                 url:        target.Dest,
@@ -92,7 +92,7 @@ func httpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
         }, nil
 }
 
-func httpRegexpWatcherNew(target *configurator.Target) (protoWatcherIf, error) {
+func httpRegexpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
 	regexp, err := cacher.GetRegexpFromCache(target.Regexp, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can not get compiled regexp (%v)", target.Regexp))

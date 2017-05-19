@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
         "github.com/potix/belog"
         "github.com/potix/pdns-record-updater/configurator"
+        "github.com/potix/pdns-record-updater/contexter"
 //        "github.com/potix/pdns-record-updater/collector"
 //        "github.com/potix/pdns-record-updater/initializer"
 //        "github.com/potix/pdns-record-updater/updater"
@@ -16,7 +17,7 @@ import (
 	"syscall"
 )
 
-func runUpdater(config *configurator.Config) (err error) {
+func runUpdater(context *contexter.Context) (err error) {
 //	collector := collector.New(config)
 //	err := collector.Run()
 //	if err != nil {
@@ -31,10 +32,10 @@ func runUpdater(config *configurator.Config) (err error) {
 	return nil
 }
 
-func runWatcher(config *configurator.Config) (error) {
-	watcher := watcher.New(config)
+func runWatcher(context *contexter.Context) (error) {
+	watcher := watcher.New(context)
 	watcher.Init()
-	server := server.New(config)
+	server := server.New(context)
 	err := server.Start()
 	if err != nil {
 		return err
@@ -69,20 +70,20 @@ func main() {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	config, err := configurator.Load()
+	context, err := configurator.Load()
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	err = belog.SetupLoggers(config.Logger)
+	err = belog.SetupLoggers(context.Logger)
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
 	if (strings.ToUpper(*mode) == "UPDATER") {
-		err = runUpdater(config)
+		err = runUpdater(context)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
-		err = runWatcher(config)
+		err = runWatcher(context)
 	} else {
 		err = errors.New("unexpected run mode")
 	}

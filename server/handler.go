@@ -4,7 +4,6 @@ import (
 	"github.com/potix/belog"
 	"github.com/gin-gonic/gin"
 	"encoding/json"
-	"sync/atomic"
 	"net/http"
 )
 
@@ -45,7 +44,7 @@ func (s *Server) watcherResult(context *gin.Context) {
 		newWatcherResult := &watcherResult {
 			ZoneResult : make(map[string]*zoneResult),
 		}
-		for zoneName, zone := range s.watcherConfig.Zone {
+		for zoneName, zone := range s.watcherContext.Zone {
 			var aliveRecordCount uint32
 			newRecordResult := make([]*recordResult, 0, len(zone.Record))
 			for _, record := range zone.Record {
@@ -53,7 +52,7 @@ func (s *Server) watcherResult(context *gin.Context) {
 					Name:    record.Name,
 					Type:    record.Type,
 					Content: record.Content,
-					Alive:   atomic.LoadUint32(&record.Alive),
+					Alive:   record.GetAlive(),
 				}
 				if r.Alive == 1 {
 					aliveRecordCount++

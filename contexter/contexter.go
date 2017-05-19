@@ -1,7 +1,8 @@
-package contenxter
+package contexter
 
 import (
         "github.com/potix/belog"
+	"sync/atomic"
 )
 
 // Target is config of target
@@ -15,7 +16,17 @@ type Target struct {
 	Retry       uint32   // リトライ回数
 	RetryWait   uint32   // 次のリトライまでの待ち時間
 	Timeout     uint32   // タイムアウトしたとみなす時間
-	Alive       uint32   // 生存フラグ
+	alive       uint32   // 生存フラグ
+}
+
+//SetAlive is set alive
+func (t *Target) SetAlive(alive uint32) {
+	atomic.StoreUint32(&t.alive, alive)
+}
+
+//GetAlive is get alive
+func (t *Target) GetAlive() (uint32) {
+	return atomic.LoadUint32(&t.alive)
 }
 
 // Record is config of record
@@ -26,10 +37,40 @@ type Record struct {
 	Target               []*Target // ターゲットリスト
 	EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
 	WatchInterval        uint32    // 監視する間隔
-	CurrentIntervalCount uint32    // 現在の時間
+	currentIntervalCount uint32    // 現在の時間
 	progress             uint32    // 監視中を示すフラグ
-	alive                uint32    // 生存フラグ
+	Alive                uint32    // 生存フラグ
 	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
+}
+
+//SwapAlive is swap alive
+func (r *Record) SwapAlive(alive uint32) (oldAlive uint32) {
+	return atomic.SwapUint32(&r.Alive, alive);
+}
+
+//GetAlive is get alive
+func (r *Record) GetAlive() (uint32) {
+	return atomic.LoadUint32(&r.Alive)
+}
+
+//SetProgress is set progress
+func (r *Record) SetProgress(progress uint32) {
+	atomic.StoreUint32(&r.progress, progress);
+}
+
+//CompareAndSwapProgress is set progress
+func (r *Record) CompareAndSwapProgress(oldProgress uint32, newProgress uint32) (bool) {
+	return atomic.CompareAndSwapUint32(&r.progress, oldProgress, newProgress);
+}
+
+//GetCurrentIntervalCount is get currentIntervalCount
+func (r *Record) GetCurrentIntervalCount() (uint32) {
+	return r.currentIntervalCount
+}
+
+//IncrementCurrentIntervalCount is increment currentIntervalCount
+func (r *Record) IncrementCurrentIntervalCount() {
+	r.currentIntervalCount++
 }
 
 // NegativeRecord is negative record
@@ -80,8 +121,8 @@ type Server struct {
 	Listen []*Listen // リッスンリスト
 }
 
-// Config is config
-type Config struct {
+// Context is Context
+type Context struct {
 	Watcher  *Watcher             // 監視設定
 	Notifier *Notifier            // 通知設定
 	Server   *Server              // サーバー設定
