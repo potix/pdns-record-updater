@@ -6,6 +6,7 @@ import (
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/cacher"
+	"net"
 	"net/http"
 	"net/url"
 	"crypto/tls"
@@ -42,6 +43,10 @@ func (h *httpWatcher) getHTTP() (uint32, bool, error) {
 	}
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
@@ -128,6 +133,7 @@ func httpRegexpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can not get compiled regexp (%v)", target.Regexp))
 	}
+
         return &httpWatcher {
                 useRegexp:     true,
                 url:           target.Dest,

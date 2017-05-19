@@ -23,6 +23,7 @@ func (r regexpCacher) getRegexp(pattern string, flags int) (regexp *pcre.Regexp,
 			return nil, errors.Errorf("%v, pattarn = %s, flags = %x", compileError, pattern, flags)
 		}
 		r.compiledCache[id] = &regexp
+		return &regexp, nil
 	}
 	return regexp, nil
 }
