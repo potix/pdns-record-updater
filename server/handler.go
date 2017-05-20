@@ -85,7 +85,7 @@ func (s *Server) watchResult(context *gin.Context) {
 	                belog.Error("can not marshal object with json")
 			context.String(http.StatusInternalServerError, "")
 	        } else {
-			belog.Debug("response: %v", response)
+			belog.Debug("response: %v", string(response))
 		}
 		context.Data(http.StatusOK, gin.MIMEJSON, response)
 	}
