@@ -128,7 +128,7 @@ func (i *icmpWatcher) isAlive() (uint32) {
                         return alive
                 }
                 if i.retryWait > 0 {
-                        time.Sleep(time.Duration(i.retryWait))
+                        time.Sleep(time.Duration(i.retryWait) * time.Second)
                 }
 	}
         belog.Error("retry count is exceeded limit (%v)", i.ipAddr)

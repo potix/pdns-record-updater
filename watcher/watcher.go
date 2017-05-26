@@ -70,7 +70,7 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w *Watcher) updateAlive(domain string, record *contexter.Record, targetResult string, newAlive uint32){
+func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, targetResult string, newAlive uint32){
 	oldAlive := record.SwapAlive(newAlive);
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTrigger {
@@ -91,7 +91,7 @@ func (w *Watcher) updateAlive(domain string, record *contexter.Record, targetRes
 	}
 }
 
-func (w *Watcher) recordWatch(domain string, record *contexter.Record) {
+func (w *Watcher) recordWatch(domain string, record *contexter.DynamicRecord) {
 	var firstTask *targetTask
 	// run target watch task
 	for _, target := range record.Target {
@@ -135,24 +135,26 @@ func (w *Watcher) recordWatch(domain string, record *contexter.Record) {
 }
 
 func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
-	for _, record := range zone.Record {
-		if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
-			if (record.CompareAndSwapProgress(0, 1)) {
-				// run record waatch task
-				go w.recordWatch(domain, record)
-				record.ClearCurrentIntervalCount()
-			} else {
-				// already progress last record watch task
+	for _, dynamicGroup := range zone.DynamicGroup {
+		for _, record := range dynamicGroup.DynamicRecord {
+			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
+				if (record.CompareAndSwapProgress(0, 1)) {
+					// run record waatch task
+					go w.recordWatch(domain, record)
+					record.ClearCurrentIntervalCount()
+				} else {
+					// already progress last record watch task
+				}
 			}
+			record.IncrementCurrentIntervalCount()
 		}
-		record.IncrementCurrentIntervalCount()
 	}
 }
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) == 1 {
-		for _, zone := range w.watcherContext.Zone {
-			go w.zoneWatch(zone.Domain, zone)
+		for domain, zone := range w.watcherContext.Zone {
+			go w.zoneWatch(domain, zone)
 		}
 		time.Sleep(time.Second)
 	}
@@ -160,9 +162,11 @@ func (w *Watcher) watchLoop() {
 
 // Init is Init
 func (w *Watcher) Init() {
-	for _, zone := range w.watcherContext.Zone {
-		for _, record := range zone.Record {
-			w.recordWatch(zone.Domain, record)
+	for zoneName, zone := range w.watcherContext.Zone {
+		for _, dynamicGroup := range zone.DynamicGroup {
+			for _, record := range dynamicGroup.DynamicRecord {
+				w.recordWatch(domain, record)
+			}
 		}
 	}
 }

@@ -6,10 +6,9 @@ import (
 	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/cacher"
-	"net"
+	"github.com/potix/pdns-record-updater/helper"
 	"net/http"
 	"net/url"
-	"crypto/tls"
 	"time"
 	"fmt"
 	"strings"
@@ -29,33 +28,18 @@ type httpWatcher struct {
 	tlsSkipVerify bool
 }
 
-func (h *httpWatcher) getHTTP() (uint32, bool, error) {
+func (h *httpWatcher) reqHTTP() (uint32, bool, error) {
         u, err := url.Parse(h.url)
 	if err != nil {
 		return 0, false, errors.Errorf("can not parse url (%v)", h.url)
 	}
+	httpClient := NewHTTPClient(u.Scheme, u.Host, h.tlsSkipVerify)
 	method := strings.ToUpper(h.method)
 	if method == "" {
 		method = "GET"
 	}
 	if method != "GET" && method != "HEAD" {
 		return 0, false, errors.Errorf("unsupported method (%v)", method)
-	}
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-	if u.Scheme == "https" {
-		transport.TLSClientConfig = &tls.Config{ServerName: u.Host, InsecureSkipVerify: h.tlsSkipVerify}
-	}
-	httpClient := &http.Client{
-		Transport: transport,
-		Timeout: time.Duration(h.timeout) * time.Second,
 	}
 	request, err := http.NewRequest(method, h.url, nil)
 	if err != nil {
@@ -101,7 +85,7 @@ func (h *httpWatcher) getHTTP() (uint32, bool, error) {
 func (h *httpWatcher) isAlive() (uint32) {
 	var i uint32
 	for i = 0; i < h.retry; i++ {
-		alive, retryable, err := h.getHTTP()
+		alive, retryable, err := h.reqHTTP()
 		if err != nil {
 			belog.Error("%v", err)
 		}
@@ -109,7 +93,7 @@ func (h *httpWatcher) isAlive() (uint32) {
 			return alive
 		}
 		if h.retryWait > 0 {
-			time.Sleep(time.Duration(h.retryWait))
+			time.Sleep(time.Duration(h.retryWait) * time.Second)
 		}
 	}
 	belog.Error("retry count is exceeded limit (%v)", h.url)

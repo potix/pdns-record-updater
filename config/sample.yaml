@@ -1,49 +1,62 @@
 watcher:
   zone:
-  - domain: "example.jp"
-    record:
-    - name: "foo"
-      type: "a"
-      content: "192.168.0.1"
-      watchinterval: 5
-      alive: 1
-      notifytrigger:
-      - changed
-      - latestDown
-      target:
-      - name: t1
-        protocol: icmp
-        dest: 192.168.0.1
-        retry: 3
-        retrywait: 1
-        timeout: 1
-        tlsskipverify: true
-      - name: t2
-        protocol: tcpRegexp
-        dest: 192.168.0.1:80
-        regexp: "hogehoge2"
-        ressize: 2000
-        retry: 3
-        retrywait: 1
-        timeout: 2
-        tcptls: true
-        tlsskipverify: true
-      - name: t3
-        protocol: httpRegexp
-        dest: 192.168.0.1:80
-        regexp: "hogehoge3"
-        ressize: 3000
-        httpmethod: "GET"
-        httpstatus: ["200"]
-        retry: 3
-        retrywait: 1
-        timeout: 3
-        tlsskipverify: true
-      evalrule: "%(t1) && %(t2) && %(t3)"
-    negativerecord:
-    - name: "foo"
-      type: "a"
-      content: "192.168.0.254"
+    "example.jp":
+      nameserver:
+        - name: "foo"
+          type: "A"
+          ttl: 3600
+          content: "192.168.0.254"
+      record:
+        - name: "bar"
+          type: "A"
+          ttl: 3600
+          content: "192.168.0.253"
+      dynamicGroup:
+        - dynamicrecord:
+          - name: "foo"
+            type: "a"
+            ttl: 10 
+            content: "192.168.0.1"
+            watchinterval: 5
+            alive: 1
+            notifytrigger:
+            - changed
+            - latestDown
+            target:
+            - name: t1
+              protocol: icmp
+              dest: 192.168.0.1
+              retry: 3
+              retrywait: 1
+              timeout: 1
+              tlsskipverify: true
+            - name: t2
+              protocol: tcpRegexp
+              dest: 192.168.0.1:80
+              regexp: "hogehoge2"
+              ressize: 2000
+              retry: 3
+              retrywait: 1
+              timeout: 2
+              tcptls: true
+              tlsskipverify: true
+            - name: t3
+              protocol: httpRegexp
+              dest: 192.168.0.1:80
+              regexp: "hogehoge3"
+              ressize: 3000
+              httpmethod: "GET"
+              httpstatus: ["200"]
+              retry: 3
+              retrywait: 1
+              timeout: 3
+              tlsskipverify: true
+            evalrule: "%(t1) && %(t2) && %(t3)"
+          negativerecord:
+          - name: "foo"
+            type: "a"
+            tl: 10
+            content: "192.168.0.254"
 notifier:
   mail:
   - hostport: smtp.example.com:25
@@ -61,6 +74,8 @@ server:
   debug: true
   listen:
   - addrport: 0.0.0.0:28080
+  username: hoge
+  password: hoge
 logger:
   loggers:
     "default":

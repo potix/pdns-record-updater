@@ -5,6 +5,7 @@ import (
         "github.com/braintree/manners"
         "github.com/gin-gonic/gin"
 	"github.com/potix/pdns-record-updater/contexter"
+	"github.com/potix/pdns-record-updater/configurator"
         "net/http"
         "time"
         "fmt"
@@ -13,6 +14,9 @@ import (
 // GracefulServer is GracefulServer
 type GracefulServer struct {
 	server    *manners.GracefulServer
+	useTLS    bool
+	certfile  string
+	keyfile   string
 	startChan chan error
 }
 
@@ -23,16 +27,27 @@ type Server struct {
 	watcherContext  *contexter.Watcher
 }
 
-func (s *Server) addHandlers(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
+func (s *Server) addGetHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
         group.HEAD(resource, handler)
         group.GET(resource, handler)
 }
 
+func (s *Server) addPutHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
+        group.PUT(resource, handler)
+}
+
 func (s *Server) startServer(gracefulServer *GracefulServer) {
-        err := gracefulServer.server.ListenAndServe()
-        if err != nil {
-                gracefulServer.startChan <- err
-        }
+	if gracefulServer.useTLS {
+		err := gracefulServer.server.ListenAndServeTLS(gracefulServer.certfile, gracefulServer.keyfile)
+		if err != nil {
+			gracefulServer.startChan <- err
+		}
+	} else {
+		err := gracefulServer.server.ListenAndServe()
+		if err != nil {
+			gracefulServer.startChan <- err
+		}
+	}
 }
 
 // Start is Start
@@ -41,20 +56,32 @@ func (s *Server) Start() (err error) {
                 errors.Errorf("not found linten port")
         }
 	engine := gin.Default()
-	newGroup := engine.Group("/v1", s.commonHandler)
-	s.addHandlers(newGroup, "/watch/result", s.watchResult)
-
-	// XXX TODO https
-	// XXX TODO user password
+	if s.serverContext.username != "" && s.serverContext.password != "" {
+		authHandler := gin.BasicAuth(gin.Accounts{s.serverContext.username, s.serverContext.password})
+		newGroup := engine.Group("/v1", authHandler, s.commonHandler)
+	} else {
+		newGroup := engine.Group("/v1", s.commonHandler)
+	}
+	s.addGetHandler(newGroup, "/watch/result", s.watchResult)
+	s.addGetHandler(newGroup, "/record", s.record)
+	if s.serverContext.StaticPath != "" {
+		newGroup.Static(newGroup, "/static", s.serverContext.StaticPath)
+	}
 
 	// create server
         for _, listen := range s.serverContext.Listen {
                 server := manners.NewWithServer(&http.Server{
                         Addr:    listen.AddrPort,
                         Handler: engine,
+			ReadTimeout:    30 * time.Second,
+			WriteTimeout:   30 * time.Second,
+			MaxHeaderBytes: 1 << 20,
                 })
 		newGracefulServer := &GracefulServer{
 			server: server,
+			useTLS: listen.UseTLS,
+			certfile: listen.Certfile,
+			keyfile: listen.Keyfile,
 			startChan: make(chan error),
 		}
                 s.gracefulServers = append(s.gracefulServers, newGracefulServer)
@@ -81,8 +108,9 @@ func (s *Server) Stop() {
 }
 
 // New is create Server
-func New(context *contexter.Context) (s *Server) {
+func New(context *contexter.Context, configurator *configurator.Configurator) (s *Server) {
 	s = &Server{
+		configurator: configurator,
 		serverContext: context.Server,
 		watcherContext: context.Watcher,
         }

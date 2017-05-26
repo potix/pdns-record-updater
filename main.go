@@ -5,11 +5,11 @@ import (
         "github.com/potix/belog"
         "github.com/potix/pdns-record-updater/configurator"
         "github.com/potix/pdns-record-updater/contexter"
-//        "github.com/potix/pdns-record-updater/collector"
+        "github.com/potix/pdns-record-updater/api/client"
 //        "github.com/potix/pdns-record-updater/initializer"
 //        "github.com/potix/pdns-record-updater/updater"
         "github.com/potix/pdns-record-updater/watcher"
-        "github.com/potix/pdns-record-updater/server"
+        "github.com/potix/pdns-record-updater/api/server"
 	"flag"
 	"strings"
 	"os"
@@ -18,24 +18,38 @@ import (
 )
 
 func runUpdater(context *contexter.Context) (err error) {
-//	collector := collector.New(config)
-//	err := collector.Run()
-//	if err != nil {
-//		return err
-//	}
-//	initializer := initializer.New(config, colletor)
-//	updater := initializer.New(config, collector)
-//	initializer.Initialize()
-//	for {
-//		updator.Update()
-//	}
+	client := client.New(config)
+	initializer := initializer.New(config, client)
+	initializer.Initialize()
+	updater := updater.New(config, client)
+	update.Start()
+        sigChan := make(chan os.Signal, 1)
+        signal.Notify(sigChan,
+                syscall.SIGINT,
+                syscall.SIGTERM,
+                syscall.SIGQUIT)
+Loop:
+        for {
+                sig := <-sigChan
+                switch sig {
+                case syscall.SIGINT:
+			fallthrough
+                case syscall.SIGQUIT:
+			fallthrough
+                case syscall.SIGTERM:
+                        break Loop
+                default:
+                        belog.Warn("unexpected signal (%v)", sig)
+                }
+        }
+	updater.Stop()
 	return nil
 }
 
-func runWatcher(context *contexter.Context) (error) {
+func runWatcher(context *contexter.Context, configuratir *configurator.configurator) (error) {
 	watcher := watcher.New(context)
 	watcher.Init()
-	server := server.New(context)
+	server := server.New(context, configurator)
 	err := server.Start()
 	if err != nil {
 		return err
@@ -89,7 +103,7 @@ func main() {
 	if (strings.ToUpper(*mode) == "UPDATER") {
 		err = runUpdater(context)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
-		err = runWatcher(context)
+		err = runWatcher(context, configurator)
 	} else {
 		err = errors.New("unexpected run mode")
 	}
