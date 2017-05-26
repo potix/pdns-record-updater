@@ -29,21 +29,21 @@ func (s *Server) watchResult(context *gin.Context) {
         case http.MethodHead:
 		context.Status(http.StatusNoContent)
         case http.MethodGet:
-		newResult := &structure.Result {
-			Zone : make(map[string]*structure.ZoneResult),
+		newWatchResult := &structure.WatchResultResponse {
+			Zone : make(map[string]*structure.ZoneResultResponse),
 		}
-		for zoneName, zone := range s.watcherContext.Zone {
-			newZoneResult = &structure.ZoneResult {
-					Nameserver : make([]*structure.RecordResult, 0, len(zone.NameServer)),
-					Record : make([]*structure.RecordResult, 0, len(zone.DynamicRecord) + len(zone.NegativeRecord)),
-					DynamicRecord : make([]*structure.DynamicRecordResult, 0, len(zone.DynamicGroup) * 10),
+		for domain, zone := range s.watcherContext.Zone {
+			newZoneResult := &structure.ZoneResultResponse {
+					NameServer : make([]*structure.StaticRecordResultResponse, 0, len(zone.NameServer)),
+					StaticRecord : make([]*structure.StaticRecordResultResponse, 0, len(zone.StaticRecord)),
+					DynamicRecord : make([]*structure.DynamicRecordResultResponse, 0, len(zone.DynamicGroup) * 10),
 			}
-			newResult.Zone[zone.Domain] = newZoneResult
+			newWatchResult.Zone[domain] = newZoneResult
 			for _, record := range zone.NameServer {
 				if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
 					continue
 				}
-				newRecordResult := &structure.recordResult {
+				newRecordResult := &structure.StaticRecordResultResponse {
 					Name:    record.Name,
 					Type:    record.Type,
 					TTL:     record.TTL,
@@ -51,17 +51,17 @@ func (s *Server) watchResult(context *gin.Context) {
 				}
 				newZoneResult.NameServer = append(newZoneResult.NameServer, newRecordResult)
 			}
-			for _, record := range zone.Record {
+			for _, record := range zone.StaticRecord {
 				if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
 					continue
 				}
-				newRecordResult := &structure.recordResult {
+				newRecordResult := &structure.StaticRecordResultResponse {
 					Name:    record.Name,
 					Type:    record.Type,
 					TTL:     record.TTL,
 					Content: record.Content,
 				}
-				newZoneResult.Record = append(newZoneResult.Record, newRecordResult)
+				newZoneResult.StaticRecord = append(newZoneResult.StaticRecord, newRecordResult)
 			}
 
 			for _, dynamicGroup := range zone.DynamicGroup {
@@ -70,32 +70,32 @@ func (s *Server) watchResult(context *gin.Context) {
 					if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
 						continue
 					}
-					newRecordResult := &structure.RecordResult {
+					newRecordResult := &structure.DynamicRecordResultResponse {
 						Name:    record.Name,
 						Type:    record.Type,
 						TTL:     record.TTL,
 						Content: record.Content,
 						Alive:   record.GetAlive(),
 					}
-					if record.GetForceDown() == 1 {
-						newRecordResult.Alive = 0
+					if record.GetForceDown() {
+						newRecordResult.Alive = false
 					}
-					if newRecordResult.Alive == 1 {
+					if newRecordResult.Alive {
 						aliveRecordCount++
 					}
 					newZoneResult.DynamicRecord = append(newZoneResult.DynamicRecord, newRecordResult)
 				}
-				var negativeRecordActive uint32
+				var negativeRecordActive bool
 				if aliveRecordCount == 0 {
-					negativeRecordActive = 1
+					negativeRecordActive = true
 				} else {
-					negativeRecordActive = 0
+					negativeRecordActive = false
 				}
 				for _, record := range dynamicGroup.NegativeRecord {
 					if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
 						continue
 					}
-					newRecordResult := &structure.RecordResult {
+					newRecordResult := &structure.DynamicRecordResultResponse {
 						Name:    record.Name,
 						Type:    record.Type,
 						TTL:     record.TTL,
@@ -106,7 +106,7 @@ func (s *Server) watchResult(context *gin.Context) {
 				}
 			}
 		}
-		response, err := json.Marshal(newResult)
+		response, err := json.Marshal(newWatchResult)
 	        if err != nil {
 	                belog.Error("can not marshal object with json")
 			context.String(http.StatusInternalServerError, "")
@@ -125,6 +125,7 @@ func (s *Server) record(context *gin.Context) {
 		context.Status(http.StatusNoContent)
         case http.MethodGet:
         case http.MethodPut:
+		request := new()
 		if err := context.BindJSON(&record); err != nil {
 			context.Status(http.StatusBadRequest)
 			return

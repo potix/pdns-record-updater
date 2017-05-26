@@ -1,7 +1,7 @@
 package structure
 
-// RecordResultResponse is record result
-type RecordResultResponse struct {
+// StaticRecordResultResponse is record result
+type StaticRecordResultResponse struct {
         Name    string
         Type    string
         TTL     uint32
@@ -14,13 +14,13 @@ type DynamicRecordResultResponse struct {
         Type    string
         TTL     uint32
         Content string
-        Alive   uint32
+        Alive   bool
 }
 
 // ZoneResultResponse is zone result
 type ZoneResultResponse struct {
-	NameServer    []*RecordResultResponse
-	Record        []*RecordResultResponse
+	NameServer    []*StaticRecordResultResponse
+	StaticRecord  []*StaticRecordResultResponse
 	DynamicRecord []*DynamicRecordResultResponse
 }
 
@@ -31,7 +31,7 @@ type WatchResultResponse struct {
 
 // RecordResponse is RecordResponse
 type RecordResponse struct {
-	NameServer    []*RecordResultResponse
-	Record        []*RecordResultResponse
+	NameServer    []*StaticRecordResultResponse
+	StaticRecord  []*StaticRecordResultResponse
 	DynamicRecord []*DynamicRecordResultResponse
 }

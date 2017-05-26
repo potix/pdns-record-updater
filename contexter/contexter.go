@@ -41,8 +41,8 @@ func (t *Target) GetAlive() (bool) {
 	return t.alive
 }
 
-// Record is negative record
-type Record struct {
+// StaticRecord is negative record
+type StaticRecord struct {
 	Name                 string    // DNSレコード名
 	Type                 string    // DNSレコードタイプ
 	TTL                  uint32    // DNSレコードTTL
@@ -148,16 +148,19 @@ func (d *DynamicRecord) GetForceDown() (bool) {
 	return d.Alive
 }
 
+// NegativeRecord is negative record
+type NegativeRecord StaticRecord
+
 // DynamicGroup is dynamicGroup
 type DynamicGroup struct {
 	DynamicRecord  []*DynamicRecord  // 動的レコード
-	NegativeRecord []*Record   // 動的レコードが全て死んだ場合に有効になるレコード
+	NegativeRecord []*NegativeRecord // 動的レコードが全て死んだ場合に有効になるレコード
 }
 
 // Zone is zone
 type Zone struct {
-	NameServer     []*Record        // ネームサーバーレコードリスト
-	FixedRecord    []*Record        // 固定レコードリスト
+	NameServer     []*StaticRecord  // ネームサーバーレコードリスト
+	StaticRecord   []*StaticRecord  // 固定レコードリスト
 	DynamicGroup   []*DynamicGroup  // 動的なレコードグループのリスト
 }
 
