@@ -5,7 +5,6 @@ import (
         "github.com/potix/belog"
 	"github.com/BurntSushi/toml"
 	"sync"
-	"sync/atomic"
 	"bytes"
 )
 
@@ -67,7 +66,7 @@ type DynamicRecord struct {
 }
 
 // SetTTL is set ttl
-func (d *DynamicRecord) SetTTL(ttl bool) {
+func (d *DynamicRecord) SetTTL(ttl uint32) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	d.TTL = ttl
@@ -109,21 +108,21 @@ func (d *DynamicRecord) SetProgress(progress bool) {
 }
 
 // CompareAndSwapProgress is set progress
-func (r *Record) CompareAndSwapProgress(oldProgress bool, newProgress bool) (bool) {
+func (d *DynamicRecord) CompareAndSwapProgress(oldProgress bool, newProgress bool) (bool) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if d.progress == oldProgress {
 		d.progress = newProgress
-		return 1
+		return true
 	}
-	return 0
+	return false
 }
 
 // SwapAlive is swap alive
 func (d *DynamicRecord) SwapAlive(newAlive bool) (oldAlive bool) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	oldAlive := d.Alive
+	oldAlive = d.Alive
 	d.Alive = newAlive
 	return oldAlive
 }
@@ -152,7 +151,7 @@ func (d *DynamicRecord) GetForceDown() (bool) {
 // DynamicGroup is dynamicGroup
 type DynamicGroup struct {
 	DynamicRecord  []*DynamicRecord  // 動的レコード
-	NegativeRecord []*SimpleRecord   // 動的レコードが全て死んだ場合に有効になるレコード
+	NegativeRecord []*Record   // 動的レコードが全て死んだ場合に有効になるレコード
 }
 
 // Zone is zone
@@ -164,7 +163,9 @@ type Zone struct {
 
 // Watcher is watcher
 type Watcher struct {
-	Zone [string]*Zone
+	Zone          map[string]*Zone
+	NotifySubject string   // Notifyの題名テンプレート
+	NotifyBody    string   // Notifyの本文テンプレート
 }
 
 // Mail is Mail
@@ -178,8 +179,6 @@ type Mail struct {
 	UseStartTLS   bool     // startTLSの使用フラグ
 	UseTLS        bool     // TLS接続の使用フラグ
 	TLSSkipVerify bool     // TLSの検証をスキップする
-	Subject       string   // 題名テンプレート
-	Body          string   // bodyテンプレート
 }
 
 // Notifier is Notifier
@@ -236,5 +235,5 @@ func (c *Context) Dump() {
 }
 
 func init() {
-	contextMutex := new(sync.Mutex)
+	mutableMutex = new(sync.Mutex)
 }

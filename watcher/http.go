@@ -33,7 +33,7 @@ func (h *httpWatcher) reqHTTP() (bool, bool, error) {
 	if err != nil {
 		return false, false, errors.Errorf("can not parse url (%v)", h.url)
 	}
-	httpClient := NewHTTPClient(u.Scheme, u.Host, h.tlsSkipVerify)
+	httpClient := helper.NewHTTPClient(u.Scheme, u.Host, h.tlsSkipVerify, h.timeout)
 	method := strings.ToUpper(h.method)
 	if method == "" {
 		method = "GET"
@@ -82,7 +82,7 @@ func (h *httpWatcher) reqHTTP() (bool, bool, error) {
 	return true, false, nil
 }
 
-func (h *httpWatcher) isAlive() (uint32) {
+func (h *httpWatcher) isAlive() (bool) {
 	var i uint32
 	for i = 0; i < h.retry; i++ {
 		alive, retryable, err := h.reqHTTP()

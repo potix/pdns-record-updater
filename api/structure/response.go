@@ -19,19 +19,19 @@ type DynamicRecordResultResponse struct {
 
 // ZoneResultResponse is zone result
 type ZoneResultResponse struct {
-	NameServer    []*RecordResult
-	Record        []*RecordResult
-	DynamicRecord []*DynamicRecordResult
+	NameServer    []*RecordResultResponse
+	Record        []*RecordResultResponse
+	DynamicRecord []*DynamicRecordResultResponse
 }
 
 // WatchResultResponse is result
 type WatchResultResponse struct {
-	Zone map[string]*ZoneResult
+	Zone map[string]*ZoneResultResponse
 }
 
 // RecordResponse is RecordResponse
 type RecordResponse struct {
-	NameServer    []*RecordResult
-	Record        []*RecordResult
-	DynamicRecord []*DynamicRecordResult
+	NameServer    []*RecordResultResponse
+	Record        []*RecordResultResponse
+	DynamicRecord []*DynamicRecordResultResponse
 }

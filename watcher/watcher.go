@@ -10,8 +10,9 @@ import (
         "go/constant"
 	"sync/atomic"
         "strings"
-        "fmt"
         "time"
+        "os"
+        "fmt"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 
 // Watcher is struct of Watcher
 type Watcher struct {
+	hostname        string
 	watcherContext *contexter.Watcher
 	running         uint32
 	notifier        *notifier.Notifier
@@ -51,14 +53,14 @@ func (w *Watcher) targetWatch(task *targetTask) {
 	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.Protocol)]
 	if !ok {
 		belog.Error("unsupported protocol type (%v)", task.target.Protocol)
-		task.target.SetAlive(0)
+		task.target.SetAlive(false)
 		close(task.waitChan)
 		return
 	}
 	protoWatcher, err := protoWatcherNewFunc(task.target)
 	if err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.Protocol)))
-		task.target.SetAlive(0)
+		task.target.SetAlive(false)
 		close(task.waitChan)
 		return
 	}
@@ -82,12 +84,31 @@ func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, ta
 			triggerFlags |= tfLatestDown
 		}
 	}
+	t := time.Now()
+        replacer := strings.NewReplacer(
+                "%(hostname)", w.hostname,
+                "%(time)", t.Format("2006-01-02 15:04:05"),
+                "%(zone)", domain,
+                "%(name)", record.Name,
+                "%(type)", record.Type,
+                "%(content)", record.Content,
+                "%(oldAlive)", fmt.Sprintf("%v", oldAlive),
+                "%(newAlive)", fmt.Sprintf("%v", newAlive),
+                "%(detail)", targetResult)
+	subject := w.watcherContext.NotifySubject
+	if subject == "" {
+		subject = "%(hostname) %(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+	}
+	body := w.watcherContext.NotifyBody
+	if body == "" {
+		body = "hostname: %(hostname)\nzone: %(zone)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n%(detail)"
+	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
-		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
+		w.notifier.Notify(replacer, subject, body)
 	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == false {
-		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
+		w.notifier.Notify(replacer, subject, body)
 	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == true  {
-		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
+		w.notifier.Notify(replacer, subject, body)
 	}
 }
 
@@ -158,7 +179,7 @@ func (w *Watcher) watchLoop() {
 
 // Init is Init
 func (w *Watcher) Init() {
-	for zoneName, zone := range w.watcherContext.Zone {
+	for domain, zone := range w.watcherContext.Zone {
 		for _, dynamicGroup := range zone.DynamicGroup {
 			for _, record := range dynamicGroup.DynamicRecord {
 				w.recordWatch(domain, record)
@@ -180,7 +201,12 @@ func (w *Watcher) Stop() {
 
 // New is create Wathcer
 func New(context *contexter.Context) (*Watcher) {
+        hostname, err := os.Hostname()
+        if err != nil {
+                hostname = "unknown"
+        }
 	return &Watcher{
+		hostname:       hostname,
 		watcherContext: context.Watcher,
 		running:	0,
 		notifier:       notifier.New(context),

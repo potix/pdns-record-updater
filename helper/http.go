@@ -3,7 +3,6 @@ package helper
 import(
         "net"
         "net/http"
-        "net/url"
         "crypto/tls"
         "time"
 )
@@ -21,13 +20,13 @@ func newHTTPTransport() (transport *http.Transport) {
 }
 
 // NewHTTPClient is new http client
-func NewHTTPClient(scheme string, host string, tlsSkipVerify bool) (*http.Client) {
-        transport := helper.NewHTTPTransport()
+func NewHTTPClient(scheme string, host string, tlsSkipVerify bool, timeout uint32) (*http.Client) {
+        transport := newHTTPTransport()
         if scheme == "https" {
                 transport.TLSClientConfig = &tls.Config{ServerName: host, InsecureSkipVerify: tlsSkipVerify}
         }
         return &http.Client{
                 Transport: transport,
-                Timeout: time.Duration(c.timeout) * time.Second,
+                Timeout: time.Duration(timeout) * time.Second,
         }
 }
