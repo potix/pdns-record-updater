@@ -4,9 +4,12 @@ import (
 	"github.com/pkg/errors"
         "github.com/potix/belog"
 	"github.com/BurntSushi/toml"
+	"sync"
 	"sync/atomic"
 	"bytes"
 )
+
+var mutableMutex *sync.Mutex
 
 // Target is config of target
 type Target struct {
@@ -22,17 +25,21 @@ type Target struct {
 	RetryWait     uint32   // 次のリトライまでの待ち時間
 	Timeout       uint32   // タイムアウトしたとみなす時間
 	TLSSkipVerify bool     // TLSの検証をスキップする
-	alive         uint32   // 生存フラグ
+	alive         bool     // 生存フラグ [mutable]
 }
 
 //SetAlive is set alive
-func (t *Target) SetAlive(alive uint32) {
-	atomic.StoreUint32(&t.alive, alive)
+func (t *Target) SetAlive(alive bool) {
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	t.alive = alive
 }
 
 //GetAlive is get alive
-func (t *Target) GetAlive() (uint32) {
-	return atomic.LoadUint32(&t.alive)
+func (t *Target) GetAlive() (bool) {
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	return t.alive
 }
 
 // Record is negative record
@@ -47,61 +54,99 @@ type Record struct {
 type DynamicRecord struct {
 	Name                 string    // DNSレコード名
 	Type                 string    // DNSレコードタイプ
-	TTL                  uint32    // DNSレコードTTL
+	TTL                  uint32    // DNSレコードTTL                   [mutable]
 	Content              string    // DNSレコード内容
 	Target               []*Target // ターゲットリスト
 	EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
 	WatchInterval        uint32    // 監視する間隔
-	currentIntervalCount uint32    // 現在の時間
-	progress             uint32    // 監視中を示すフラグ
-	Alive                uint32    // 生存フラグ
-	ForceDown            uint32     // 強制的にダウンしたとみなすフラグ
+	currentIntervalCount uint32    // 現在の時間                       [mutable]
+	progress             bool      // 監視中を示すフラグ               [mutable]
+	Alive                bool      // 生存フラグ                       [mutable]
+	ForceDown            bool      // 強制的にダウンしたとみなすフラグ [mutable]
 	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
 }
 
-// SetForceDown is set force down
-func (d *DynamicRecord) SetForceDown(forceDown bool) {
-	atomic.StoreUint32(&d.ForceDown, forceDown)
+// SetTTL is set ttl
+func (d *DynamicRecord) SetTTL(ttl bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	d.TTL = ttl
 }
 
-// GetForceDown is get alive
-func (d *DynamicRecord) GetForceDown() (uint32) {
-	return atomic.LoadUint32(&d.Alive)
-}
-
-// SwapAlive is swap alive
-func (d *DynamicRecord) SwapAlive(alive uint32) (oldAlive uint32) {
-	return atomic.SwapUint32(&d.Alive, alive);
-}
-
-// GetAlive is get alive
-func (d *DynamicRecord) GetAlive() (uint32) {
-	return atomic.LoadUint32(&d.Alive)
-}
-
-// SetProgress is set progress
-func (d *DynamicRecord) SetProgress(progress uint32) {
-	atomic.StoreUint32(&d.progress, progress);
-}
-
-// CompareAndSwapProgress is set progress
-func (r *Record) CompareAndSwapProgress(oldProgress uint32, newProgress uint32) (bool) {
-	return atomic.CompareAndSwapUint32(&d.progress, oldProgress, newProgress);
+// GetTTL is get ttl
+func (d *DynamicRecord) GetTTL() (uint32) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	return d.TTL
 }
 
 // GetCurrentIntervalCount is get currentIntervalCount
 func (d *DynamicRecord) GetCurrentIntervalCount() (uint32) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
 	return d.currentIntervalCount
 }
 
 // IncrementCurrentIntervalCount is increment currentIntervalCount
 func (d *DynamicRecord) IncrementCurrentIntervalCount() {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
 	d.currentIntervalCount++
 }
 
 // ClearCurrentIntervalCount is clear currentIntervalCount
 func (d *DynamicRecord) ClearCurrentIntervalCount() {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
 	d.currentIntervalCount = 0
+}
+
+// SetProgress is set progress
+func (d *DynamicRecord) SetProgress(progress bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	d.progress = progress
+}
+
+// CompareAndSwapProgress is set progress
+func (r *Record) CompareAndSwapProgress(oldProgress bool, newProgress bool) (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if d.progress == oldProgress {
+		d.progress = newProgress
+		return 1
+	}
+	return 0
+}
+
+// SwapAlive is swap alive
+func (d *DynamicRecord) SwapAlive(newAlive bool) (oldAlive bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	oldAlive := d.Alive
+	d.Alive = newAlive
+	return oldAlive
+}
+
+// GetAlive is get alive
+func (d *DynamicRecord) GetAlive() (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	return d.Alive
+}
+
+// SetForceDown is set force down
+func (d *DynamicRecord) SetForceDown(forceDown bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	d.ForceDown = forceDown
+}
+
+// GetForceDown is get force down
+func (d *DynamicRecord) GetForceDown() (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	return d.Alive
 }
 
 // DynamicGroup is dynamicGroup
@@ -166,14 +211,30 @@ type Context struct {
 	Logger   *belog.ConfigLoggers // ログ設定
 }
 
+// Lock is lock context
+func (c *Context) Lock() {
+	mutableMutex.Lock()
+}
+
+// Unlock is lock context
+func (c *Context) Unlock() {
+        mutableMutex.Unlock()
+}
+
 // Dump is cump
 func (c *Context) Dump() {
 	var buffer bytes.Buffer
 	encoder := toml.NewEncoder(&buffer)
+	mutableMutex.Lock()
 	err := encoder.Encode(c)
+        mutableMutex.Unlock()
 	if err != nil {
 	    belog.Error("%v", errors.Wrap(err, "can not dump context"))
 	    return
 	}
 	belog.Debug("%v", buffer.String())
+}
+
+func init() {
+	contextMutex := new(sync.Mutex)
 }

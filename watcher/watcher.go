@@ -34,7 +34,7 @@ type targetTask struct {
 }
 
 type protoWatcherIf interface {
-	isAlive() (uint32)
+	isAlive() (bool)
 }
 
 var protoWatcherNewFuncMap = map[string]func(*contexter.Target) (protoWatcherIf, error) {
@@ -70,7 +70,7 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, targetResult string, newAlive uint32){
+func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
 	oldAlive := record.SwapAlive(newAlive);
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTrigger {
@@ -84,9 +84,9 @@ func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, ta
 	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
 		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
-	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == 0 {
+	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == false {
 		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
-	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == 1  {
+	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == true  {
 		w.notifier.Notify(domain, record, targetResult, oldAlive, newAlive)
 	}
 }
@@ -114,8 +114,8 @@ func (w *Watcher) recordWatch(domain string, record *contexter.DynamicRecord) {
 	replaceName := make([]string, 0, 2 * len(record.Target))
 	targetResult := ""
 	for _, target := range record.Target {
-		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", (target.GetAlive() != 0)))
-		targetResult = targetResult + fmt.Sprintf("%v %v %v\n", target.Name, target.Dest, (target.GetAlive() != 0))
+		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", target.GetAlive()))
+		targetResult = targetResult + fmt.Sprintf("%v %v %v\n", target.Name, target.Dest, target.GetAlive())
 	}
         replacer := strings.NewReplacer(replaceName...)
 
@@ -123,22 +123,18 @@ func (w *Watcher) recordWatch(domain string, record *contexter.DynamicRecord) {
 	tv, err := w.eval(replacer.Replace(record.EvalRule))
 	if err != nil {
 		belog.Error("can not evalute (%v)", replacer.Replace(record.EvalRule))
-		w.updateAlive(domain, record, targetResult, 0)
+		w.updateAlive(domain, record, targetResult, false)
 	} else {
-		if constant.BoolVal(tv.Value) {
-			w.updateAlive(domain, record, targetResult, 1)
-		} else  {
-			w.updateAlive(domain, record, targetResult, 0)
-		}
+		w.updateAlive(domain, record, targetResult, constant.BoolVal(tv.Value))
 	}
-	record.SetProgress(0)
+	record.SetProgress(false)
 }
 
 func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 	for _, dynamicGroup := range zone.DynamicGroup {
 		for _, record := range dynamicGroup.DynamicRecord {
 			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
-				if (record.CompareAndSwapProgress(0, 1)) {
+				if (record.CompareAndSwapProgress(false, true)) {
 					// run record waatch task
 					go w.recordWatch(domain, record)
 					record.ClearCurrentIntervalCount()

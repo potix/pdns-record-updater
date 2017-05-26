@@ -31,7 +31,7 @@ type connIf interface {
 	Read(b []byte) (n int, err error)
 }
 
-func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
+func (t *tcpWatcher) connectTCP() (bool, bool, error) {
 	dialer := &net.Dialer{
 		Timeout:   time.Duration(t.timeout) * time.Second,
 		DualStack: true,
@@ -49,7 +49,7 @@ func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
 		conn, err = dialer.Dial("tcp", t.ipPort)
 	}
 	if err != nil {
-		return 0, true, errors.Wrap(err, fmt.Sprintf("can not connect (%v)", t.ipPort))
+		return false, true, errors.Wrap(err, fmt.Sprintf("can not connect (%v)", t.ipPort))
 	}
 	defer conn.Close()
 
@@ -60,19 +60,19 @@ func (t *tcpWatcher) connectTCP() (uint32, bool, error) {
 		rb := make([]byte, t.resSize)
 		_, err := conn.Read(rb)
 		if err != nil {
-			return 0, true, errors.Wrap(err, fmt.Sprintf("can not read response (%v)", t.ipPort))
+			return false, true, errors.Wrap(err, fmt.Sprintf("can not read response (%v)", t.ipPort))
 		}
 		loc := t.regexp.FindIndex(rb, 0)
 		if loc == nil {
 			belog.Debug("not match regexp (%v) (%v)", t.regexpStr, rb)
-			return 0, false, nil
+			return false, false, nil
 		}
 	}
 	belog.Debug("tcp ok (%v)", t.ipPort)
-	return 1, false, nil
+	return true, false, nil
 }
 
-func (t *tcpWatcher) isAlive() (uint32) {
+func (t *tcpWatcher) isAlive() (bool) {
 	var i uint32
         for i = 0; i < t.retry; i++ {
                 alive, retryable, err := t.connectTCP()
@@ -87,7 +87,7 @@ func (t *tcpWatcher) isAlive() (uint32) {
                 }
         }
         belog.Error("retry count is exceeded limit (%v)", t.ipPort)
-        return 0
+        return false
 }
 
 func tcpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {

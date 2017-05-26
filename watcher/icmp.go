@@ -28,7 +28,7 @@ func (i *icmpWatcher) getSeqNumber() (uint32) {
 	return atomic.AddUint32(&seq, 1);
 }
 
-func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
+func (i *icmpWatcher) sendIcmp(ip net.IP) (bool, bool, error) {
 	ipv := 0
 	var conn *icmp.PacketConn
 	var err error
@@ -42,7 +42,7 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 		conn, err = icmp.ListenPacket("ip6:icmp", "::")
 	}
 	if err != nil {
-		return 0, true, errors.Wrap(err, fmt.Sprintf("can not create icmp connection (%v)", i.ipAddr))
+		return false, true, errors.Wrap(err, fmt.Sprintf("can not create icmp connection (%v)", i.ipAddr))
 	}
 	defer conn.Close()
 	echoReq := &icmp.Echo{
@@ -66,13 +66,13 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 	}
 	wb, err := wm.Marshal(nil)
 	if err != nil {
-		return 0, false, errors.Wrap(err, fmt.Sprintf("can not marshal message (%v)", wm))
+		return false, false, errors.Wrap(err, fmt.Sprintf("can not marshal message (%v)", wm))
 	}
 	if _, err := conn.WriteTo(wb, &net.IPAddr{IP: ip}); err != nil {
-		return 0, true, errors.Wrap(err, fmt.Sprintf("can not write message (%v)", i.ipAddr))
+		return false, true, errors.Wrap(err, fmt.Sprintf("can not write message (%v)", i.ipAddr))
 	}
 	if err := conn.SetReadDeadline(time.Now().Add(time.Duration(i.timeout) * time.Second)); err != nil {
-		return 0, false, errors.Wrap(err, fmt.Sprintf("can not set deadline (%v)", i.ipAddr))
+		return false, false, errors.Wrap(err, fmt.Sprintf("can not set deadline (%v)", i.ipAddr))
 	}
 	if i.resSize == 0 {
 		i.resSize = 512
@@ -81,7 +81,7 @@ func (i *icmpWatcher) sendIcmp(ip net.IP) (uint32, bool, error) {
 Read:
 	rlen, _ /* peer */, err := conn.ReadFrom(rb)
 	if err != nil {
-		return 0, true, errors.Wrap(err, fmt.Sprintf("can not read response (%v)", i.ipAddr))
+		return false, true, errors.Wrap(err, fmt.Sprintf("can not read response (%v)", i.ipAddr))
 	}
 	var proto int
 	switch ipv {
@@ -109,14 +109,14 @@ Read:
 		goto Read
 	}
 	belog.Debug("icmp ok (%v)", i.ipAddr)
-	return 1, false, nil
+	return true, false, nil
 }
 
-func (i *icmpWatcher) isAlive() (uint32) {
+func (i *icmpWatcher) isAlive() (bool) {
 	ip := net.ParseIP(i.ipAddr)
 	if ip == nil {
 		belog.Error("can not parse ip address (%v)", i.ipAddr)
-		return 0
+		return false
 	}
 	var j uint32
 	for j = 0; j < i.retry; j++ {
@@ -132,7 +132,7 @@ func (i *icmpWatcher) isAlive() (uint32) {
                 }
 	}
         belog.Error("retry count is exceeded limit (%v)", i.ipAddr)
-	return 0
+	return false
 }
 
 func icmpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {

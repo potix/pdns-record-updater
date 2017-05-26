@@ -28,10 +28,10 @@ type httpWatcher struct {
 	tlsSkipVerify bool
 }
 
-func (h *httpWatcher) reqHTTP() (uint32, bool, error) {
+func (h *httpWatcher) reqHTTP() (bool, bool, error) {
         u, err := url.Parse(h.url)
 	if err != nil {
-		return 0, false, errors.Errorf("can not parse url (%v)", h.url)
+		return false, false, errors.Errorf("can not parse url (%v)", h.url)
 	}
 	httpClient := NewHTTPClient(u.Scheme, u.Host, h.tlsSkipVerify)
 	method := strings.ToUpper(h.method)
@@ -39,15 +39,15 @@ func (h *httpWatcher) reqHTTP() (uint32, bool, error) {
 		method = "GET"
 	}
 	if method != "GET" && method != "HEAD" {
-		return 0, false, errors.Errorf("unsupported method (%v)", method)
+		return false, false, errors.Errorf("unsupported method (%v)", method)
 	}
 	request, err := http.NewRequest(method, h.url, nil)
 	if err != nil {
-		return 0, false, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", h.url))
+		return false, false, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", h.url))
 	}
 	res, err := httpClient.Do(request)
 	if err != nil {
-		return 0, true, errors.Wrap(err, fmt.Sprintf("can not get url (%v)", h.url))
+		return false, true, errors.Wrap(err, fmt.Sprintf("can not get url (%v)", h.url))
 	}
 	defer res.Body.Close()
 	if h.status != nil && len(h.status) > 0 {
@@ -60,7 +60,7 @@ func (h *httpWatcher) reqHTTP() (uint32, bool, error) {
 		}
 		if !match {
 			belog.Debug("not match status (%v)", h.status)
-			return 0, false, nil
+			return false, false, nil
 		}
 	}
 	if h.useRegexp {
@@ -70,16 +70,16 @@ func (h *httpWatcher) reqHTTP() (uint32, bool, error) {
 		rb := make([]byte, h.resSize)
 		_, err := res.Body.Read(rb)
 		if err != nil {
-			return 0, true, errors.Wrap(err, fmt.Sprintf("can not read body (%v)", h.url))
+			return false, true, errors.Wrap(err, fmt.Sprintf("can not read body (%v)", h.url))
 		}
 		loc := h.regexp.FindIndex(rb, 0)
 		if loc == nil {
 			belog.Debug("not match regexp (%v) (%v)", h.regexpStr, rb)
-			return 0, false, nil
+			return false, false, nil
 		}
 	}
 	belog.Debug("http ok (%v)", h.url)
-	return 1, false, nil
+	return true, false, nil
 }
 
 func (h *httpWatcher) isAlive() (uint32) {
@@ -97,7 +97,7 @@ func (h *httpWatcher) isAlive() (uint32) {
 		}
 	}
 	belog.Error("retry count is exceeded limit (%v)", h.url)
-	return 0
+	return false
 }
 
 func httpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {

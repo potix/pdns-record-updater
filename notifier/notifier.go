@@ -20,7 +20,7 @@ type Notifier struct {
 	notifierContext *contexter.Notifier
 }
 
-func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, domain string, record *contexter.Record, targetResult string, oldAlive uint32, newAlive uint32) (error) {
+func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, domain string, record *contexter.Record, targetResult string, oldAlive bool, newAlive bool) (error) {
         replacer := strings.NewReplacer(
 		"%(hostname)", n.hostname,
                 "%(time)", t.Format("2006-01-02 15:04:05"),
@@ -28,8 +28,8 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, domain str
                 "%(name)", record.Name,
                 "%(type)", record.Type,
                 "%(content)", record.Content,
-                "%(oldAlive)", fmt.Sprintf("%v", (oldAlive != 0)),
-                "%(newAlive)", fmt.Sprintf("%v", (newAlive != 0)),
+                "%(oldAlive)", fmt.Sprintf("%v", oldAlive),
+                "%(newAlive)", fmt.Sprintf("%v", newAlive),
                 "%(detail)", targetResult)
 
 	from := mail.Address{"", mailContext.From}
@@ -133,7 +133,7 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, t time.Time, domain str
 	return nil
 }
 
-func (n *Notifier) notifyMain(t time.Time, domain string, record *contexter.Record, targetResult string, oldAlive uint32, newAlive uint32) {
+func (n *Notifier) notifyMain(t time.Time, domain string, record *contexter.Record, targetResult string, oldAlive bool, newAlive bool) {
 	// send mail
 	for _, mailContext := range n.notifierContext.Mail {
 		err := n.sendMail(mailContext, t, domain, record, targetResult, oldAlive, newAlive)
@@ -144,7 +144,7 @@ func (n *Notifier) notifyMain(t time.Time, domain string, record *contexter.Reco
 }
 
 // Notify is Notify
-func (n *Notifier) Notify(domain string, record *contexter.Record, targetResult string, oldAlive uint32, newAlive uint32) {
+func (n *Notifier) Notify(domain string, record *contexter.Record, targetResult string, oldAlive bool, newAlive bool) {
 	go n.notifyMain(time.Now(), domain, record, targetResult, oldAlive, newAlive)
 }
 
