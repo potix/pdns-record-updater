@@ -1,15 +1,19 @@
 package structure
 
-// StaticRecordResultResponse is record result
-type StaticRecordResultResponse struct {
+import (
+        "github.com/potix/pdns-record-updater/contexter"
+)
+
+// StaticRecordWatchResultResponse is static record watch result
+type StaticRecordWatchResultResponse struct {
         Name    string
         Type    string
         TTL     uint32
         Content string
 }
 
-// DynamicRecordResultResponse is dynamic record result
-type DynamicRecordResultResponse struct {
+// DynamicRecordWatchResultResponse is dynamic record watch result
+type DynamicRecordWatchResultResponse struct {
         Name    string
         Type    string
         TTL     uint32
@@ -17,21 +21,14 @@ type DynamicRecordResultResponse struct {
         Alive   bool
 }
 
-// ZoneResultResponse is zone result
-type ZoneResultResponse struct {
-	NameServer    []*StaticRecordResultResponse
-	StaticRecord  []*StaticRecordResultResponse
-	DynamicRecord []*DynamicRecordResultResponse
+// ZoneWatchResultResponse is zone watch result
+type ZoneWatchResultResponse struct {
+	NameServer    []*StaticRecordWatchResultResponse
+	StaticRecord  []*StaticRecordWatchResultResponse
+	DynamicRecord []*DynamicRecordWatchResultResponse
 }
 
-// WatchResultResponse is result
+// WatchResultResponse is watch result
 type WatchResultResponse struct {
-	Zone map[string]*ZoneResultResponse
-}
-
-// RecordResponse is RecordResponse
-type RecordResponse struct {
-	NameServer    []*StaticRecordResultResponse
-	StaticRecord  []*StaticRecordResultResponse
-	DynamicRecord []*DynamicRecordResultResponse
+	Zone map[string]*ZoneWatchResultResponse
 }

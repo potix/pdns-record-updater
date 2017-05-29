@@ -72,7 +72,7 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
+func (w *Watcher) updateAlive(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
 	oldAlive := record.SwapAlive(newAlive);
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTrigger {
@@ -88,7 +88,8 @@ func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, ta
         replacer := strings.NewReplacer(
                 "%(hostname)", w.hostname,
                 "%(time)", t.Format("2006-01-02 15:04:05"),
-                "%(zone)", domain,
+                "%(domain)", domain,
+                "%(groupName)", groupName,
                 "%(name)", record.Name,
                 "%(type)", record.Type,
                 "%(content)", record.Content,
@@ -97,11 +98,11 @@ func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, ta
                 "%(detail)", targetResult)
 	subject := w.watcherContext.NotifySubject
 	if subject == "" {
-		subject = "%(hostname) %(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+		subject = "%(hostname) %(domain) %(groupName) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
 	body := w.watcherContext.NotifyBody
 	if body == "" {
-		body = "hostname: %(hostname)\nzone: %(zone)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n%(detail)"
+		body = "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n-----"
 	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
 		w.notifier.Notify(replacer, subject, body)
@@ -112,7 +113,7 @@ func (w *Watcher) updateAlive(domain string, record *contexter.DynamicRecord, ta
 	}
 }
 
-func (w *Watcher) recordWatch(domain string, record *contexter.DynamicRecord) {
+func (w *Watcher) recordWatch(domain string, groupName string, record *contexter.DynamicRecord) {
 	var firstTask *targetTask
 	// run target watch task
 	for _, target := range record.Target {
@@ -136,7 +137,8 @@ func (w *Watcher) recordWatch(domain string, record *contexter.DynamicRecord) {
 	targetResult := ""
 	for _, target := range record.Target {
 		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", target.GetAlive()))
-		targetResult = targetResult + fmt.Sprintf("%v %v %v\n", target.Name, target.Dest, target.GetAlive())
+		targetResult = targetResult + fmt.Sprintf("%v %v %v %v %v %v %v %v\n",
+			domain, groupName, record.Name, record.Type, record.Content, target.Name, target.Dest, target.GetAlive())
 	}
         replacer := strings.NewReplacer(replaceName...)
 
@@ -144,20 +146,20 @@ func (w *Watcher) recordWatch(domain string, record *contexter.DynamicRecord) {
 	tv, err := w.eval(replacer.Replace(record.EvalRule))
 	if err != nil {
 		belog.Error("can not evalute (%v)", replacer.Replace(record.EvalRule))
-		w.updateAlive(domain, record, targetResult, false)
+		w.updateAlive(domain, groupName, record, targetResult, false)
 	} else {
-		w.updateAlive(domain, record, targetResult, constant.BoolVal(tv.Value))
+		w.updateAlive(domain, groupName, record, targetResult, constant.BoolVal(tv.Value))
 	}
 	record.SetProgress(false)
 }
 
 func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
-	for _, dynamicGroup := range zone.DynamicGroup {
+	for groupName, dynamicGroup := range zone.DynamicGroup {
 		for _, record := range dynamicGroup.DynamicRecord {
 			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
 				if (record.CompareAndSwapProgress(false, true)) {
 					// run record waatch task
-					go w.recordWatch(domain, record)
+					go w.recordWatch(domain, groupName, record)
 					record.ClearCurrentIntervalCount()
 				} else {
 					// already progress last record watch task
@@ -180,9 +182,9 @@ func (w *Watcher) watchLoop() {
 // Init is Init
 func (w *Watcher) Init() {
 	for domain, zone := range w.watcherContext.Zone {
-		for _, dynamicGroup := range zone.DynamicGroup {
+		for groupName, dynamicGroup := range zone.DynamicGroup {
 			for _, record := range dynamicGroup.DynamicRecord {
-				w.recordWatch(domain, record)
+				w.recordWatch(domain, groupName, record)
 			}
 		}
 	}

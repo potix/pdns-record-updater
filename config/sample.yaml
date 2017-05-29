@@ -12,7 +12,8 @@ watcher:
           ttl: 3600
           content: "192.168.0.253"
       dynamicGroup:
-        - dynamicrecord:
+        "group1":
+          dynamicrecord:
           - name: "foo"
             type: "a"
             ttl: 10 
@@ -55,7 +56,7 @@ watcher:
           negativerecord:
           - name: "foo"
             type: "a"
-            tl: 10
+            ttl: 10
             content: "192.168.0.254"
 notifier:
   mail:
