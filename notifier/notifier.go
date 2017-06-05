@@ -119,13 +119,13 @@ func (n *Notifier) Notify(replacer *strings.Replacer, subject string, body strin
 }
 
 // New is create notifier
-func New(context *contexter.Context) (n *Notifier) {
+func New(notifierContext *contexter.Notifier) (n *Notifier) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
 	}
 	return &Notifier{
 		hostname : hostname,
-		notifierContext: context.Notifier,
+		notifierContext: notifierContext,
 	}
 }

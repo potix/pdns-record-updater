@@ -226,15 +226,15 @@ func (w *Watcher) Stop() {
 }
 
 // New is create Wathcer
-func New(context *contexter.Context) (*Watcher) {
+func New(watcherContext *contexter.Watcher, notifier *notifier.Notifier) (*Watcher) {
         hostname, err := os.Hostname()
         if err != nil {
                 hostname = "unknown"
         }
 	return &Watcher{
 		hostname:       hostname,
-		watcherContext: context.Watcher,
+		watcherContext: watcherContext,
 		running:	0,
-		notifier:       notifier.New(context),
+		notifier:       notifier,
 	}
 }

@@ -17,11 +17,11 @@ import (
 	"syscall"
 )
 
-func runUpdater(context *contexter.Context) (err error) {
-	client := client.New(config)
-	initializer := initializer.New(config, client)
+func runUpdater(contexter *contexter.Contexter) (err error) {
+	client := client.New(contexter.Context.Client)
+	initializer := initializer.New(contexter.Context.Initializer, client)
 	initializer.Initialize()
-	updater := updater.New(config, client)
+	updater := updater.New(contexter.Context.Updater, client)
 	update.Start()
         sigChan := make(chan os.Signal, 1)
         signal.Notify(sigChan,
@@ -46,10 +46,11 @@ Loop:
 	return nil
 }
 
-func runWatcher(context *contexter.Context, configuratir *configurator.configurator) (error) {
-	watcher := watcher.New(context)
+func runWatcher(contexter *contexter.Contexter, configuratir *configurator.configurator) (error) {
+	notifier := notifier.New(contexter.Context.Notifier)
+	watcher := watcher.New(contexter.Context.Watcher, notifier)
 	watcher.Init()
-	server := server.New(context, configurator)
+	server := server.New(contexter.Context.Server, contexter)
 	err := server.Start()
 	if err != nil {
 		return err
@@ -89,21 +90,22 @@ func main() {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	context, err := configurator.Load()
+	contexter := contexter.New(configurator)
+	err := contexter.LoadConfig()
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	err = belog.SetupLoggers(context.Logger)
+	err = belog.SetupLoggers(contexter.Context.Logger)
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	context.Dump()
+	contexter.DumpContext()
 	if (strings.ToUpper(*mode) == "UPDATER") {
-		err = runUpdater(context)
+		err = runUpdater(contexter)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
-		err = runWatcher(context, configurator)
+		err = runWatcher(contexter, configurator)
 	} else {
 		err = errors.New("unexpected run mode")
 	}

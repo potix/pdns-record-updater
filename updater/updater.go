@@ -1,10 +1,15 @@
 package updater
 
+// Updater is updater
+type Updater struct {
+	client *client.Client
+	updaterContext *contexter.Updater
+}
+
 // New is create updater
-func New(updater *contexter.Updater, client client.Client) (*Updater) {
+func New(updaterContext *contexter.Updater, client *client.Client) (*Updater) {
         return &Updater {
                 client:    client,
-                pnsServer: Updater.PdnsServer,
-                pnsApiKey: Updater.PdnsApiKey,
+                updaterContext: updaterContext,
         }
 }

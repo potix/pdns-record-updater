@@ -5,7 +5,6 @@ import (
         "github.com/braintree/manners"
         "github.com/gin-gonic/gin"
 	"github.com/potix/pdns-record-updater/contexter"
-	"github.com/potix/pdns-record-updater/configurator"
         "net/http"
         "time"
         "fmt"
@@ -24,7 +23,7 @@ type GracefulServer struct {
 type Server struct {
 	gracefulServers []*GracefulServer
 	serverContext   *contexter.Server
-	context         *contexter.Context
+	contexter       *contexter.Contexter
 }
 
 func (s *Server) addGetHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
@@ -34,6 +33,10 @@ func (s *Server) addGetHandler(group *gin.RouterGroup, resource string, handler 
 
 func (s *Server) addPostHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
         group.POST(resource, handler)
+}
+
+func (s *Server) addPutHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
+        group.PUT(resource, handler)
 }
 
 func (s *Server) addDeleteHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
@@ -60,8 +63,9 @@ func (s *Server) Start() (err error) {
                 errors.Errorf("not found linten port")
         }
 	engine := gin.Default()
-	if s.serverContext.username != "" && s.serverContext.password != "" {
-		authHandler := gin.BasicAuth(gin.Accounts{s.serverContext.username, s.serverContext.password})
+	var newGroup *gin.RouterGroup
+	if s.serverContext.Username != "" && s.serverContext.Password != "" {
+		authHandler := gin.BasicAuth(gin.Accounts{s.serverContext.Username : s.serverContext.Password})
 		newGroup := engine.Group("/v1", authHandler, s.commonHandler)
 	} else {
 		newGroup := engine.Group("/v1", s.commonHandler)
@@ -97,7 +101,7 @@ func (s *Server) Start() (err error) {
 
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                    // 動的レコードの取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                   // 動的レコードの変更
-	s.addPutHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content/forcedown", s.zoneDynamicGroupDynamicRecordNTCFroceDown) // 動的レコードの変更
+	s.addPutHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content/forcedown", s.zoneDynamicGroupDynamicRecordNTCForceDown) // 動的レコードの変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                 // 動的レコードの削除
 
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/", s.zoneDynamicGroupNegativeRecord)  // ネガティブレコードの一覧取得
@@ -108,7 +112,7 @@ func (s *Server) Start() (err error) {
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC) // ネガティブレコードの削除
 
 	if s.serverContext.StaticPath != "" {
-		newGroup.Static(newGroup, "/static", s.serverContext.StaticPath)
+		newGroup.Static("/static", s.serverContext.StaticPath)
 	}
 
 	// create server
@@ -151,13 +155,12 @@ func (s *Server) Stop() {
 }
 
 // New is create Server
-func New(context *contexter.Context, configurator *configurator.Configurator) (s *Server) {
+func New(serverContext *contexter.Server, contexter *contexter.Contexter) (s *Server) {
 	s = &Server{
-		configurator: configurator,
-		serverContext: context.Server,
-		context: context,
+		serverContext: serverContext,
+		contexter: contexter,
         }
-	if !context.Server.Debug {
+	if !serverContext.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	return s

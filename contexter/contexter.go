@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
         "github.com/potix/belog"
 	"github.com/BurntSushi/toml"
+	"github.com/potix/pdns-record-updater/configurator"
 	"sync"
 	"bytes"
 )
@@ -27,14 +28,14 @@ type Target struct {
 	alive         bool     // 生存フラグ 
 }
 
-//SetAlive is set alive
+// SetAlive is set alive
 func (t *Target) SetAlive(alive bool) {
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
 	t.alive = alive
 }
 
-//GetAlive is get alive
+// GetAlive is get alive
 func (t *Target) GetAlive() (bool) {
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
@@ -51,6 +52,8 @@ type StaticRecord struct {
 
 // Validate is validate static record
 func (n *StaticRecord) Validate() (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
 	if (n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "") {
 		return false
 	}
@@ -71,6 +74,22 @@ type DynamicRecord struct {
 	Alive                bool      // 生存フラグ                       [mutable]
 	ForceDown            bool      // 強制的にダウンしたとみなすフラグ [mutable]
 	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
+}
+
+// Validate is validate dynamic record
+func (d *DynamicRecord) Validate() (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if (d.Name == "" || d.Type == "" || d.TTL == 0 || d.Content == "" ||
+            d.WatchInterval == 0 || d.EvalRule == "" || d.Target == nil) {
+		return false
+	}
+	for _, target := range d.Target {
+		if (target.Name == "" || target.Protocol == "" || target.Dest == "") {
+			return false
+		}
+	}
+	return true
 }
 
 // GetCurrentIntervalCount is get currentIntervalCount
@@ -152,6 +171,8 @@ type NegativeRecord struct {
 
 // Validate is validate negative record
 func (n *NegativeRecord) Validate() (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
 	if (n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "") {
 		return false
 	}
@@ -194,17 +215,20 @@ func (d *DynamicGroup) AddDynamicRecord(dynamicRecord *DynamicRecord) {
 }
 
 // DeleteDynamicRecord is delete name server
-func (d *DynamicGroup) DeleteDynamicRecord(n string, t string, c string) {
+func (d *DynamicGroup) DeleteDynamicRecord(n string, t string, c string) (deleted bool) {
+	deleted = false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newDynamicRecord := make([]*DynamicRecord, 0, len(d.dynamicRecord) - 1)
 	for _, dr := range d.dynamicRecord {
 		if dr.Name == n && dr.Type == t && dr.Content == c {
+			deleted = true
 			continue
 		}
 		newDynamicRecord = append(newDynamicRecord, dr)
 	}
 	d.dynamicRecord = newDynamicRecord
+	return deleted
 }
 
 // ReplaceDynamicRecord is replace name server
@@ -255,17 +279,20 @@ func (d *DynamicGroup) AddNegativeRecord(negativeRecord *NegativeRecord) {
 }
 
 // DeleteNegativeRecord is delete name server
-func (d *DynamicGroup) DeleteNegativeRecord(n string, t string, c string) {
+func (d *DynamicGroup) DeleteNegativeRecord(n string, t string, c string) (deleted bool) {
+	deleted = false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newNegativeRecord := make([]*NegativeRecord, 0, len(d.negativeRecord) - 1)
 	for _, nr := range d.negativeRecord {
 		if nr.Name == n && nr.Type == t && nr.Content == c {
+			deleted = true
 			continue
 		}
 		newNegativeRecord = append(newNegativeRecord, nr)
 	}
 	d.negativeRecord = newNegativeRecord
+	return deleted
 }
 
 // ReplaceNegativeRecord is replace name server
@@ -323,17 +350,20 @@ func (z *Zone) AddNameServer(nameServer *StaticRecord) {
 }
 
 // DeleteNameServer is delete name server
-func (z *Zone) DeleteNameServer(n string, t string, c string) {
+func (z *Zone) DeleteNameServer(n string, t string, c string) (deleted bool) {
+	deleted = false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newNameServer := make([]*StaticRecord, 0, len(z.nameServer) - 1)
 	for _, ns := range z.nameServer {
 		if ns.Name == n && ns.Type == t && ns.Content == c {
+			deleted = true
 			continue
 		}
 		newNameServer = append(newNameServer, ns)
 	}
 	z.nameServer = newNameServer
+	return deleted
 }
 
 // ReplaceNameServer is replace name server
@@ -384,17 +414,20 @@ func (z *Zone) AddStaticRecord(staticRecord *StaticRecord) {
 }
 
 // DeleteStaticRecord is delete name server
-func (z *Zone) DeleteStaticRecord(n string, t string, c string) {
+func (z *Zone) DeleteStaticRecord(n string, t string, c string) (deleted bool) {
+	deleted = false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newStaticRecord := make([]*StaticRecord, 0, len(z.staticRecord) - 1)
 	for _, sr := range z.staticRecord {
 		if sr.Name == n && sr.Type == t && sr.Content == c {
+			deleted = true
 			continue
 		}
 		newStaticRecord = append(newStaticRecord, sr)
 	}
 	z.staticRecord = newStaticRecord
+	return deleted
 }
 
 // ReplaceStaticRecord is replace name server
@@ -550,7 +583,7 @@ type Notifier struct {
 // Listen is listen
 type Listen struct {
 	AddrPort string // リッスンするアドレスとポート
-	UseTLS   string // TLSを使うかどうか
+	UseTLS   bool   // TLSを使うかどうか
 	Certfile string // 証明書ファイルパス
 	Keyfile  string // プライベートキーファイルパス
 }
@@ -561,6 +594,7 @@ type Server struct {
 	Listen       []*Listen // リッスンリスト
 	Username     string    // ユーザー名
 	Password     string    // パスワード
+	StaticPath   string    // Staticリソースのパス
 }
 
 // Client is server
@@ -574,7 +608,13 @@ type Client struct {
 	Password      string   // パスワード
 }
 
-// Context is Context
+// Updater is updater
+type Updater struct {
+	PdnsServer string
+        PdnsAPIKey string
+}
+
+// Context is context
 type Context struct {
 	Watcher  *Watcher             // 監視設定
 	Notifier *Notifier            // 通知設定
@@ -583,28 +623,48 @@ type Context struct {
 	Logger   *belog.ConfigLoggers // ログ設定
 }
 
-// XXX load/save/dump XXX
+// Contexter is contexter
+type Contexter struct {
+	Context *Context
+	configurator *configurator.Configurator
+}
 
 // Lock is lock context
-func (c *Context) Lock() {
+func (c *Contexter) Lock() {
 	mutableMutex.Lock()
 }
 
-// XXX load/save/dump XXX
-
 // Unlock is lock context
-func (c *Context) Unlock() {
+func (c *Contexter) Unlock() {
         mutableMutex.Unlock()
 }
 
-// XXX load/save/dump XXX
+// LoadConfig is load config
+func (c *Contexter) LoadConfig() (error){
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	newContext := new(Context)
+	err := c.configurator.Save(newContext)
+	if err != nil {
+		return err
+	}
+	c.Context = newContext
+	return nil
+}
 
-// Dump is cump
-func (c *Context) Dump() {
+// SaveConfig is save config
+func (c *Contexter) SaveConfig() (error) {
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	return c.configurator.Load(c.Context)
+}
+
+// Dump is dump context
+func (c *Contexter) Dump() {
 	var buffer bytes.Buffer
 	encoder := toml.NewEncoder(&buffer)
 	mutableMutex.Lock()
-	err := encoder.Encode(c)
+	err := encoder.Encode(c.Context)
         mutableMutex.Unlock()
 	if err != nil {
 	    belog.Error("%v", errors.Wrap(err, "can not dump context"))
@@ -613,6 +673,16 @@ func (c *Context) Dump() {
 	belog.Debug("%v", buffer.String())
 }
 
+// New is create new contexter
+func New(configurator *configurator.Configurator) (*Contexter) {
+	return &Contexter {
+		Context: nil,
+		configurator: configurator,
+	}
+}
+
 func init() {
 	mutableMutex = new(sync.Mutex)
 }
+
+

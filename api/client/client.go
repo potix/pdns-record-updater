@@ -114,9 +114,9 @@ func (c *Client) GetWatcherResult() (result *structure.WatchResultResponse, err 
 }
 
 // New is create client
-func New(context *contexter.Context) (*Client) {
+func New(clientContext *contexter.Client) (*Client) {
         return &Client {
                 urlBaseIndex:  0,
-		clientContext: context.Client,
+		clientContext: clientContext,
         }
 }

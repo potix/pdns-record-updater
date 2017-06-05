@@ -2,7 +2,6 @@ package configurator
 
 import (
 	"github.com/pkg/errors"
-	"github.com/potix/pdns-record-updater/contexter"
 	"os"
 	"fmt"
 )
@@ -11,11 +10,17 @@ import (
 type Configurator struct {
 	configPath string
 	reader     *reader
+	writer     *writer
 }
 
 // Load is load config
-func (c *Configurator) Load() (context *contexter.Context, err error) {
-	return c.reader.read(c.configPath)
+func (c *Configurator) Load(data interface{}) (err error) {
+	return c.reader.read(c.configPath, data)
+}
+
+// Save is save config
+func (c *Configurator) Save(data interface{}) (err error) {
+	return c.writer.write(c.configPath, data)
 }
 
 // New is create Configurator
@@ -26,6 +31,7 @@ func New(configPath string) (configurator *Configurator, err error) {
 	}
 	return &Configurator{
 		reader : newReader(),
+		writer : newWriter(),
 		configPath : configPath,
 	}, nil
 }
