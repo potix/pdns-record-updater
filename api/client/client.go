@@ -3,15 +3,20 @@ package client
 import (
 	"github.com/pkg/errors"
         "github.com/potix/belog"
+	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/api/structure"
+	"github.com/potix/pdns-record-updater/helper"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"io/ioutil"
 	"fmt"
+	"time"
 )
 
-type request struct {
+type reqInfo struct {
 	urlBase string
+	url string
 	resource string
 }
 
@@ -23,107 +28,95 @@ type startEnd struct {
 // Client is client
 type Client struct {
 	urlBaseIndex  int
-        urlBase       []string
-	retry         uint32
-	retryWait     uint32
-        timeout       uint32
-	tlsSkipVerify bool
-	username      string
-	password      string
+        clientContext *contexter.Client
 }
 
-func (c *Client) get(request *request) ([]byte, error) {
-        u, err := url.Parse(request.url)
+func (c *Client) get(reqInfo *reqInfo) ([]byte, error) {
+        u, err := url.Parse(reqInfo.url)
 	if err != nil {
-		return  nul, errors.Errorf("can not parse url (%v)", request.url)
+		return  nil, errors.Errorf("can not parse url (%v)", reqInfo.url)
 	}
-	httpClient := NewHTTPClient(u.Scheme, u.Host, c.tlsSkipVerify)
-	request, err := http.NewRequest("GET", request.url, nil)
+	httpClient := helper.NewHTTPClient(u.Scheme, u.Host, c.clientContext.TLSSkipVerify, c.clientContext.Timeout)
+	request, err := http.NewRequest("GET", reqInfo.url, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", request.url))
+		return nil, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", reqInfo.url))
 	}
-	request.SetBasicAuth(c.username, c.password)
+	request.SetBasicAuth(c.clientContext.Username, c.clientContext.Password)
 	res, err := httpClient.Do(request)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("can not get url (%v)", request.url))
+		return nil, errors.Wrap(err, fmt.Sprintf("can not get url (%v)", reqInfo.url))
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil, errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", request.url, res.StatusCode))
+		return nil, errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", reqInfo.url, res.StatusCode))
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(" (%v)", request.url))
+		return nil, errors.Wrap(err, fmt.Sprintf(" (%v)", reqInfo.url))
 	}
-	belog.Debug("http ok (%v)", request.url)
+	belog.Debug("http ok (%v)", reqInfo.url)
 	return body, nil
 }
 
-func (c *Client) retry(methodFunc func(request *request), request *request) (response []byte, err error)  {
-	for i = 0; i <  c.retry; i++ {
-		response, err = methodFunc(request)
+func (c *Client) retryRequest(methodFunc func(reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error)  {
+	var i uint32
+	for i = 0; i <= c.clientContext.Retry; i++ {
+		response, err = methodFunc(reqInfo)
 		if err != nil {
 			belog.Error("retry request (%v)", err)
-			if c.retryWait > 0 {
-				time.Sleep(time.Duration(c.retryWait) * time.Second)
+			if c.clientContext.RetryWait > 0 {
+				time.Sleep(time.Duration(c.clientContext.RetryWait) * time.Second)
 			}
 			continue
 		}
 		return response, err
 	}
-	return nil, erros.Errorf("give up retry (%v)", request.url)
+	return nil, errors.Errorf("give up retry (%v)", reqInfo.url)
 }
 
-func (c *Client) doRequest(methodFunc func(request *request), request *request) (response []byte, err error) {
+func (c *Client) doRequest(methodFunc func(reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error) {
 	startEnd := [...]*startEnd{
-		&startEnd{ start: c.urlBaseIndex, end: len(c.urlBase) },
+		&startEnd{ start: c.urlBaseIndex, end: len(c.clientContext.URL) },
 		&startEnd{ start: 0, end: c.urlBaseIndex },
 	}
-Loop:
 	for _, startEnd := range startEnd  {
 		for i := startEnd.start; i < startEnd.end; i++ {
-			request.urlBase = c.urlBase[i]
-			request.url = request.urlBase + request.resource
-			response, err = c.retry(methodFunc, request)
+			reqInfo.urlBase = c.clientContext.URL[i]
+			reqInfo.url = reqInfo.urlBase + reqInfo.resource
+			response, err = c.retryRequest(methodFunc, reqInfo)
 			if err != nil {
 				belog.Error("switch url base (%v)", err)
 				continue
 			}
 			c.urlBaseIndex = i
-			return resonse, err
+			return response, err
 		}
 	}
-	return nil, erros.Errorf("give up request (%v)", request.resource)
+	return nil, errors.Errorf("give up request (%v)", reqInfo.resource)
 }
 
 // GetWatcherResult is get watcher result
-func (c *Client) GetWatcherResult() (result *structure.Result, err error) {
-	request := &request {
+func (c *Client) GetWatcherResult() (result *structure.WatchResultResponse, err error) {
+	reqInfo := &reqInfo {
 		resource : "/v1/watcher/result",
 	}
-	response, err := c.doRequest(c.get, request)
+	response, err := c.doRequest(c.get, reqInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("can not get watcher result (%v)", resource))
+		return nil, errors.Wrap(err, fmt.Sprintf("can not get watcher result (%v)", reqInfo.resource))
 	}
-	result = make(structure.Result)
+	result = new(structure.WatchResultResponse)
         err = json.Unmarshal(response, result)
         if err != nil {
-                return nil, errors.Wrap(err, fmt.Sprintf("can not unmarshal response (%v)", resource))
+                return nil, errors.Wrap(err, fmt.Sprintf("can not unmarshal response (%v)", reqInfo.resource))
         }
 
 	return result, nil
 }
 
 // New is create client
-func New(client *contexter.Client) (*Client) {
+func New(context *contexter.Context) (*Client) {
         return &Client {
                 urlBaseIndex:  0,
-                urlBase:       client.URLBase,
-                retry:         client.Retry,
-                retryWait:     client.RetryWait,
-                timeout:       client.Timeout,
-		tlsSkipVerify: client.TLSSkipVerify,
-		username:      client.Username,
-		password:      client.Password,
+		clientContext: context.Client,
         }
 }

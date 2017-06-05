@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/potix/belog"
 	"github.com/gin-gonic/gin"
+	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/api/structure"
 	"encoding/json"
 	"net/http"

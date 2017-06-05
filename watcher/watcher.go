@@ -154,12 +154,18 @@ func (w *Watcher) recordWatch(domain string, groupName string, record *contexter
 }
 
 func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
-	for groupName, dynamicGroup := range zone.DynamicGroup {
-		for _, record := range dynamicGroup.DynamicRecord {
+	dynamicGroupName := zone.GetDynamicGroupName()
+	for _, dgname := range dynamicGroupName {
+		dynamicGroup, err := zone.GetDynamicGroup(dgname)
+		if err != nil {
+			belog.Notice("%v", err)
+			continue
+		}
+		for _, record := range dynamicGroup.GetDynamicRecord() {
 			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
 				if (record.CompareAndSwapProgress(false, true)) {
 					// run record waatch task
-					go w.recordWatch(domain, groupName, record)
+					go w.recordWatch(domain, dgname, record)
 					record.ClearCurrentIntervalCount()
 				} else {
 					// already progress last record watch task
@@ -172,8 +178,14 @@ func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) == 1 {
-		for domain, zone := range w.watcherContext.Zone {
-			go w.zoneWatch(domain, zone)
+		domain := w.watcherContext.GetDomain()
+		for _, d := range domain {
+			zone, err := w.watcherContext.GetZone(d)
+			if err != nil {
+				belog.Notice("%v", err)
+				continue
+			}
+			go w.zoneWatch(d, zone)
 		}
 		time.Sleep(time.Second)
 	}
@@ -181,10 +193,22 @@ func (w *Watcher) watchLoop() {
 
 // Init is Init
 func (w *Watcher) Init() {
-	for domain, zone := range w.watcherContext.Zone {
-		for groupName, dynamicGroup := range zone.DynamicGroup {
-			for _, record := range dynamicGroup.DynamicRecord {
-				w.recordWatch(domain, groupName, record)
+	domain := w.watcherContext.GetDomain()
+	for _, d := range domain {
+		zone, err := w.watcherContext.GetZone(d)
+		if err != nil {
+			belog.Notice("%v", err)
+			continue
+		}
+		dynamicGroupName := zone.GetDynamicGroupName()
+		for _, dgname := range dynamicGroupName {
+			dynamicGroup, err := zone.GetDynamicGroup(dgname)
+			if err != nil {
+				belog.Notice("%v", err)
+				continue
+			}
+			for _, record := range dynamicGroup.GetDynamicRecord() {
+				w.recordWatch(d, dgname, record)
 			}
 		}
 	}

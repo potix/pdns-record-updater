@@ -563,23 +563,41 @@ type Server struct {
 	Password     string    // パスワード
 }
 
+// Client is server
+type Client struct {
+	URL           []string // url list
+	Retry         uint32   // retry回数
+	RetryWait     uint32   // retry時のwait時間
+	Timeout       uint32   // タイムアウト
+	TLSSkipVerify bool     // TLSのverifyをスキップルするかどうか
+	Username      string   // ユーザー名
+	Password      string   // パスワード
+}
+
 // Context is Context
 type Context struct {
 	Watcher  *Watcher             // 監視設定
 	Notifier *Notifier            // 通知設定
 	Server   *Server              // サーバー設定
+	Client   *Client              // クライアント設定
 	Logger   *belog.ConfigLoggers // ログ設定
 }
+
+// XXX load/save/dump XXX
 
 // Lock is lock context
 func (c *Context) Lock() {
 	mutableMutex.Lock()
 }
 
+// XXX load/save/dump XXX
+
 // Unlock is lock context
 func (c *Context) Unlock() {
         mutableMutex.Unlock()
 }
+
+// XXX load/save/dump XXX
 
 // Dump is cump
 func (c *Context) Dump() {
