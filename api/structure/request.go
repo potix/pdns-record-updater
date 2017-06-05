@@ -1,9 +1,5 @@
 package structure
 
-import (
-	"github.com/potix/pdns-record-updater/contexter"
-)
-
 // ZoneRequest is zone 
 type ZoneRequest struct {
 	Domain string
@@ -12,4 +8,9 @@ type ZoneRequest struct {
 // ZoneDynamicGroupRequest is zone dynamic group 
 type ZoneDynamicGroupRequest struct {
         DynamicGroupName string
+}
+
+// ZoneDynamicGroupDynamicRecordForceDownRequest is zone dynamic group 
+type ZoneDynamicGroupDynamicRecordForceDownRequest struct {
+        ForceDown bool
 }

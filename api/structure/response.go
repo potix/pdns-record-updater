@@ -1,9 +1,5 @@
 package structure
 
-import (
-        "github.com/potix/pdns-record-updater/contexter"
-)
-
 // StaticRecordWatchResultResponse is static record watch result
 type StaticRecordWatchResultResponse struct {
         Name    string

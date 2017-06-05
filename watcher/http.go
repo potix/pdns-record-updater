@@ -84,7 +84,7 @@ func (h *httpWatcher) reqHTTP() (bool, bool, error) {
 
 func (h *httpWatcher) isAlive() (bool) {
 	var i uint32
-	for i = 0; i < h.retry; i++ {
+	for i = 0; i <= h.retry; i++ {
 		alive, retryable, err := h.reqHTTP()
 		if err != nil {
 			belog.Error("%v", err)

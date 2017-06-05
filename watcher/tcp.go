@@ -74,7 +74,7 @@ func (t *tcpWatcher) connectTCP() (bool, bool, error) {
 
 func (t *tcpWatcher) isAlive() (bool) {
 	var i uint32
-        for i = 0; i < t.retry; i++ {
+        for i = 0; i <= t.retry; i++ {
                 alive, retryable, err := t.connectTCP()
                 if err != nil {
                         belog.Error("%v", err)

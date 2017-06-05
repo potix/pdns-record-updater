@@ -119,7 +119,7 @@ func (i *icmpWatcher) isAlive() (bool) {
 		return false
 	}
 	var j uint32
-	for j = 0; j < i.retry; j++ {
+	for j = 0; j <= i.retry; j++ {
                 alive, retryable, err := i.sendIcmp(ip)
                 if err != nil {
                         belog.Error("%v", err)

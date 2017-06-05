@@ -119,6 +119,34 @@ func (s *Server) watchResult(context *gin.Context) {
 	}
 }
 
+func (s Server) getZone(context *gin.Context) (*contexter.Zone, error) {
+	domain := contenxt.Param("domain")
+	if domain == "" {
+		return nil, errors.Errorf("lack of domain")
+	}
+	zone, err := s.context.Zone.GetZone(domain)
+	if err != nil {
+		return nil, err
+	}
+	return zone, nil
+}
+
+func (s Server) getDynamicGroup(context *gin.Context) (*contexter.DynamicGroup, error) {
+	zone, err := getZone(context)
+	if err != nil {
+		return err
+	}
+	dgname := context.param("dgname")
+	if domain == "" {
+		return nil, errors.Errorf("lack of dynamic group name")
+	}
+	dynamicGroup, err := zone.GetDynamicGroup(dgname)
+	if err != nil {
+		return nil, err
+	}
+	return dynamicGroup, nil
+}
+
 func (s *Server) zone(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
@@ -169,12 +197,7 @@ func (s *Server) zoneNameServer(context *gin.Context) {
         case http.MethodHead:
 		fallthrough
         case http.MethodGet:
-		domain := contenxt.Param("domain")
-		if domain == "" {
-			context.String(http.StatusBadRequest, "{\"reason\":\"no domain\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
+		zone, err := s.getZone(context)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -187,12 +210,7 @@ func (s *Server) zoneNameServer(context *gin.Context) {
 		}
 		return
         case http.MethodPost:
-		domain := contenxt.Param("domain")
-		if domain == "" {
-			context.String(http.StatusBadRequest, "{\"reason\":\"no domain\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
+		zone, err := s.getZone(context)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -220,17 +238,16 @@ func (s *Server) zoneNameServerNTC(contenst *gin.Contenst) {
         case http.MethodHead:
 		fallthrough
         case http.MethodGet:
-		domain := contenxt.Param("domain")
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
 		n := contenxt.Param("name")
 		t := contenxt.Param("type")
 		c := contenxt.Param("content")
-		if domain == "" || n == "" || t == "" || c == "" {
+		if n == "" || t == "" || c == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
-		if err != nil {
-			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		nameServer := zone.FindNameServer(n, t, c)
@@ -245,17 +262,16 @@ func (s *Server) zoneNameServerNTC(contenst *gin.Contenst) {
 		}
 		return
         case http.MethodPost:
-		domain := contenxt.Param("domain")
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
 		n := contenxt.Param("name")
 		t := contenxt.Param("type")
 		c := contenxt.Param("content")
-		if domain == "" || n == "" || t == "" || c == "" {
+		if n == "" || t == "" || c == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
-		if err != nil {
-			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		nameServer := new(*contenxter.StaticRecord)
@@ -274,17 +290,16 @@ func (s *Server) zoneNameServerNTC(contenst *gin.Contenst) {
 		context.Status(http.StatusOK)
 		return
         case http.MethodDelete:
-		domain := contenxt.Param("domain")
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
 		n := contenxt.Param("name")
 		t := contenxt.Param("type")
 		c := contenxt.Param("content")
-		if domain == "" || n == "" || t == "" || c == "" {
+		if n == "" || t == "" || c == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
-		if err != nil {
-			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		nameServer := new(*contenxter.StaticRecord)
@@ -310,12 +325,7 @@ func (s *Server) zoneStaticRecord(context *gin.Context) {
         case http.MethodHead:
 		fallthrough
         case http.MethodGet:
-		domain := contenxt.Param("domain")
-		if domain == "" {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of domain\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
+		zone, err := s.getZone(context)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -328,12 +338,7 @@ func (s *Server) zoneStaticRecord(context *gin.Context) {
 		}
 		return
         case http.MethodPost:
-		domain := contenxt.Param("domain")
-		if domain == "" {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of domain\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
+		zone, err := s.getZone(context)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -361,17 +366,16 @@ func (s *Server) zoneStaticRecordNTC(contenst *gin.Contenst) {
         case http.MethodHead:
 		fallthrough
         case http.MethodGet:
-		domain := contenxt.Param("domain")
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
 		n := contenxt.Param("name")
 		t := contenxt.Param("type")
 		c := contenxt.Param("content")
-		if domain == "" || n == "" || t == "" || c == "" {
+		if n == "" || t == "" || c == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
-		if err != nil {
-			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		staticRecord := zone.FindStaticRecord(n, t, c)
@@ -386,17 +390,16 @@ func (s *Server) zoneStaticRecordNTC(contenst *gin.Contenst) {
 		}
 		return
         case http.MethodPost:
-		domain := contenxt.Param("domain")
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
 		n := contenxt.Param("name")
 		t := contenxt.Param("type")
 		c := contenxt.Param("content")
-		if domain == "" || n == "" || t == "" || c == "" {
+		if n == "" || t == "" || c == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
-		if err != nil {
-			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		staticRecord := new(*contenxter.StaticRecord)
@@ -415,17 +418,16 @@ func (s *Server) zoneStaticRecordNTC(contenst *gin.Contenst) {
 		context.Status(http.StatusOK)
 		return
         case http.MethodDelete:
-		domain := contenxt.Param("domain")
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
 		n := contenxt.Param("name")
 		t := contenxt.Param("type")
 		c := contenxt.Param("content")
-		if domain == "" || n == "" || t == "" || c == "" {
+		if n == "" || t == "" || c == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
-		if err != nil {
-			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		staticRecord := new(*contenxter.StaticRecord)
@@ -446,22 +448,12 @@ func (s *Server) zoneStaticRecordNTC(contenst *gin.Contenst) {
 	}
 }
 
-
-
-
-
-
 func (s *Server) zoneDynamicGroup(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
 		fallthrough
         case http.MethodGet:
-		domain := contenxt.Param("domain")
-		if domain == "" {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of domain\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
+		zone, err := s.getZone(context)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -474,12 +466,7 @@ func (s *Server) zoneDynamicGroup(context *gin.Context) {
 		}
 		return
         case http.MethodPost:
-		domain := contenxt.Param("domain")
-		if domain == "" {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of domain\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
+		zone, err := s.getZone(context)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -506,15 +493,14 @@ func (s *Server) zoneDynamicGroup(context *gin.Context) {
 func (s *Server) zoneDynamicGroupName(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodDelete:
-		domain := contenxt.Param("domain")
-		dgname := contenxt.Param("dgname")
-		if domain == "" || dgname == ""{
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		zone, err := s.context.Zone.GetZone(domain)
+		zone, err := s.getZone(context)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		dgname := contenxt.Param("dgname")
+		if  dgname == ""{
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
 		if err := zone.DeleteDynamicGroup(dgname); err != nil {
@@ -526,6 +512,296 @@ func (s *Server) zoneDynamicGroupName(context *gin.Context) {
 	}
 }
 
+func (s *Server) zoneDynamicGroupDynamicRecord(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+		fallthrough
+        case http.MethodGet:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		if context.Request.Method == http.MethodHead {
+			context.Status(http.StatusOK)
+		} else {
+			dynamicRecord = dynamicGroup.GetDynamicRecord()
+			s.jsonResponse(context, dynamicRecord)
+		}
+        case http.MethodPost:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		dynamicRecord := new(*contenxter.DynamicRecord)
+		if err := c.BindJSON(dynamicRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if dynamicRecord.Name == "" || dynamicRecord.Type == "" || dynamicRecord.TTL == 0 || dynamicRecord.Content == "" ||
+		   dynamicRecord.WatchInterval == 0 || dynamicRecord.EvalRule == "" || dynamicRecord.Target == nil ||
+                   dynamicRecord.Target.Name == "" || dynamicRecord.Target.Protocol == "" || dynamicRecord.Target.Dest == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		if err := dynamicGroup.AddDynamicRecord(dynamicRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusCreated)
+	}
+}
 
+func (s *Server) zoneDynamicGroupDynamicRecordNTC(contenst *gin.Contenst) {
+        switch context.Request.Method {
+        case http.MethodHead:
+		fallthrough
+        case http.MethodGet:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		n := contenxt.Param("name")
+		t := contenxt.Param("type")
+		c := contenxt.Param("content")
+		if n == "" || t == "" || c == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		dynamicRecord := dynamicGroup.FindDynamicRecord(n, t, c)
+		if len(dynamicRecord) == 0 {
+			context.String(http.StatusNotFound, "{\"reason\":\"not found\"}", err)
+			return
+		}
+		if context.Request.Method == http.MethodHead {
+			context.Status(http.StatusOK)
+		} else {
+			s.jsonResponse(context, dynamicRecord)
+		}
+		return
+        case http.MethodPost:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		n := contenxt.Param("name")
+		t := contenxt.Param("type")
+		c := contenxt.Param("content")
+		if n == "" || t == "" || c == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		dynamicRecord := new(*contenxter.DynamicRecord)
+		if err := c.BindJSON(dynamicRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if dynamicRecord.Name == "" || dynamicRecord.Type == "" || dynamicRecord.TTL == 0 || dynamicRecord.Content == "" ||
+		   dynamicRecord.WatchInterval == 0 || dynamicRecord.EvalRule == "" || dynamicRecord.Target == nil ||
+                   dynamicRecord.Target.Name == "" || dynamicRecord.Target.Protocol == "" || dynamicRecord.Target.Dest == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		if err := zone.ReplaceDynamicRecord(n, t, c, dynamicRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusOK)
+		return
+        case http.MethodDelete:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		n := contenxt.Param("name")
+		t := contenxt.Param("type")
+		c := contenxt.Param("content")
+		if n == "" || t == "" || c == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		dynamicRecord := new(*contenxter.DynamicRecord)
+		if err := c.BindJSON(dynamicRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if dynamicRecord.Name == "" || dynamicRecord.Type == "" || dynamicRecord.TTL == 0 || dynamicRecord.Content == "" ||
+		   dynamicRecord.WatchInterval == 0 || dynamicRecord.EvalRule == "" || dynamicRecord.Target == nil ||
+                   dynamicRecord.Target.Name == "" || dynamicRecord.Target.Protocol == "" || dynamicRecord.Target.Dest == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		if err := zone.DeleteDynamicRecord(n, t, c); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusOK)
+		return
+	}
+}
 
+func (s *Server) zoneDynamicGroupDynamicRecordNTCForceDown(contenst *gin.Contenst) {
+        switch context.Request.Method {
+        case http.MethodPut:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		n := contenxt.Param("name")
+		t := contenxt.Param("type")
+		c := contenxt.Param("content")
+		if n == "" || t == "" || c == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		dynamicRecord := dynamicGroup.FindDynamicRecord(n, t, c)
+		if len(dynamicRecord) == 0  {
+			context.String(http.StatusNotFound, "{\"reason\":\"not found\"}", err)
+			return
+		}
+		if len(dynamicRecord) > 0  {
+			context.String(http.StatusNotFound, "{\"reason\":\"match too many record\"}", err)
+			return
+		}
+		var zoneDynamicGroupDynamicRecordForceDownRequest structure.ZoneDynamicGroupDynamicRecordForceDownRequest
+		if err := c.BindJSON(&zoneDynamicGroupDynamicRecordForceDownRequest); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		dynamicRecord[0].SetForceDown(zoneDynamicGroupDynamicRecordForceDownRequest.ForceDown)
+		context.Status(http.StatusOK)
+		return
+	}
+}
+
+func (s *Server) zoneDynamicGroupNegativeRecord(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+		fallthrough
+        case http.MethodGet:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		if context.Request.Method == http.MethodHead {
+			context.Status(http.StatusOK)
+		} else {
+			negativeRecord = dynamicGroup.GetNegativeRecord()
+			s.jsonResponse(context, negativeRecord)
+		}
+        case http.MethodPost:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		negativeRecord := new(*contenxter.NegativeRecord)
+		if err := c.BindJSON(negativeRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if negativeRecord.Name == "" || negativeRecord.Type == "" || negativeRecord.TTL == 0 || negativeRecord.Content == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		if err := dynamicGroup.AddNegativeRecord(negativeRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusCreated)
+	}
+}
+
+func (s *Server) zoneDynamicGroupNegativeRecordNTC(contenst *gin.Contenst) {
+        switch context.Request.Method {
+        case http.MethodHead:
+		fallthrough
+        case http.MethodGet:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		n := contenxt.Param("name")
+		t := contenxt.Param("type")
+		c := contenxt.Param("content")
+		if n == "" || t == "" || c == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		negativeRecord := dynamicGroup.FindNegativeRecord(n, t, c)
+		if len(negativeRecord) == 0 {
+			context.String(http.StatusNotFound, "{\"reason\":\"not found\"}", err)
+			return
+		}
+		if context.Request.Method == http.MethodHead {
+			context.Status(http.StatusOK)
+		} else {
+			s.jsonResponse(context, negativeRecord)
+		}
+		return
+        case http.MethodPost:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		n := contenxt.Param("name")
+		t := contenxt.Param("type")
+		c := contenxt.Param("content")
+		if n == "" || t == "" || c == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		negativeRecord := new(*contenxter.NegativeRecord)
+		if err := c.BindJSON(negativeRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if negativeRecord.Name == "" || negativeRecord.Type == "" || negativeRecord.TTL == 0 || negativeRecord.Content == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		if err := zone.ReplaceNegativeRecord(n, t, c, negativeRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusOK)
+		return
+        case http.MethodDelete:
+		dynamicGroup, err := s.getDynamicGroup(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		n := contenxt.Param("name")
+		t := contenxt.Param("type")
+		c := contenxt.Param("content")
+		if n == "" || t == "" || c == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		negativeRecord := new(*contenxter.NegativeRecord)
+		if err := c.BindJSON(negativeRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if negativeRecord.Name == "" || negativeRecord.Type == "" || negativeRecord.TTL == 0 || negativeRecord.Content == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		if err := zone.DeleteNegativeRecord(n, t, c); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusOK)
+		return
+	}
+}
 
