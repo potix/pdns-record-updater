@@ -24,7 +24,7 @@ type GracefulServer struct {
 type Server struct {
 	gracefulServers []*GracefulServer
 	serverContext   *contexter.Server
-	watcherContext  *contexter.Watcher
+	context         *contexter.Context
 }
 
 func (s *Server) addGetHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
