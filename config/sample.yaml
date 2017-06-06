@@ -9,12 +9,12 @@ watcher:
           ttl: 3600
           content: "192.168.0.254"
           email: "root.example.jp"
-      record:
+      staticrecord:
         - name: "bar"
           type: "A"
           ttl: 3600
           content: "192.168.0.253"
-      dynamicGroup:
+      dynamicgroup:
         "group1":
           dynamicrecord:
           - name: "foo"
@@ -22,21 +22,21 @@ watcher:
             ttl: 10 
             content: "192.168.0.1"
             watchinterval: 5
-            alive: 1
+            alive: true
             notifytrigger:
-            - changed
-            - latestDown
+            - "changed"
+            - "latestDown"
             target:
-            - name: t1
-              protocol: icmp
-              dest: 192.168.0.1
+            - name: "t1"
+              protocol: "icmp"
+              dest: "192.168.0.1"
               retry: 3
               retrywait: 1
               timeout: 1
               tlsskipverify: true
-            - name: t2
-              protocol: tcpRegexp
-              dest: 192.168.0.1:80
+            - name: "t2"
+              protocol: "tcpRegexp"
+              dest: "192.168.0.1:80"
               regexp: "hogehoge2"
               ressize: 2000
               retry: 3
@@ -44,9 +44,9 @@ watcher:
               timeout: 2
               tcptls: true
               tlsskipverify: true
-            - name: t3
-              protocol: httpRegexp
-              dest: 192.168.0.1:80
+            - name: "t3"
+              protocol: "httpRegexp"
+              dest: "192.168.0.1:80"
               regexp: "hogehoge3"
               ressize: 3000
               httpmethod: "GET"
@@ -63,21 +63,21 @@ watcher:
             content: "192.168.0.254"
 notifier:
   mail:
-  - hostport: smtp.example.com:25
-    username: bob
-    password: password
-    to: alice@example.com
-    from: bob@example.com
-    authtype: plain
+  - hostport: "smtp.example.com:25"
+    username: "bob"
+    password: "password"
+    to: "alice@example.com"
+    from: "bob@example.com"
+    authtype: "plain"
     usestarttls: true
     usetls: true
     tlsskipverify: true
 server:
   debug: true
   listen:
-  - addrport: 0.0.0.0:28080
-  username: hoge
-  password: hoge
+  - addrport: "0.0.0.0:28080"
+  username: "hoge"
+  password: "hoge"
 logger:
   loggers:
     "default":

@@ -107,7 +107,7 @@ func main() {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	belog.Debug("%v", dump)
+	belog.Debug("%v", string(dump))
 	if (strings.ToUpper(*mode) == "UPDATER") {
 		err = runUpdater(contexter)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
