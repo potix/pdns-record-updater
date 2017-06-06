@@ -208,15 +208,21 @@ func (d *DynamicGroup) FindDynamicRecord(n string, t string, c string) ([]*Dynam
 }
 
 // AddDynamicRecord is add name server
-func (d *DynamicGroup) AddDynamicRecord(dynamicRecord *DynamicRecord) {
+func (d *DynamicGroup) AddDynamicRecord(dynamicRecord *DynamicRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	for _, dr := range d.dynamicRecord {
+		if dr.Name == dynamicRecord.Name && dr.Type == dynamicRecord.Type && dr.Content == dynamicRecord.Content {
+			return errors.Errorf("already exists")
+		}
+	}
 	d.dynamicRecord = append(d.dynamicRecord, dynamicRecord)
+	return nil
 }
 
 // DeleteDynamicRecord is delete name server
-func (d *DynamicGroup) DeleteDynamicRecord(n string, t string, c string) (deleted bool) {
-	deleted = false
+func (d *DynamicGroup) DeleteDynamicRecord(n string, t string, c string) (error) {
+	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newDynamicRecord := make([]*DynamicRecord, 0, len(d.dynamicRecord) - 1)
@@ -227,13 +233,16 @@ func (d *DynamicGroup) DeleteDynamicRecord(n string, t string, c string) (delete
 		}
 		newDynamicRecord = append(newDynamicRecord, dr)
 	}
+	if !deleted {
+		return errors.Errorf("not exists")
+	}
 	d.dynamicRecord = newDynamicRecord
-	return deleted
+	return nil
 }
 
 // ReplaceDynamicRecord is replace name server
-func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynamicRecord *DynamicRecord) (replaced bool) {
-	replaced = false
+func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynamicRecord *DynamicRecord) (error) {
+	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newDynamicRecord := make([]*DynamicRecord, 0, len(d.dynamicRecord) - 1)
@@ -245,8 +254,11 @@ func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynami
 			newDynamicRecord = append(newDynamicRecord, dr)
 		}
 	}
+	if !replaced {
+		return errors.Errorf("not exists")
+	}
 	d.dynamicRecord = newDynamicRecord
-	return replaced
+	return nil
 }
 
 // GetNegativeRecord is get name server
@@ -272,15 +284,21 @@ func (d *DynamicGroup) FindNegativeRecord(n string, t string, c string) ([]*Nega
 }
 
 // AddNegativeRecord is add name server
-func (d *DynamicGroup) AddNegativeRecord(negativeRecord *NegativeRecord) {
+func (d *DynamicGroup) AddNegativeRecord(negativeRecord *NegativeRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	for _, nr := range d.negativeRecord {
+		if nr.Name == negativeRecord.Name && nr.Type == negativeRecord.Type && nr.Content == negativeRecord.Content {
+			errors.Errorf("already exists");
+		}
+	}
 	d.negativeRecord = append(d.negativeRecord, negativeRecord)
+	return nil
 }
 
 // DeleteNegativeRecord is delete name server
-func (d *DynamicGroup) DeleteNegativeRecord(n string, t string, c string) (deleted bool) {
-	deleted = false
+func (d *DynamicGroup) DeleteNegativeRecord(n string, t string, c string) (error) {
+	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newNegativeRecord := make([]*NegativeRecord, 0, len(d.negativeRecord) - 1)
@@ -291,13 +309,16 @@ func (d *DynamicGroup) DeleteNegativeRecord(n string, t string, c string) (delet
 		}
 		newNegativeRecord = append(newNegativeRecord, nr)
 	}
+	if !deleted {
+		errors.Errorf("not exists");
+	}
 	d.negativeRecord = newNegativeRecord
-	return deleted
+	return nil
 }
 
 // ReplaceNegativeRecord is replace name server
-func (d *DynamicGroup) ReplaceNegativeRecord(n string, t string, c string, negativeRecord *NegativeRecord) (replaced bool) {
-	replaced = false
+func (d *DynamicGroup) ReplaceNegativeRecord(n string, t string, c string, negativeRecord *NegativeRecord) (error) {
+	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newNegativeRecord := make([]*NegativeRecord, 0, len(d.negativeRecord) - 1)
@@ -309,8 +330,11 @@ func (d *DynamicGroup) ReplaceNegativeRecord(n string, t string, c string, negat
 			newNegativeRecord = append(newNegativeRecord, nr)
 		}
 	}
+	if !replaced {
+		errors.Errorf("not exists");
+	}
 	d.negativeRecord = newNegativeRecord
-	return replaced
+	return nil
 }
 
 // Zone is zone
@@ -343,15 +367,21 @@ func (z *Zone) FindNameServer(n string, t string, c string) ([]*StaticRecord) {
 }
 
 // AddNameServer is add name server
-func (z *Zone) AddNameServer(nameServer *StaticRecord) {
+func (z *Zone) AddNameServer(nameServer *StaticRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	for _, ns := range z.nameServer {
+		if ns.Name == nameServer.Name && ns.Type == nameServer.Type && ns.Content == nameServer.Content {
+			return errors.Errorf("already exists")
+		}
+	}
 	z.nameServer = append(z.nameServer, nameServer)
+	return nil
 }
 
 // DeleteNameServer is delete name server
-func (z *Zone) DeleteNameServer(n string, t string, c string) (deleted bool) {
-	deleted = false
+func (z *Zone) DeleteNameServer(n string, t string, c string) (error) {
+	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newNameServer := make([]*StaticRecord, 0, len(z.nameServer) - 1)
@@ -362,13 +392,16 @@ func (z *Zone) DeleteNameServer(n string, t string, c string) (deleted bool) {
 		}
 		newNameServer = append(newNameServer, ns)
 	}
+	if !deleted {
+		return errors.Errorf("not exists")
+	}
 	z.nameServer = newNameServer
-	return deleted
+	return nil
 }
 
 // ReplaceNameServer is replace name server
-func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *StaticRecord) (replaced bool) {
-	replaced = false
+func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *StaticRecord) (error) {
+	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newNameServer := make([]*StaticRecord, 0, len(z.nameServer) - 1)
@@ -380,8 +413,11 @@ func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *Stati
 			newNameServer = append(newNameServer, ns)
 		}
 	}
+	if !replaced {
+		return errors.Errorf("not exists")
+	}
 	z.nameServer = newNameServer
-	return replaced
+	return nil
 }
 
 // GetStaticRecord is get name server
@@ -407,15 +443,21 @@ func (z *Zone) FindStaticRecord(n string, t string, c string) ([]*StaticRecord) 
 }
 
 // AddStaticRecord is add name server
-func (z *Zone) AddStaticRecord(staticRecord *StaticRecord) {
+func (z *Zone) AddStaticRecord(staticRecord *StaticRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	for _, sr := range z.staticRecord {
+		if sr.Name == staticRecord.Name && sr.Type == staticRecord.Type && sr.Content == staticRecord.Content {
+			return errors.Errorf("already exists")
+		}
+	}
 	z.staticRecord = append(z.staticRecord, staticRecord)
+	return nil
 }
 
 // DeleteStaticRecord is delete name server
-func (z *Zone) DeleteStaticRecord(n string, t string, c string) (deleted bool) {
-	deleted = false
+func (z *Zone) DeleteStaticRecord(n string, t string, c string) (error) {
+	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newStaticRecord := make([]*StaticRecord, 0, len(z.staticRecord) - 1)
@@ -426,13 +468,16 @@ func (z *Zone) DeleteStaticRecord(n string, t string, c string) (deleted bool) {
 		}
 		newStaticRecord = append(newStaticRecord, sr)
 	}
+	if !deleted {
+		return errors.Errorf("not exists")
+	}
 	z.staticRecord = newStaticRecord
-	return deleted
+	return nil
 }
 
 // ReplaceStaticRecord is replace name server
-func (z *Zone) ReplaceStaticRecord(n string, t string, c string, staticRecord *StaticRecord) (replaced bool) {
-	replaced = false
+func (z *Zone) ReplaceStaticRecord(n string, t string, c string, staticRecord *StaticRecord) (error) {
+	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	newStaticRecord := make([]*StaticRecord, 0, len(z.staticRecord) - 1)
@@ -444,8 +489,11 @@ func (z *Zone) ReplaceStaticRecord(n string, t string, c string, staticRecord *S
 			newStaticRecord = append(newStaticRecord, sr)
 		}
 	}
+	if !replaced {
+		return errors.Errorf("not exists")
+	}
 	z.staticRecord = newStaticRecord
-	return replaced
+	return nil
 }
 
 // GetDynamicGroupName is get dynamic group name

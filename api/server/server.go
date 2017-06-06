@@ -66,9 +66,9 @@ func (s *Server) Start() (err error) {
 	var newGroup *gin.RouterGroup
 	if s.serverContext.Username != "" && s.serverContext.Password != "" {
 		authHandler := gin.BasicAuth(gin.Accounts{s.serverContext.Username : s.serverContext.Password})
-		newGroup := engine.Group("/v1", authHandler, s.commonHandler)
+		newGroup = engine.Group("/v1", authHandler, s.commonHandler)
 	} else {
-		newGroup := engine.Group("/v1", s.commonHandler)
+		newGroup = engine.Group("/v1", s.commonHandler)
 	}
 	s.addGetHandler(newGroup, "/watch/result", s.watchResult) // 監視結果取得
 

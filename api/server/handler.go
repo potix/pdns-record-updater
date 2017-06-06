@@ -31,17 +31,21 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 	newWatchResultResponse := &structure.WatchResultResponse {
 		Zone : make(map[string]*structure.ZoneWatchResultResponse),
 	}
-	s.contexter.Lock()
-	defer s.contexter.Unlock()
-	for domain, zone := range s.contexter.Context.Watcher.zone {
-		newZoneWatchResultResponse := &structure.ZoneWatchResultResponse {
-				NameServer : make([]*structure.StaticRecordWatchResultResponse, 0, len(zone.NameServer)),
-				StaticRecord : make([]*structure.StaticRecordWatchResultResponse, 0, len(zone.StaticRecord)),
-				DynamicRecord : make([]*structure.DynamicRecordWatchResultResponse, 0, len(zone.DynamicGroup) * 10),
+	domain := s.contexter.Context.Watcher.GetDomain()
+	for _, d := range domain {
+		zone, err := s.contexter.Context.Watcher.GetZone(d)
+		if err != nil {
+			belog.Notice("%v", err)
+			continue
 		}
-		newWatchResultResponse.Zone[domain] = newZoneWatchResultResponse
-		for _, record := range zone.NameServer {
-			if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
+		newZoneWatchResultResponse := &structure.ZoneWatchResultResponse {
+				NameServer : make([]*structure.StaticRecordWatchResultResponse, 0),
+				StaticRecord : make([]*structure.StaticRecordWatchResultResponse, 0),
+				DynamicRecord : make([]*structure.DynamicRecordWatchResultResponse, 0),
+		}
+		newWatchResultResponse.Zone[d] = newZoneWatchResultResponse
+		for _, record := range zone.GetNameServer() {
+			if !record.Validate() {
 				continue
 			}
 			newRecordWatchResultResponse := &structure.StaticRecordWatchResultResponse {
@@ -52,8 +56,8 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			}
 			newZoneWatchResultResponse.NameServer = append(newZoneWatchResultResponse.NameServer, newRecordWatchResultResponse)
 		}
-		for _, record := range zone.StaticRecord {
-			if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
+		for _, record := range zone.GetStaticRecord() {
+			if !record.Validate() {
 				continue
 			}
 			newRecordWatchResultResponse := &structure.StaticRecordWatchResultResponse {
@@ -64,10 +68,16 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			}
 			newZoneWatchResultResponse.StaticRecord = append(newZoneWatchResultResponse.StaticRecord, newRecordWatchResultResponse)
 		}
-		for groupName, dynamicGroup := range zone.DynamicGroup {
+		dynamicGroupName := zone.GetDynamicGroupName()
+		for _, dgname := range dynamicGroupName {
+			dynamicGroup, err := zone.GetDynamicGroup(dgname)
+			if err != nil {
+				belog.Notice("%v", err)
+				continue
+			}
 			var aliveRecordCount uint32
-			for _, record := range dynamicGroup.DynamicRecord{
-				if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
+			for _, record := range dynamicGroup.GetDynamicRecord() {
+				if !record.Validate() {
 					continue
 				}
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
@@ -91,8 +101,8 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			} else {
 				negativeRecordAlive = false
 			}
-			for _, record := range dynamicGroup.NegativeRecord {
-				if record.Name == "" || record.Type == "" || record.TTL == 0 || record.Content == "" {
+			for _, record := range dynamicGroup.GetNegativeRecord() {
+				if !record.Validate() {
 					continue
 				}
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
@@ -285,8 +295,8 @@ func (s *Server) zoneNameServerNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if replaced := zone.ReplaceNameServer(n, t, c, nameServer); !replaced {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not replace\"}")
+		if err := zone.ReplaceNameServer(n, t, c, nameServer); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
@@ -304,8 +314,8 @@ func (s *Server) zoneNameServerNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if deleted := zone.DeleteNameServer(n, t, c); !deleted {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not delete\"}")
+		if err := zone.DeleteNameServer(n, t, c); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
@@ -404,8 +414,8 @@ func (s *Server) zoneStaticRecordNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if replaced := zone.ReplaceStaticRecord(n, t, c, staticRecord); !replaced {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not replace\"}")
+		if err := zone.ReplaceStaticRecord(n, t, c, staticRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
@@ -423,8 +433,8 @@ func (s *Server) zoneStaticRecordNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if deleted := zone.DeleteStaticRecord(n, t, c); !deleted {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not delete\"}")
+		if err := zone.DeleteStaticRecord(n, t, c); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
@@ -585,8 +595,8 @@ func (s *Server) zoneDynamicGroupDynamicRecordNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if replaced := dynamicGroup.ReplaceDynamicRecord(n, t, c, dynamicRecord); !replaced {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not replace\"}")
+		if err := dynamicGroup.ReplaceDynamicRecord(n, t, c, dynamicRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
@@ -604,8 +614,8 @@ func (s *Server) zoneDynamicGroupDynamicRecordNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if deleted := dynamicGroup.DeleteDynamicRecord(n, t, c); !deleted {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not delete\"}")
+		if err := dynamicGroup.DeleteDynamicRecord(n, t, c); err != nil{
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
@@ -737,8 +747,8 @@ func (s *Server) zoneDynamicGroupNegativeRecordNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if replaced := dynamicGroup.ReplaceNegativeRecord(n, t, c, negativeRecord); !replaced {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not replace\"}")
+		if err := dynamicGroup.ReplaceNegativeRecord(n, t, c, negativeRecord); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
@@ -756,8 +766,8 @@ func (s *Server) zoneDynamicGroupNegativeRecordNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		if deleted := dynamicGroup.DeleteNegativeRecord(n, t, c); !deleted {
-			context.String(http.StatusBadRequest, "{\"reason\":\"can not delete\"}")
+		if err := dynamicGroup.DeleteNegativeRecord(n, t, c); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
 		context.Status(http.StatusOK)
