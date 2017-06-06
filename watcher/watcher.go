@@ -102,7 +102,7 @@ func (w *Watcher) updateAlive(domain string, groupName string, record *contexter
 	}
 	body := w.watcherContext.NotifyBody
 	if body == "" {
-		body = "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n-----"
+		body = "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n"
 	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
 		w.notifier.Notify(replacer, subject, body)

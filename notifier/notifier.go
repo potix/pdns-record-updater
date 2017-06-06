@@ -49,11 +49,13 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 		conn, err = tls.Dial("tcp", mailContext.HostPort, tlsContext)
 		if err != nil {
 			belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not connect mail host with tls (%v)", mailContext.HostPort)))
+			return
 		}
 	} else {
 		conn, err = net.Dial("tcp", mailContext.HostPort)
 		if err != nil {
 			belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not connect mail host (%v)", mailContext.HostPort)))
+			return
 		}
 	}
 	defer conn.Close()
@@ -61,6 +63,7 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 	client, err := smtp.NewClient(conn, host)
 	if err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create smtp client (%v)", mailContext.HostPort)))
+		return
 	}
 
 	if mailContext.UseStartTLS {
@@ -70,15 +73,18 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 		}
 		if err := client.StartTLS(tlsconfig); err != nil {
 			belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not start tls (%v)", mailContext.HostPort)))
+			return
 		}
 	    }
 
 	if err = client.Auth(auth); err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not authentication (%v) (%v)", mailContext.Username, mailContext.Password)))
+		return
 	}
 
 	if err = client.Mail(from.Address); err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not send MAIL command (%v)", from.Address)))
+		return
 	}
 
 	var emails []string
@@ -88,26 +94,31 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 	recept := strings.Join(emails, ",")
 	if err = client.Rcpt(recept); err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not send RCPT command (%v)", recept)))
+		return
 	}
 
 	w, err := client.Data()
 	if err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not send DATA command")))
+		return
 	}
 
 	_, err = w.Write([]byte(message))
 	if err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not write message (%v)", message)))
+		return
 	}
 
 	err = w.Close()
 	if err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not close message writer")))
+		return
 	}
 
 	err = client.Quit()
 	if err != nil {
 		belog.Notice("%v", errors.Wrap(err, fmt.Sprintf("can not send QUIT command")))
+		return
 	}
 }
 
