@@ -1,18 +1,22 @@
 package initializer
 
 import (
-	import "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
+        "github.com/potix/pdns-record-updater/contexter"
 )
 
-// 
-func (i *Initialize) insertZone(zoneName) {
+// Initializer is initializer
+type Initializer struct {
+	initializerContest *contexter.Initializer
+}
+
+func (i *Initializer) insertZone(zoneName) {
 
 // curl -X POST --data '{"name":"example.org.", "kind": "Native", "masters": [], "nameservers": ["ns1.example.org.", "ns2.example.org."]}' -v -H 'X-API-Key: changeme' http://127.0.0.1:8081/api/v1/servers/localhost/zones | jq .
 
 }
 
-func (i *Initialize) insertRecord() {
-
+func (i *Initializer) insertRecord() {
 
 //# Combined replacement of multiple RRsets
 //curl -X PATCH --data '{"rrsets": [
@@ -30,13 +34,12 @@ func (i *Initialize) insertRecord() {
 //  }
 //  ] }' -H 'X-API-Key: changeme' http://127.0.0.1:8081/api/v1/servers/localhost/zones/example.org. | jq .
 
-
 }
 
 
 
-// initalize is initialize power dns record
-func (i *Initialize) Initialize() (error) {
+// Initialize is initialize power dns record
+func (i *Initializer) Initialize() (error) {
 	for {
 		result, err := i.client.GetWatchResult()
 		if (err != nil) {
@@ -47,10 +50,10 @@ func (i *Initialize) Initialize() (error) {
 		break
 	}
 
-	for zoneName, zoneResult  in range result.zone {
+	//for domain, zoneResult  in range result.zone {
 		//INSERT INTO domains (name, type) VALUES ('zoneName', 'NATIVE');
 
-	}
+	//}
 
 	// initialize
 
@@ -60,10 +63,10 @@ func (i *Initialize) Initialize() (error) {
 
 
 // New is create initializer
-func New(initializer *contexter.Initializer, client client.Client) (*Initializer) {
+func New(initializerContext *contexter.Initializer, client client.Client) (*Initializer) {
         return &Initializer {
                 client:     client,
-		pdnsSqlite: initializer.PdnsSqlite,
+		initializerContext: initializerContext,
         }
 }
 
