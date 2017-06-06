@@ -688,11 +688,13 @@ type Initializer struct {
 
 // Context is context
 type Context struct {
-	Watcher  *Watcher             // 監視設定
-	Notifier *Notifier            // 通知設定
-	Server   *Server              // サーバー設定
-	Client   *Client              // クライアント設定
-	Logger   *belog.ConfigLoggers // ログ設定
+	Watcher     *Watcher             // 監視設定
+	Notifier    *Notifier            // 通知設定
+	Server      *Server              // サーバー設定
+	Client      *Client              // クライアント設定
+	Initializer *Initializer         // Initializer設定
+	Updater     *Updater             // Updater設定
+	Logger      *belog.ConfigLoggers // ログ設定
 }
 
 // Contexter is contexter
