@@ -1,22 +1,22 @@
 package initializer
 
 import (
-	"github.com/mattn/go-sqlite3"
+	//"github.com/pkg/errors"
+	"github.com/potix/belog"
+	//"github.com/mattn/go-sqlite3"
         "github.com/potix/pdns-record-updater/contexter"
+        "github.com/potix/pdns-record-updater/api/client"
+        "github.com/potix/pdns-record-updater/api/structure"
+	"time"
 )
 
 // Initializer is initializer
 type Initializer struct {
-	initializerContest *contexter.Initializer
+	client *client.Client
+	initializerContext *contexter.Initializer
 }
 
-func (i *Initializer) insertZone(zoneName) {
-
-// curl -X POST --data '{"name":"example.org.", "kind": "Native", "masters": [], "nameservers": ["ns1.example.org.", "ns2.example.org."]}' -v -H 'X-API-Key: changeme' http://127.0.0.1:8081/api/v1/servers/localhost/zones | jq .
-
-}
-
-func (i *Initializer) insertRecord() {
+func (i *Initializer) insertRecord(domain string, nameServer []*structure.NameServerRecordWatchResultResponse, staticRecord []*structure.StaticRecordWatchResultResponse, dynamicRecord []*structure.DynamicRecordWatchResultResponse) (error) {
 
 //# Combined replacement of multiple RRsets
 //curl -X PATCH --data '{"rrsets": [
@@ -34,36 +34,43 @@ func (i *Initializer) insertRecord() {
 //  }
 //  ] }' -H 'X-API-Key: changeme' http://127.0.0.1:8081/api/v1/servers/localhost/zones/example.org. | jq .
 
+// INSERT INTO domains (name, type) VALUES (’example.com’, ‘MASTER’);
+// INSERT INTO records (domain_id, name, content, type, ttl, prio) VALUES (1, ‘example.com’, ‘ns1.example.com hostmaster.example.com 1′, ‘SOA’, 86400, NULL);
+// INSERT INTO records (domain_id, name, content, type, ttl, prio) VALUES (1, ‘example.com’, ‘ns1.example.com’, ‘NS’, 86400, NULL);
+// INSERT INTO records (domain_id, name, content, type, ttl, prio) VALUES (1, ‘example.com’, ‘ns2.example.com’, ‘NS’, 86400, NULL);
+// INSERT INTO records (domain_id, name, content, type, ttl, prio) VALUES (1, ‘ns1.example.com’, ‘10.0.0.10′, ‘A’, 86400, NULL);
+// INSERT INTO records (domain_id, name, content, type, ttl, prio) VALUES (1, ‘ns2.example.com’, ‘10.0.0.20′, ‘A’, 86400, NULL);
+
+	return nil
 }
 
 
 
 // Initialize is initialize power dns record
-func (i *Initializer) Initialize() (error) {
+func (i *Initializer) Initialize() (err error) {
+	var watchResultResponse *structure.WatchResultResponse
 	for {
-		result, err := i.client.GetWatchResult()
+		watchResultResponse, err = i.client.GetWatchResult()
 		if (err != nil) {
-			plog.Error("can not get watcher result (%v)", err) 
+			belog.Error("can not get watcher result (%v)", err)
 			continue;
 		}
 		time.Sleep(time.Second)
 		break
 	}
+	for domain, zoneWatchResultResponse := range watchResultResponse.Zone {
+		// record
+		err := i.insertRecord(domain, zoneWatchResultResponse.NameServer, zoneWatchResultResponse.StaticRecord, zoneWatchResultResponse.DynamicRecord)
+		if err != nil {
+			return err;
+		}
+	}
 
-	//for domain, zoneResult  in range result.zone {
-		//INSERT INTO domains (name, type) VALUES ('zoneName', 'NATIVE');
-
-	//}
-
-	// initialize
-
-	//INSERT INTO domains (name, type) VALUES ('powerdns.com', 'NATIVE');
-
+	return nil
 }
 
-
 // New is create initializer
-func New(initializerContext *contexter.Initializer, client client.Client) (*Initializer) {
+func New(initializerContext *contexter.Initializer, client *client.Client) (*Initializer) {
         return &Initializer {
                 client:     client,
 		initializerContext: initializerContext,

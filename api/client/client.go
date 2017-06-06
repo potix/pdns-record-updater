@@ -95,8 +95,8 @@ func (c *Client) doRequest(methodFunc func(reqInfo *reqInfo) (response []byte, e
 	return nil, errors.Errorf("give up request (%v)", reqInfo.resource)
 }
 
-// GetWatcherResult is get watcher result
-func (c *Client) GetWatcherResult() (result *structure.WatchResultResponse, err error) {
+// GetWatchResult is get watcher result
+func (c *Client) GetWatchResult() (watchResultResponse *structure.WatchResultResponse, err error) {
 	reqInfo := &reqInfo {
 		resource : "/v1/watcher/result",
 	}
@@ -104,13 +104,12 @@ func (c *Client) GetWatcherResult() (result *structure.WatchResultResponse, err 
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can not get watcher result (%v)", reqInfo.resource))
 	}
-	result = new(structure.WatchResultResponse)
-        err = json.Unmarshal(response, result)
+	watchResultResponse = new(structure.WatchResultResponse)
+        err = json.Unmarshal(response, watchResultResponse)
         if err != nil {
                 return nil, errors.Wrap(err, fmt.Sprintf("can not unmarshal response (%v)", reqInfo.resource))
         }
-
-	return result, nil
+	return watchResultResponse, nil
 }
 
 // New is create client

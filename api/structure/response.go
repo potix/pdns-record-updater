@@ -8,6 +8,15 @@ type StaticRecordWatchResultResponse struct {
         Content string
 }
 
+// NameServerRecordWatchResultResponse is name server record watch result
+type NameServerRecordWatchResultResponse struct {
+        Name    string
+        Type    string
+        TTL     uint32
+        Content string
+        Email   string
+}
+
 // DynamicRecordWatchResultResponse is dynamic record watch result
 type DynamicRecordWatchResultResponse struct {
         Name    string
@@ -19,7 +28,7 @@ type DynamicRecordWatchResultResponse struct {
 
 // ZoneWatchResultResponse is zone watch result
 type ZoneWatchResultResponse struct {
-	NameServer    []*StaticRecordWatchResultResponse
+	NameServer    []*NameServerRecordWatchResultResponse
 	StaticRecord  []*StaticRecordWatchResultResponse
 	DynamicRecord []*DynamicRecordWatchResultResponse
 }

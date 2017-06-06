@@ -39,7 +39,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			continue
 		}
 		newZoneWatchResultResponse := &structure.ZoneWatchResultResponse {
-				NameServer : make([]*structure.StaticRecordWatchResultResponse, 0),
+				NameServer : make([]*structure.NameServerRecordWatchResultResponse, 0),
 				StaticRecord : make([]*structure.StaticRecordWatchResultResponse, 0),
 				DynamicRecord : make([]*structure.DynamicRecordWatchResultResponse, 0),
 		}
@@ -48,11 +48,12 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			if !record.Validate() {
 				continue
 			}
-			newRecordWatchResultResponse := &structure.StaticRecordWatchResultResponse {
+			newRecordWatchResultResponse := &structure.NameServerRecordWatchResultResponse {
 				Name:    record.Name,
 				Type:    record.Type,
 				TTL:     record.TTL,
 				Content: record.Content,
+				Email:   record.Email,
 			}
 			newZoneWatchResultResponse.NameServer = append(newZoneWatchResultResponse.NameServer, newRecordWatchResultResponse)
 		}
@@ -227,7 +228,7 @@ func (s *Server) zoneNameServer(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
-		nameServer := new(contexter.StaticRecord)
+		nameServer := new(contexter.NameServerRecord)
 		if err := context.BindJSON(nameServer); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
@@ -286,7 +287,7 @@ func (s *Server) zoneNameServerNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		nameServer := new(contexter.StaticRecord)
+		nameServer := new(contexter.NameServerRecord)
 		if err := context.BindJSON(nameServer); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return

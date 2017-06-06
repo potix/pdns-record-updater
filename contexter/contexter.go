@@ -42,6 +42,25 @@ func (t *Target) GetAlive() (bool) {
 	return t.alive
 }
 
+// NameServerRecord is static record
+type NameServerRecord struct {
+	Name        string  // SOAプライマリ,DNSレコード名
+	Type        string  // DNSレコードタイプ
+	TTL         uint32  // DNSレコードTTL
+	Content     string  // DNSレコード内容
+	Email       string  // SOAレコードEmail
+}
+
+// Validate is validate static record
+func (n *NameServerRecord) Validate() (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "" || n.Email == "" {
+		return false
+	}
+	return true
+}
+
 // StaticRecord is static record
 type StaticRecord struct {
 	Name        string  // DNSレコード名
@@ -51,10 +70,10 @@ type StaticRecord struct {
 }
 
 // Validate is validate static record
-func (n *StaticRecord) Validate() (bool) {
+func (s *StaticRecord) Validate() (bool) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	if (n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "") {
+	if s.Name == "" || s.Type == "" || s.TTL == 0 || s.Content == "" {
 		return false
 	}
 	return true
@@ -80,12 +99,12 @@ type DynamicRecord struct {
 func (d *DynamicRecord) Validate() (bool) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	if (d.Name == "" || d.Type == "" || d.TTL == 0 || d.Content == "" ||
-            d.WatchInterval == 0 || d.EvalRule == "" || d.Target == nil) {
+	if d.Name == "" || d.Type == "" || d.TTL == 0 || d.Content == "" ||
+            d.WatchInterval == 0 || d.EvalRule == "" || d.Target == nil {
 		return false
 	}
 	for _, target := range d.Target {
-		if (target.Name == "" || target.Protocol == "" || target.Dest == "") {
+		if target.Name == "" || target.Protocol == "" || target.Dest == "" {
 			return false
 		}
 	}
@@ -173,7 +192,7 @@ type NegativeRecord struct {
 func (n *NegativeRecord) Validate() (bool) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	if (n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "") {
+	if n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "" {
 		return false
 	}
 	return true
@@ -339,25 +358,25 @@ func (d *DynamicGroup) ReplaceNegativeRecord(n string, t string, c string, negat
 
 // Zone is zone
 type Zone struct {
-	nameServer     []*StaticRecord           // ネームサーバーレコードリスト   [mutable]
+	nameServer     []*NameServerRecord           // ネームサーバーレコードリスト   [mutable]
 	staticRecord   []*StaticRecord           // 固定レコードリスト             [mutable]
 	dynamicGroup   map[string]*DynamicGroup  // 動的なレコードグループのリスト [mutable]
 }
 
 // GetNameServer is get name server
-func (z *Zone) GetNameServer() ([]*StaticRecord) {
+func (z *Zone) GetNameServer() ([]*NameServerRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*StaticRecord, 0, len(z.nameServer))
+	newNameServer := make([]*NameServerRecord, 0, len(z.nameServer))
 	copy(newNameServer, z.nameServer)
 	return newNameServer
 }
 
 // FindNameServer is fins name server
-func (z *Zone) FindNameServer(n string, t string, c string) ([]*StaticRecord) {
+func (z *Zone) FindNameServer(n string, t string, c string) ([]*NameServerRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*StaticRecord, 0, len(z.nameServer))
+	newNameServer := make([]*NameServerRecord, 0, len(z.nameServer))
 	for _, ns := range z.nameServer {
 		if ns.Name == n && ns.Type == t && ns.Content == c {
 			newNameServer = append(newNameServer, ns)
@@ -367,7 +386,7 @@ func (z *Zone) FindNameServer(n string, t string, c string) ([]*StaticRecord) {
 }
 
 // AddNameServer is add name server
-func (z *Zone) AddNameServer(nameServer *StaticRecord) (error) {
+func (z *Zone) AddNameServer(nameServer *NameServerRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	for _, ns := range z.nameServer {
@@ -384,7 +403,7 @@ func (z *Zone) DeleteNameServer(n string, t string, c string) (error) {
 	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*StaticRecord, 0, len(z.nameServer) - 1)
+	newNameServer := make([]*NameServerRecord, 0, len(z.nameServer) - 1)
 	for _, ns := range z.nameServer {
 		if ns.Name == n && ns.Type == t && ns.Content == c {
 			deleted = true
@@ -400,11 +419,11 @@ func (z *Zone) DeleteNameServer(n string, t string, c string) (error) {
 }
 
 // ReplaceNameServer is replace name server
-func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *StaticRecord) (error) {
+func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *NameServerRecord) (error) {
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*StaticRecord, 0, len(z.nameServer) - 1)
+	newNameServer := make([]*NameServerRecord, 0, len(z.nameServer) - 1)
 	for _, ns := range z.nameServer {
 		if ns.Name == n && ns.Type == t && ns.Content == c {
 			newNameServer = append(newNameServer, nameServer)
@@ -587,7 +606,7 @@ func (w *Watcher) AddZone(domain string) (error) {
 		return errors.Errorf("already exist domain")
 	}
 	newZone := &Zone {
-		nameServer:     make([]*StaticRecord, 0),
+		nameServer:     make([]*NameServerRecord, 0),
 		staticRecord:   make([]*StaticRecord, 0),
 		dynamicGroup:   make(map[string]*DynamicGroup),
 	}
@@ -660,6 +679,11 @@ type Client struct {
 type Updater struct {
 	PdnsServer string
         PdnsAPIKey string
+}
+
+// Initializer is initializer
+type Initializer struct {
+	PdnsSqlitePath string
 }
 
 // Context is context
