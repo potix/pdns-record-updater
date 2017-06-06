@@ -9,6 +9,7 @@ import (
         "github.com/potix/pdns-record-updater/initializer"
         "github.com/potix/pdns-record-updater/updater"
         "github.com/potix/pdns-record-updater/watcher"
+        "github.com/potix/pdns-record-updater/notifier"
         "github.com/potix/pdns-record-updater/api/server"
 	"flag"
 	"strings"
@@ -22,7 +23,7 @@ func runUpdater(contexter *contexter.Contexter) (err error) {
 	initializer := initializer.New(contexter.Context.Initializer, client)
 	initializer.Initialize()
 	updater := updater.New(contexter.Context.Updater, client)
-	update.Start()
+	updater.Start()
         sigChan := make(chan os.Signal, 1)
         signal.Notify(sigChan,
                 syscall.SIGINT,
@@ -46,7 +47,7 @@ Loop:
 	return nil
 }
 
-func runWatcher(contexter *contexter.Contexter, configuratir *configurator.configurator) (error) {
+func runWatcher(contexter *contexter.Contexter) (error) {
 	notifier := notifier.New(contexter.Context.Notifier)
 	watcher := watcher.New(contexter.Context.Watcher, notifier)
 	watcher.Init()
@@ -91,7 +92,7 @@ func main() {
                 os.Exit(1);
 	}
 	contexter := contexter.New(configurator)
-	err := contexter.LoadConfig()
+	err = contexter.LoadConfig()
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);
@@ -105,7 +106,7 @@ func main() {
 	if (strings.ToUpper(*mode) == "UPDATER") {
 		err = runUpdater(contexter)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
-		err = runWatcher(contexter, configurator)
+		err = runWatcher(contexter)
 	} else {
 		err = errors.New("unexpected run mode")
 	}

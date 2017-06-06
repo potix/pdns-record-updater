@@ -733,8 +733,8 @@ func (c *Contexter) SaveConfig() (error) {
 	return c.configurator.Load(c.Context)
 }
 
-// Dump is dump context
-func (c *Contexter) Dump() {
+// DumpContext is dump context
+func (c *Contexter) DumpContext() {
 	var buffer bytes.Buffer
 	encoder := toml.NewEncoder(&buffer)
 	mutableMutex.Lock()
