@@ -720,7 +720,7 @@ func (c *Contexter) LoadConfig() (error){
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
 	newContext := new(Context)
-	err := c.configurator.Save(newContext)
+	err := c.configurator.Load(newContext)
 	if err != nil {
 		return err
 	}
@@ -732,7 +732,7 @@ func (c *Contexter) LoadConfig() (error){
 func (c *Contexter) SaveConfig() (error) {
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
-	return c.configurator.Load(c.Context)
+	return c.configurator.Save(c.Context)
 }
 
 // DumpContext is dump context

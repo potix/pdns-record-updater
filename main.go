@@ -83,7 +83,7 @@ Loop:
 
 func main() {
 	var err error
-	mode := flag.String("mode", "", "run mode (updater|checker)")
+	mode := flag.String("mode", "", "run mode (updater|watcher|client)")
 	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")
 	flag.Parse()
 	configurator, err := configurator.New(*configPath)
@@ -112,6 +112,8 @@ func main() {
 		err = runUpdater(contexter)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
 		err = runWatcher(contexter)
+	} else if (strings.ToUpper(*mode) == "CLIENT") {
+		// TODO
 	} else {
 		err = errors.New("unexpected run mode")
 	}

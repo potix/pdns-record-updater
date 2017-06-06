@@ -1,4 +1,6 @@
 watcher:
+  notifysubject: "%(hostname) %(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
+  notifybody: "hostname: %(hostname)\nzone: %(zone)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n%(detail)"
   zone:
     "example.jp":
       nameserver:
@@ -6,6 +8,7 @@ watcher:
           type: "A"
           ttl: 3600
           content: "192.168.0.254"
+          email: "root.example.jp"
       record:
         - name: "bar"
           type: "A"
@@ -69,8 +72,6 @@ notifier:
     usestarttls: true
     usetls: true
     tlsskipverify: true
-    subject: "%(hostname) %(zone) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
-    body: "hostname: %(hostname)\nzone: %(zone)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n%(detail)"
 server:
   debug: true
   listen:
