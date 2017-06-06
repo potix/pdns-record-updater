@@ -72,6 +72,9 @@ func (s *Server) Start() (err error) {
 	}
 	s.addGetHandler(newGroup, "/watch/result", s.watchResult) // 監視結果取得
 
+	s.addGetHandler(newGroup, "/config", s.config) // 設定取得
+	s.addPostHandler(newGroup, "/config", s.config) // 設定読み込み、保存
+
 	s.addGetHandler(newGroup, "/zone", s.zone)  // ゾーン一覧取得
 	s.addPostHandler(newGroup, "/zone", s.zone)  // ゾーン作成
 

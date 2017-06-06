@@ -4,6 +4,8 @@ import (
 	"github.com/pkg/errors"
         "github.com/potix/belog"
 	"github.com/BurntSushi/toml"
+	"encoding/json"
+	"gopkg.in/yaml.v2"
 	"github.com/potix/pdns-record-updater/configurator"
 	"sync"
 	"bytes"
@@ -734,17 +736,33 @@ func (c *Contexter) SaveConfig() (error) {
 }
 
 // DumpContext is dump context
-func (c *Contexter) DumpContext() {
-	var buffer bytes.Buffer
-	encoder := toml.NewEncoder(&buffer)
+func (c *Contexter) DumpContext(format string) ([]byte, error) {
 	mutableMutex.Lock()
-	err := encoder.Encode(c.Context)
-        mutableMutex.Unlock()
-	if err != nil {
-	    belog.Error("%v", errors.Wrap(err, "can not dump context"))
-	    return
-	}
-	belog.Debug("%v", buffer.String())
+        defer mutableMutex.Unlock()
+        switch format {
+        case "toml":
+                var buffer bytes.Buffer
+                encoder := toml.NewEncoder(&buffer)
+                err := encoder.Encode(c.Context)
+                if err != nil {
+                        return nil, errors.Wrap(err, "can not encode with toml")
+                }
+                return buffer.Bytes(), nil
+        case "yaml":
+                y, err := yaml.Marshal(c.Context)
+                if err != nil {
+                        return nil, errors.Wrap(err, "can not encode with yaml")
+                }
+		return y, nil
+        case "json":
+                j, err := json.Marshal(c.Context)
+                if err != nil {
+                        return nil, errors.Wrap(err, "can not encode with json")
+                }
+		return j, nil
+        default:
+                return nil, errors.Errorf("unexpected format (%v)", format)
+        }
 }
 
 // New is create new contexter

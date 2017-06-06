@@ -1,5 +1,10 @@
 package structure
 
+// ConfigRequest is config
+type ConfigRequest struct {
+	Action string
+}
+
 // ZoneRequest is zone 
 type ZoneRequest struct {
 	Domain string

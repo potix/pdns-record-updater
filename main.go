@@ -102,7 +102,12 @@ func main() {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	contexter.DumpContext()
+	dump, err := contexter.DumpContext("toml")
+	if err != nil {
+		belog.Error("%v", err)
+                os.Exit(1);
+	}
+	belog.Debug("%v", dump)
 	if (strings.ToUpper(*mode) == "UPDATER") {
 		err = runUpdater(contexter)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {

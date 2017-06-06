@@ -8,6 +8,7 @@ import (
 	"github.com/potix/pdns-record-updater/api/structure"
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 func (s *Server) commonHandler(context *gin.Context) {
@@ -129,6 +130,50 @@ func (s *Server) watchResult(context *gin.Context) {
 		watchResultResponse := s.contextToWatchResultResponse()
 		s.jsonResponse(context, watchResultResponse)
 		return
+	}
+}
+
+func (s *Server) config(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+		fallthrough
+        case http.MethodGet:
+		dump, err := s.contexter.DumpContext("json")
+		if err != nil {
+			context.String(http.StatusInternalServerError, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		if context.Request.Method == http.MethodHead {
+			context.Status(http.StatusOK)
+		} else {
+			belog.Debug("json response: %v", string(dump))
+			context.Data(http.StatusOK, gin.MIMEJSON, dump)
+		}
+		return
+        case http.MethodPost:
+		var configRequest structure.ConfigRequest
+		if err := context.BindJSON(configRequest); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		switch strings.ToUpper(configRequest.Action) {
+		case "SAVE":
+			err := s.contexter.SaveConfig()
+			if err != nil {
+				context.String(http.StatusInternalServerError, "{\"reason\":\"%v\"}", err)
+				return
+			}
+			context.Status(http.StatusOK)
+		case "LOAD":
+			err := s.contexter.LoadConfig()
+			if err != nil {
+				context.String(http.StatusInternalServerError, "{\"reason\":\"%v\"}", err)
+				return
+			}
+			context.Status(http.StatusOK)
+		default:
+			context.String(http.StatusBadRequest, "{\"reason\":\"unexpected action\"}")
+		}
 	}
 }
 
