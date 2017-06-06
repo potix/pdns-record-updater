@@ -161,7 +161,6 @@ func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 			belog.Notice("%v", err)
 			continue
 		}
-		belog.Debug("%d", len(dynamicGroup.GetDynamicRecord()))
 		for _, record := range dynamicGroup.GetDynamicRecord() {
 			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
 				if (record.CompareAndSwapProgress(false, true)) {
