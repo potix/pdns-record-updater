@@ -79,9 +79,9 @@ func (w *Watcher) updateAlive(domain string, groupName string, record *contexter
 		if strings.ToUpper(trigger) == "CHANGED" {
 			triggerFlags |= tfChanged
 		} else if strings.ToUpper(trigger) == "LATESTDOWN" {
-			triggerFlags |= tfLatestUp
-		} else if strings.ToUpper(trigger) == "LATESTUP" {
 			triggerFlags |= tfLatestDown
+		} else if strings.ToUpper(trigger) == "LATESTUP" {
+			triggerFlags |= tfLatestUp
 		}
 	}
 	t := time.Now()
@@ -105,10 +105,13 @@ func (w *Watcher) updateAlive(domain string, groupName string, record *contexter
 		body = "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n"
 	}
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
+		belog.Debug("notify changed")
 		w.notifier.Notify(replacer, subject, body)
 	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == false {
+		belog.Debug("notify latestdown")
 		w.notifier.Notify(replacer, subject, body)
 	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == true  {
+		belog.Debug("notify latestup")
 		w.notifier.Notify(replacer, subject, body)
 	}
 }
