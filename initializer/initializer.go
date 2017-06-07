@@ -1,9 +1,11 @@
 package initializer
 
 import (
-	//"github.com/pkg/errors"
+	"github.com/pkg/errors"
 	"github.com/potix/belog"
-	//"github.com/mattn/go-sqlite3"
+        "database/sql"
+	// sqlite3 driver
+	_ "github.com/mattn/go-sqlite3"
         "github.com/potix/pdns-record-updater/contexter"
         "github.com/potix/pdns-record-updater/api/client"
         "github.com/potix/pdns-record-updater/api/structure"
