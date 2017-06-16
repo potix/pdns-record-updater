@@ -200,6 +200,7 @@ func (u *Updater) postPutPatch(resource string, method string, data interface{})
         if err != nil {
                 return errors.Wrap(err, fmt.Sprintf("can not marsnale request data (%v)", resource))
 	}
+	belog.Debug("request data: %v", string(jsonData))
         request, err := http.NewRequest(strings.ToUpper(method), resource, bytes.NewBuffer(jsonData))
         if err != nil {
                 return errors.Wrap(err, fmt.Sprintf("can not create request (%v)", resource))
@@ -244,16 +245,16 @@ func (u *Updater) createZone(domain string, zoneWatchResultResponse *structure.Z
 }
 
 func (u *Updater) getZone(domain string) (bool, error) {
-	resource := fmt.Sprintf("api/v1/servers/localhost/zones/%v", domain)
+	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, domain)
 	statusCode, err := u.get(resource)
 	if err != nil {
 		if statusCode == 0 {
-			return false, errors.Wrap(err, fmt.Sprintf("can not get api (%v)", resource))
+			return false, errors.Wrap(err, fmt.Sprintf("can not get zone (%v)", resource))
 		} else if statusCode != 200 && statusCode != 204 {
-			belog.Debug("%v", errors.Wrap(err, fmt.Sprintf("can not get api (%v)", resource)))
+			belog.Debug("%v", errors.Wrap(err, fmt.Sprintf("can not get zone (%v)", resource)))
 			return false, nil
 		} else {
-			belog.Debug("%v", errors.Wrap(err, fmt.Sprintf("can not get api (%v)", resource)))
+			belog.Debug("%v", errors.Wrap(err, fmt.Sprintf("can not get zone (%v)", resource)))
 			return true, nil
 		}
 	}

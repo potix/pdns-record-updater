@@ -99,16 +99,16 @@ func (s *Server) Start() (err error) {
 
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname", s.zoneDynamicGroupName) // 動的グループ削除
 
-	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/", s.zoneDynamicGroupDynamicRecord)  // 動的レコードの一覧を取得
-	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/", s.zoneDynamicGroupDynamicRecord) // 動的レコードの作成 
+	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord", s.zoneDynamicGroupDynamicRecord)  // 動的レコードの一覧を取得
+	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord", s.zoneDynamicGroupDynamicRecord) // 動的レコードの作成 
 
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                    // 動的レコードの取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                   // 動的レコードの変更
 	s.addPutHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content/forcedown", s.zoneDynamicGroupDynamicRecordNTCForceDown) // 動的レコードの変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                 // 動的レコードの削除
 
-	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/", s.zoneDynamicGroupNegativeRecord)  // ネガティブレコードの一覧取得
-	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/", s.zoneDynamicGroupNegativeRecord) // ネガティブレコードの作成
+	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord", s.zoneDynamicGroupNegativeRecord)  // ネガティブレコードの一覧取得
+	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord", s.zoneDynamicGroupNegativeRecord) // ネガティブレコードの作成
 
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC)    // ネガティブレコードの取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC)   // ネガティブレコードの変更

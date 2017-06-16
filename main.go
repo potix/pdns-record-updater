@@ -17,12 +17,16 @@ import (
 	"os/signal"
 	"syscall"
 	"runtime"
+	"fmt"
 )
 
-func runUpdater(contexter *contexter.Contexter) (err error) {
+func runUpdater(contexter *contexter.Contexter) (error) {
 	client := client.New(contexter.Context.Client)
 	initializer := initializer.New(contexter.Context.Initializer, client)
-	initializer.Initialize()
+	err := initializer.Initialize()
+	if err != nil {
+		return err
+	}
 	updater := updater.New(contexter.Context.Updater, client)
 	updater.Start()
         sigChan := make(chan os.Signal, 1)
@@ -84,11 +88,14 @@ Loop:
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	var err error
-	mode := flag.String("mode", "", "run mode (updater|watcher|client)")
+	mode := flag.String("mode", "", "run mode (updater|watcher)")
 	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")
 	flag.Parse()
+	if *mode == "" || *configPath == "" {
+		fmt.Printf("usage: %v -mode <updater|watcher|client> -config <config path>\n", os.Args[0])
+		os.Exit(1)
+	}
 	configurator, err := configurator.New(*configPath)
 	if err != nil {
 		belog.Error("%v", err)

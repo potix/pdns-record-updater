@@ -54,7 +54,7 @@ func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultRes
 }
 
 func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
-	stmt, err := db.Prepare(`INSERT INTO "records" ("domain_id", "name", "type", "content", "ttl", "prio", disable, auth) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	stmt, err := db.Prepare(`INSERT INTO "records" ("domain_id", "name", "type", "content", "ttl", "prio", "disabled", "auth") VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return errors.Wrap(err, "can not prepare of domain")
 	}
@@ -87,7 +87,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	// name server record
 	for _, nameServer := range zoneWatchResultResponse.NameServer {
 		name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, false)
-		content := helper.FixupRrsetName(nameServer.Content, domain, nameServer.Type, true)
+		content := helper.FixupRrsetContent(nameServer.Content, domain, nameServer.Type, true)
 		_, err = stmt.Exec(domainID, name, nameServer.Type, content, nameServer.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of name server record")
@@ -96,7 +96,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	// static record
 	for _, staticRecord := range zoneWatchResultResponse.StaticRecord {
 		name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, false)
-		content := helper.FixupRrsetName(staticRecord.Content, domain, staticRecord.Type, true)
+		content := helper.FixupRrsetContent(staticRecord.Content, domain, staticRecord.Type, true)
 		_, err = stmt.Exec(domainID, name, staticRecord.Type, content, staticRecord.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of static record")
@@ -105,7 +105,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	// dynamic record
 	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecord {
 		name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, false)
-		content := helper.FixupRrsetName(dynamicRecord.Content, domain, dynamicRecord.Type, true)
+		content := helper.FixupRrsetContent(dynamicRecord.Content, domain, dynamicRecord.Type, true)
 		_, err = stmt.Exec(domainID, name, dynamicRecord.Type, content, dynamicRecord.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of dynamic record")
@@ -127,15 +127,16 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 			return err;
 		}
 		if exists {
+			belog.Info("domain is already exists")
 			continue
 		}
 		domainID, err := i.insertDomain(db, domain, zoneWatchResultResponse)
 		if err != nil {
-			return err;
+			return errors.Wrap(err, "can not insert domain");
 		}
 		err = i.insertRecord(db, domainID, domain, zoneWatchResultResponse)
 		if err != nil {
-			return err;
+			return errors.Wrap(err, "can not insert record");
 		}
 	}
 
@@ -148,13 +149,14 @@ func (i *Initializer) Initialize() (err error) {
 	for {
 		if watchResultResponse, err = i.client.GetWatchResult(); err != nil {
 			belog.Error("can not get watcher result (%v)", err)
+			time.Sleep(time.Second)
 			continue;
 		}
 		time.Sleep(time.Second)
 		break
 	}
 	if err = i.insert(watchResultResponse); err != nil {
-		return err
+		return errors.Wrap(err, "can not initialize");
 	}
 
 	return nil

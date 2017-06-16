@@ -98,7 +98,7 @@ func (c *Client) doRequest(methodFunc func(reqInfo *reqInfo) (response []byte, e
 // GetWatchResult is get watcher result
 func (c *Client) GetWatchResult() (watchResultResponse *structure.WatchResultResponse, err error) {
 	reqInfo := &reqInfo {
-		resource : "/v1/watcher/result",
+		resource : "/v1/watch/result",
 	}
 	response, err := c.doRequest(c.get, reqInfo)
 	if err != nil {
