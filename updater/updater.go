@@ -177,14 +177,14 @@ func (u *Updater) get(resource string) (int, error) {
         }
         defer res.Body.Close()
         if res.StatusCode != 200 && res.StatusCode != 204 {
-                return res.StatusCode, errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", resource, res.StatusCode))
+                return res.StatusCode, errors.Errorf("unexpected status code (%v) (%v)", resource, res.StatusCode)
         }
 	if res.StatusCode == 200 {
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return res.StatusCode, errors.Wrap(err, fmt.Sprintf("can not read body (%v)", resource))
 		}
-		belog.Debug("body: %v", body)
+		belog.Debug("body: %v", string(body))
 	}
         belog.Debug("http ok (%v)", resource)
         return res.StatusCode, nil
@@ -214,14 +214,14 @@ func (u *Updater) postPutPatch(resource string, method string, data interface{})
         }
         defer res.Body.Close()
         if res.StatusCode != 200 && res.StatusCode != 201 && res.StatusCode != 204 {
-                return errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", resource, res.StatusCode))
+                return errors.Errorf("unexpected status code (%v) (%v)", resource, res.StatusCode)
         }
 	if res.StatusCode == 200 || res.StatusCode == 201 {
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("can not read body (%v)", resource))
 		}
-		belog.Debug("body: %v", body)
+		belog.Debug("body: %v", string(body))
 	}
         belog.Debug("http ok (%v)", resource)
         return nil
@@ -248,9 +248,9 @@ func (u *Updater) getZone(domain string) (bool, error) {
 	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, domain)
 	statusCode, err := u.get(resource)
 	if err != nil {
-		if statusCode == 0 {
+		if statusCode == 0 || statusCode == 401 {
 			return false, errors.Wrap(err, fmt.Sprintf("can not get zone (%v)", resource))
-		} else if statusCode != 200 && statusCode != 204 {
+		} else if statusCode != 200 && statusCode != 204  {
 			belog.Debug("%v", errors.Wrap(err, fmt.Sprintf("can not get zone (%v)", resource)))
 			return false, nil
 		} else {
