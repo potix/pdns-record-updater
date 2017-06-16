@@ -20,6 +20,18 @@ type Initializer struct {
 	initializerContext *contexter.Initializer
 }
 
+func (i *Initializer) selectDomain(db *sql.DB, domain string) (bool, error) {
+	rows, err := db.Query("SELECT * FROM domains WHERE name = ?", domain)
+	defer rows.Close()
+	if err != nil {
+		return false, err
+	}
+	for rows.Next() {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (int64, error) {
 	if len(zoneWatchResultResponse.NameServer) == 0 {
 		return 0, errors.Errorf("not name server")
@@ -110,6 +122,13 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 	}
 	defer db.Close();
 	for domain, zoneWatchResultResponse := range watchResultResponse.Zone {
+		exists, err := i.selectDomain(db, domain)
+		if err != nil {
+			return err;
+		}
+		if exists {
+			continue
+		}
 		domainID, err := i.insertDomain(db, domain, zoneWatchResultResponse)
 		if err != nil {
 			return err;

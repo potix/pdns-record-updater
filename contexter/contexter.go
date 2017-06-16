@@ -685,7 +685,7 @@ type Updater struct {
 
 // Initializer is initializer
 type Initializer struct {
-	PdnsSqlitePath string
+	PdnsSqlitePath       string
 }
 
 // Context is context
