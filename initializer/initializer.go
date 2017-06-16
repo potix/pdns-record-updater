@@ -38,7 +38,7 @@ func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultRes
 		return 0, errors.Wrap(err, "can not get domain id")
 	}
 
-	return domainId, nil
+	return domainID, nil
 }
 
 func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
@@ -56,18 +56,18 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 		primary = nameServer
 	}
 	if primary != nil {
-		content := fmt.Printf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email))
-		_, err = stmt.Exec(domainId, helper.NoDotDomain(domain), "SOA", content, primary.TTL, 0, 0, 1);
+		content := fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email))
+		_, err = stmt.Exec(domainID, helper.NoDotDomain(domain), "SOA", content, primary.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of soa record")
 		}
 	}
 	// ns record
 	for _, nameServer := range zoneWatchResultResponse.NameServer {
-		if nameserver.Type != "A" && nameserver.Type != "AAAA" {
+		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
 			continue
 		}
-		_, err = stmt.Exec(domainId, helper.NoDotDomain(domain), "NS", helper.DotHostname(nameserver.Name, domain), nameserver.TTL, 0, 0, 1);
+		_, err = stmt.Exec(domainID, helper.NoDotDomain(domain), "NS", helper.DotHostname(nameServer.Name, domain), nameServer.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of ns record")
 		}
@@ -76,7 +76,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	for _, nameServer := range zoneWatchResultResponse.NameServer {
 		name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, false)
 		content := helper.FixupRrsetName(nameServer.Content, domain, nameServer.Type, true)
-		_, err = stmt.Exec(domainId, name, nameServer.Type, nameServer.Content, nameServer.TTL, 0, 0, 1);
+		_, err = stmt.Exec(domainID, name, nameServer.Type, content, nameServer.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of name server record")
 		}
@@ -85,7 +85,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	for _, staticRecord := range zoneWatchResultResponse.StaticRecord {
 		name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, false)
 		content := helper.FixupRrsetName(staticRecord.Content, domain, staticRecord.Type, true)
-		_, err = stmt.Exec(domainId, name, staticRecord.Type, content, staticRecord.TTL, 0, 0, 1);
+		_, err = stmt.Exec(domainID, name, staticRecord.Type, content, staticRecord.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of static record")
 		}
@@ -94,7 +94,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecord {
 		name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, false)
 		content := helper.FixupRrsetName(dynamicRecord.Content, domain, dynamicRecord.Type, true)
-		_, err = stmt.Exec(domainId, name, dynamicRecord.Type, content, dynamicRecord.TTL, 0, 0, 1);
+		_, err = stmt.Exec(domainID, name, dynamicRecord.Type, content, dynamicRecord.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of dynamic record")
 		}

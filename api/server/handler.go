@@ -51,7 +51,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			}
 			newRecordWatchResultResponse := &structure.NameServerRecordWatchResultResponse {
 				Name:    record.Name,
-				Type:    record.Type,
+				Type:    strings.ToUpper(record.Type),
 				TTL:     record.TTL,
 				Content: record.Content,
 				Email:   record.Email,
@@ -64,7 +64,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			}
 			newRecordWatchResultResponse := &structure.StaticRecordWatchResultResponse {
 				Name:    record.Name,
-				Type:    record.Type,
+				Type:    strings.ToUpper(record.Type),
 				TTL:     record.TTL,
 				Content: record.Content,
 			}
@@ -84,7 +84,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 				}
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
 					Name:    record.Name,
-					Type:    record.Type,
+					Type:    strings.ToUpper(record.Type),
 					TTL:     record.TTL,
 					Content: record.Content,
 					Alive:   record.GetAlive(),
@@ -109,7 +109,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 				}
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
 					Name:    record.Name,
-					Type:    record.Type,
+					Type:    strings.ToUpper(record.Type),
 					TTL:     record.TTL,
 					Content: record.Content,
 					Alive:   negativeRecordAlive,

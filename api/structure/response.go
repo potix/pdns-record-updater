@@ -4,7 +4,7 @@ package structure
 type StaticRecordWatchResultResponse struct {
         Name    string
         Type    string
-        TTL     uint32
+        TTL     int32
         Content string
 }
 
@@ -12,7 +12,7 @@ type StaticRecordWatchResultResponse struct {
 type NameServerRecordWatchResultResponse struct {
         Name    string
         Type    string
-        TTL     uint32
+        TTL     int32
         Content string
         Email   string
 }
@@ -21,7 +21,7 @@ type NameServerRecordWatchResultResponse struct {
 type DynamicRecordWatchResultResponse struct {
         Name    string
         Type    string
-        TTL     uint32
+        TTL     int32
         Content string
         Alive   bool
 }

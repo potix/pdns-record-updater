@@ -52,6 +52,7 @@ func DotEmail(email string) (string) {
 
 // FixupRrsetName is fixup name of rrset
 func FixupRrsetName(name string, domain string, t string, withDot bool) (string) {
+	t = strings.ToUpper(t)
 	if t == "A" || t == "AAAA" || t == "CNAME" || t == "SRV" || t == "SOA" {
 		if (withDot) {
 			if name == "" {
@@ -72,6 +73,7 @@ func FixupRrsetName(name string, domain string, t string, withDot bool) (string)
 
 // FixupRrsetContent is fixup contentof rrset
 func FixupRrsetContent(content string, domain string, t string,  withDot bool) (string) {
+	t = strings.ToUpper(t)
         if t == "PTR" || t == "CNAME" {
 		if (withDot) {
 			if content == "" {

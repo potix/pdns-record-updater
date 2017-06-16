@@ -7,40 +7,52 @@ import (
         "github.com/potix/pdns-record-updater/api/client"
 	"github.com/potix/pdns-record-updater/api/structure"
 	"github.com/potix/pdns-record-updater/helper"
+        "sync/atomic"
+	"encoding/json"
+	"net/http"
+	"net/url"
+	"io/ioutil"
+	"bytes"
+	"strings"
 	"time"
 	"fmt"
 )
 
 // Updater is updater
 type Updater struct {
-	client *client.Client
+	client         *client.Client
 	updaterContext *contexter.Updater
+	running        uint32
 }
 
-type recordRequest struct {
+type record struct {
 	Content  string
-	Disabled string
+	Disabled bool
 }
 
-type commentRequest struct {
+type comment struct {
 	Content    string
 	Account    string
 	ModifiedAt int `json:"modified_at"`
 }
 
-type rrsetRequest struct {
+type rrset struct {
 	Name     string
 	Type     string
-	TTL      string
-	Comments []commentRequest
-	Records  []recordRequest
+	TTL      int32
+	Comments []*comment
+	Records  []*record
+}
+
+type rrsetRequest struct {
+	Rrsets      []*rrset
 }
 
 type zoneRequest struct {
 	Name        string
 	Kind        string
 	Nameservers []string
-	Rrsets      []rrsetRequest
+	Rrsets      []*rrset
 }
 
 func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (*zoneRequest, error) {
@@ -49,18 +61,17 @@ func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatc
 	zoneRequest.Kind = "NATIVE"
 	zoneRequest.Nameservers = make([]string, 0, len(zoneWatchResultResponse.NameServer))
 	for _, nameServer := range zoneWatchResultResponse.NameServer {
-		if nameServer.Type != "A" || nameServer.Type != "AAA" {
+		t := strings.ToUpper(nameServer.Type)
+		if t != "A" || t != "AAA" {
 			continue
 		}
 		zoneRequest.Nameservers = append(zoneRequest.Nameservers, helper.DotHostname(nameServer.Name, domain))
 	}
-	if len(zoneWatchResultResponse.Nameserver) == 0 {
+	if len(zoneWatchResultResponse.NameServer) == 0 {
 		return nil, errors.Errorf("can not create soa, because no nameserver")
 	}
-	zoneRequest.Rrsets, err = u.zoneWatcherResultResponseToRrsetRequest(domain, zoneWatchResultResponse)
-	if err != nil {
-		return nil, err
-	}
+	rrsets := u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse)
+	// create soa
 	var primary *structure.NameServerRecordWatchResultResponse
 	for _, nameServer := range zoneWatchResultResponse.NameServer {
 		if nameServer.Type != "A" && nameServer.Type != "AAA" {
@@ -72,36 +83,37 @@ func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatc
 	if primary != nil {
 		return nil, errors.Errorf("can not create soa, because no primary nameserver")
 	}
-	soa := &rrsetRequest{
+	soa := &rrset{
 		Name:     helper.DotDomain(domain),
 		Type:     "SOA",
 		TTL:      3600,
-		Comments: make(commentRequest, 0),
-		Records: make(recordRequest, 0, 1),
+		Comments: make([]*comment, 0),
+		Records: make([]*record, 0, 1),
 	}
-	record = &recordRequest {
+	record := &record {
 		Content : fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email)),
 		Disabled : false,
 	}
 	soa.Records = append(soa.Records, record)
-	zoneRequest.Rrsets = append(zoneRequest.Rrsets, soa)
+	rrsets = append(rrsets, soa)
+	zoneRequest.Rrsets =  rrsets
 	return zoneRequest, nil
 }
 
-func (u *Updater) zoneWatcherResultResponseToRrsetRequest(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) ([]*rrsetRequest, error) {
-	rrsets := make([]*rrsetRequest, 0, 1 + len(zoneWatchResultResponse.Nameserver) + len(zoneWatchResultResponse.StaticRecord) + len(zoneWatchResultResponse.DynamicRecord))
+func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) ([]*rrset) {
+	rrsets := make([]*rrset, 0, 1 + len(zoneWatchResultResponse.NameServer) + len(zoneWatchResultResponse.StaticRecord) + len(zoneWatchResultResponse.DynamicRecord))
 	// name server
 	for _, nameServer := range zoneWatchResultResponse.NameServer {
                 name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
                 content := helper.FixupRrsetContent(nameServer.Content, domain, nameServer.Type, true)
-		rrset := &rrsetRequest{
+		rrset := &rrset{
 			Name:     name,
 			Type:     nameServer.Type,
-			TTL:      nameServer.TTTL,
-			Comments: make(commentRequest, 0),
-			Records: make(recordRequest, 0, 1),
+			TTL:      nameServer.TTL,
+			Comments: make([]*comment, 0),
+			Records: make([]*record, 0, 1),
 		}
-		record = &recordRequest {
+		record := &record {
 			Content : content,
 			Disabled : false,
 		}
@@ -112,14 +124,14 @@ func (u *Updater) zoneWatcherResultResponseToRrsetRequest(domain string, zoneWat
 	for _, staticRecord := range zoneWatchResultResponse.StaticRecord {
                 name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, true)
                 content := helper.FixupRrsetContent(staticRecord.Content, domain, staticRecord.Type, true)
-		rrset := &rrsetRequest{
+		rrset := &rrset{
 			Name:     name,
 			Type:     staticRecord.Type,
-			TTL:      staticRecord.TTTL,
-			Comments: make(commentRequest, 0),
-			Records: make(recordRequest, 0, 1),
+			TTL:      staticRecord.TTL,
+			Comments: make([]*comment, 0),
+			Records: make([]*record, 0, 1),
 		}
-		record = &recordRequest {
+		record := &record {
 			Content : content,
 			Disabled : false,
 		}
@@ -130,113 +142,118 @@ func (u *Updater) zoneWatcherResultResponseToRrsetRequest(domain string, zoneWat
 	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecord {
                 name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, true)
                 content := helper.FixupRrsetContent(dynamicRecord.Content, domain, dynamicRecord.Type, true)
-		rrset := &rrsetRequest{
+		rrset := &rrset{
 			Name:     name,
 			Type:     dynamicRecord.Type,
-			TTL:      dynamicRecord.TTTL,
-			Comments: make(commentRequest, 0),
-			Records: make(recordRequest, 0, 1),
+			TTL:      dynamicRecord.TTL,
+			Comments: make([]*comment, 0),
+			Records: make([]*record, 0, 1),
 		}
-		record = &recordRequest {
+		record := &record {
 			Content : content,
 			Disabled : !dynamicRecord.Alive,
 		}
 		rrset.Records = append(rrset.Records, record)
 		rrsets = append(rrsets, rrset)
 	}
+	return rrsets
 }
 
 func (u *Updater) get(resource string) (int, error) {
-	url := fmt.Sprintf("%v/%v", u.updaterContext.PdnsServer, resource)
-        u, err := url.Parse(url)
+        parsedURL, err := url.Parse(resource)
         if err != nil {
-                return 0, errors.Errorf("can not parse url (%v)", url)
+                return 0, errors.Errorf("can not parse url (%v)", resource)
         }
-        httpClient := helper.NewHTTPClient(u.Scheme, u.Host, false, 30)
-        request, err := http.NewRequest("GET", url, nil)
+        httpClient := helper.NewHTTPClient(parsedURL.Scheme, parsedURL.Host, false, 30)
+        request, err := http.NewRequest("GET", resource, nil)
         if err != nil {
-                return 0, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", url))
+                return 0, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", resource))
         }
 	request.Header.Set("Accept", "*/*")
 	request.Header.Set("X-API-Key", u.updaterContext.PdnsAPIKey)
         res, err := httpClient.Do(request)
         if err != nil {
-                return 0, errors.Wrap(err, fmt.Sprintf("can not request (%v)", url))
+                return 0, errors.Wrap(err, fmt.Sprintf("can not request (%v)", resource))
         }
         defer res.Body.Close()
         if res.StatusCode != 200 && res.StatusCode != 204 {
-                return res.StatusCode, errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", url, res.StatusCode))
+                return res.StatusCode, errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", resource, res.StatusCode))
         }
 	if res.StatusCode == 200 {
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return res.StatusCode, errors.Wrap(err, fmt.Sprintf("can not read body (%v)", url))
+			return res.StatusCode, errors.Wrap(err, fmt.Sprintf("can not read body (%v)", resource))
 		}
 		belog.Debug("body: %v", body)
 	}
-        belog.Debug("http ok (%v)", url)
+        belog.Debug("http ok (%v)", resource)
         return res.StatusCode, nil
 }
 
-func (u *Updater) postPutPatch(resource string, method string, request interface{}) (error) {
-	url := fmt.Sprintf("%v/%v", u.updaterContext.PdnsServer, resource)
-        u, err := url.Parse(url)
+func (u *Updater) postPutPatch(resource string, method string, data interface{}) (error) {
+        parsedURL, err := url.Parse(resource)
         if err != nil {
-                return errors.Errorf("can not parse url (%v)", url)
+                return errors.Errorf("can not parse url (%v)", resource)
         }
-        httpClient := helper.NewHTTPClient(u.Scheme, u.Host, false, 30)
-        jsonRequest, err := json.Marshal(request)
+        httpClient := helper.NewHTTPClient(parsedURL.Scheme, parsedURL.Host, false, 30)
+        jsonData, err := json.Marshal(data)
         if err != nil {
-                return errors.Wrap(err, fmt.Sprintf("can not marsnale request (%v)", url))
+                return errors.Wrap(err, fmt.Sprintf("can not marsnale request data (%v)", resource))
 	}
-        request, err := http.NewRequest(strings.ToUpper(method), url, jsonRequest)
+        request, err := http.NewRequest(strings.ToUpper(method), resource, bytes.NewBuffer(jsonData))
         if err != nil {
-                return errors.Wrap(err, fmt.Sprintf("can not create request (%v)", url))
+                return errors.Wrap(err, fmt.Sprintf("can not create request (%v)", resource))
         }
 	request.Header.Set("Accept", "*/*")
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-API-Key", u.updaterContext.PdnsAPIKey)
-        res, err := httpClient.Do(jsonRequest)
+        res, err := httpClient.Do(request)
         if err != nil {
-                return errors.Wrap(err, fmt.Sprintf("can not request (%v)", url))
+                return errors.Wrap(err, fmt.Sprintf("can not request (%v)", resource))
         }
         defer res.Body.Close()
         if res.StatusCode != 200 && res.StatusCode != 201 && res.StatusCode != 204 {
-                return errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", url, res.StatusCode))
+                return errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", resource, res.StatusCode))
         }
 	if res.StatusCode == 200 || res.StatusCode == 201 {
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("can not read body (%v)", url))
+			return errors.Wrap(err, fmt.Sprintf("can not read body (%v)", resource))
 		}
 		belog.Debug("body: %v", body)
 	}
-        belog.Debug("http ok (%v)", url)
+        belog.Debug("http ok (%v)", resource)
         return nil
 }
 
-func (u *Updater) zoneUpdate(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
-	rrsetRequest, err := zoneWatcherResultResponseToRrsetRequest(zoneWatchResultResponse)
-	resource := fmt.Sprintf("api/v1/servers/localhost/zones/%v", domain)
-	return u.postPutPatch(resource, "PATCH", rrserRequest)
+func (u *Updater) updateZone(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
+	rrsetRequest := &rrsetRequest {
+		Rrsets : u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse),
+	}
+	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, domain)
+	return u.postPutPatch(resource, "PATCH", rrsetRequest)
 }
 
-func (u *Updater) zoneCreate(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
-	zoneRequest, err := zoneWatcherResultResponseToZoneRequest(domain, zoneWatchResultResponse)
-	return u.postPutPatch("api/v1/servers/localhost/zones", "POST", zoneRequest)
+func (u *Updater) createZone(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
+	zoneRequest, err := u.zoneWatcherResultResponseToZoneRequest(domain, zoneWatchResultResponse)
+	if err != nil {
+		return err
+	}
+	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones", u.updaterContext.PdnsServer)
+	return u.postPutPatch(resource, "POST", zoneRequest)
 }
 
 func (u *Updater) getZone(domain string) (bool, error) {
 	resource := fmt.Sprintf("api/v1/servers/localhost/zones/%v", domain)
 	statusCode, err := u.get(resource)
 	if err != nil {
-		if res.Stauscode == 0 {
-			return false, errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource))
-		} else if res.StatusCode != 200 && res.StatusCode != 204 {
-			belog.Debug("%v", errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource)))
+		if statusCode == 0 {
+			return false, errors.Wrap(err, fmt.Sprintf("can not get api (%v)", resource))
+		} else if statusCode != 200 && statusCode != 204 {
+			belog.Debug("%v", errors.Wrap(err, fmt.Sprintf("can not get api (%v)", resource)))
 			return false, nil
 		} else {
-			belog.Debug("%v", errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource)))
+			belog.Debug("%v", errors.Wrap(err, fmt.Sprintf("can not get api (%v)", resource)))
 			return true, nil
 		}
 	}
@@ -246,6 +263,7 @@ func (u *Updater) getZone(domain string) (bool, error) {
 func (u *Updater) updateLoop() () {
 	for atomic.LoadUint32(&u.running) == 1 {
 		var watchResultResponse *structure.WatchResultResponse
+		var err error
 		for {
 			if watchResultResponse, err = u.client.GetWatchResult(); err != nil {
 				belog.Error("can not get watcher result (%v)", err)
@@ -261,12 +279,12 @@ func (u *Updater) updateLoop() () {
 				continue
 			}
 			if exist {
-				err := u.updateZone(domain, zoneWatchResultResponse)
+				err = u.updateZone(domain, zoneWatchResultResponse)
 				if err != nil {
 					belog.Error("can not call api (%v)", err)
 				}
 			} else {
-				err := u.createZone(domain, zoneWatchResultResponse)
+				err = u.createZone(domain, zoneWatchResultResponse)
 				if err != nil {
 					belog.Error("can not call api (%v)", err)
 				}

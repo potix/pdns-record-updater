@@ -48,7 +48,7 @@ func (t *Target) GetAlive() (bool) {
 type NameServerRecord struct {
 	Name        string  // SOAプライマリ,DNSレコード名
 	Type        string  // DNSレコードタイプ
-	TTL         uint32  // DNSレコードTTL
+	TTL         int32   // DNSレコードTTL
 	Content     string  // DNSレコード内容
 	Email       string  // SOAレコードEmail
 }
@@ -67,7 +67,7 @@ func (n *NameServerRecord) Validate() (bool) {
 type StaticRecord struct {
 	Name        string  // DNSレコード名
 	Type        string  // DNSレコードタイプ
-	TTL         uint32  // DNSレコードTTL
+	TTL         int32   // DNSレコードTTL
 	Content     string  // DNSレコード内容
 }
 
@@ -85,7 +85,7 @@ func (s *StaticRecord) Validate() (bool) {
 type DynamicRecord struct {
 	Name                 string    // DNSレコード名
 	Type                 string    // DNSレコードタイプ
-	TTL                  uint32    // DNSレコードTTL 
+	TTL                  int32     // DNSレコードTTL 
 	Content              string    // DNSレコード内容                  
 	Target               []*Target // ターゲットリスト
 	EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
@@ -186,7 +186,7 @@ func (d *DynamicRecord) GetForceDown() (bool) {
 type NegativeRecord struct {
 	Name        string  // DNSレコード名
 	Type        string  // DNSレコードタイプ
-	TTL         uint32  // DNSレコードTTL
+	TTL         int32   // DNSレコードTTL
 	Content     string  // DNSレコード内容
 }
 

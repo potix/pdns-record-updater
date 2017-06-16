@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"runtime"
 )
 
 func runUpdater(contexter *contexter.Contexter) (err error) {
@@ -82,6 +83,8 @@ Loop:
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	var err error
 	mode := flag.String("mode", "", "run mode (updater|watcher|client)")
 	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")
