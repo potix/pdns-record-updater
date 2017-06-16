@@ -9,6 +9,7 @@ import (
         "github.com/potix/pdns-record-updater/contexter"
         "github.com/potix/pdns-record-updater/api/client"
         "github.com/potix/pdns-record-updater/api/structure"
+        "github.com/potix/pdns-record-updater/helper"
 	"time"
 	"strings"
 	"fmt"
@@ -24,11 +25,12 @@ func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultRes
 	if len(zoneWatchResultResponse.NameServer) == 0 {
 		return 0, errors.Errorf("not name server")
 	}
-	stmt, err := db.Prepare( `INSERT INTO "domains" ("name", "type", "account") VALUES (?, ?, ?)`);
+	stmt, err := db.Prepare( `INSERT INTO "domains" ("name", "type") VALUES (?, ?)`);
 	if err != nil {
 		return 0, errors.Wrap(err, "can not prepare of domain")
 	}
-	result, err := stmt.Exec(domain, "NATIVE", strings.Replace(zoneWatchResultResponse.NameServer[0].Email, "@", ".", -1))
+	defer stmt.Close()
+	result, err := stmt.Exec(helper.NoDotDomain(domain), "NATIVE")
 	if err != nil {
 		return 0, errors.Wrap(err, "can not execute statement of domain")
 	}
@@ -36,48 +38,68 @@ func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultRes
 	if err != nil {
 		return 0, errors.Wrap(err, "can not get domain id")
 	}
-	stmt.Close()
 
 	return domainId, nil
 }
 
 func (i *Initializer) insertRecord(db *sql.DB, domainId int64, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
-	stmt, err := db.Prepare( `INSERT INTO "records" ("domain_id", "name", "type", "content", "ttl", "prio", disable, auth) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	stmt, err := db.Prepare(`INSERT INTO "records" ("domain_id", "name", "type", "content", "ttl", "prio", disable, auth) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return errors.Wrap(err, "can not prepare of domain")
 	}
+	defer stmt.Close()
+	// soa record
+	var primary *structure.NameServerRecordWatchResultResponse
+	for _, nameServer := range zoneWatchResultResponse.NameServer {
+		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
+			continue
+		}
+		primary = nameServer
+	}
+	if primary != nil {
+		content := fmt.Printf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email))
+		_, err = stmt.Exec(domainId, helper.NoDotDomain(domain), "SOA", content, primary.TTL, 0, 0, 1);
+		if err != nil {
+			return errors.Wrap(err, "can not execute statement of soa record")
+		}
+	}
 	// ns record
-	for _, nameserver := range zoneWatchResultResponse.NameServer {
+	for _, nameServer := range zoneWatchResultResponse.NameServer {
 		if nameserver.Type != "A" && nameserver.Type != "AAAA" {
 			continue
 		}
-		_, err = stmt.Exec(domainId, domain, "NS", nameserver.Name, nameserver.TTL, 0, 0, 1);
+		_, err = stmt.Exec(domainId, helper.NoDotDomain(domain), "NS", helper.DotHostname(nameserver.Name, domain), nameserver.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of ns record")
 		}
 	}
 	// name server record
-	for _, nameserver := range zoneWatchResultResponse.NameServer {
-		_, err = stmt.Exec(domainId, nameserver.Name, nameserver.Type, nameserver.Content, nameserver.TTL, 0, 0, 1);
+	for _, nameServer := range zoneWatchResultResponse.NameServer {
+		name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, false)
+		content := helper.FixupRrsetName(nameServer.Content, domain, nameServer.Type, true)
+		_, err = stmt.Exec(domainId, name, nameServer.Type, nameServer.Content, nameServer.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of name server record")
 		}
 	}
 	// static record
 	for _, staticRecord := range zoneWatchResultResponse.StaticRecord {
-		_, err = stmt.Exec(domainId, staticRecord.Name, staticRecord.Type, staticRecord.Content, staticRecord.TTL, 0, 0, 1);
+		name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, false)
+		content := helper.FixupRrsetName(staticRecord.Content, domain, staticRecord.Type, true)
+		_, err = stmt.Exec(domainId, name, staticRecord.Type, content, staticRecord.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of static record")
 		}
 	}
 	// dynamic record
 	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecord {
-		_, err = stmt.Exec(domainId, dynamicRecord.Name, dynamicRecord.Type, dynamicRecord.Content, dynamicRecord.TTL, 0, 0, 1);
+		name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, false)
+		content := helper.FixupRrsetName(dynamicRecord.Content, domain, dynamicRecord.Type, true)
+		_, err = stmt.Exec(domainId, name, dynamicRecord.Type, content, dynamicRecord.TTL, 0, 0, 1);
 		if err != nil {
 			return errors.Wrap(err, "can not execute statement of dynamic record")
 		}
 	}
-	stmt.Close()
 
 	return nil
 }
