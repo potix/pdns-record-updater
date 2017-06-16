@@ -1,8 +1,14 @@
 package updater
 
 import (
+	"github.com/pkg/errors"
+	"github.com/potix/belog"
         "github.com/potix/pdns-record-updater/contexter"
         "github.com/potix/pdns-record-updater/api/client"
+	"github.com/potix/pdns-record-updater/api/structure"
+	"github.com/potix/pdns-record-updater/helper"
+	"time"
+	"fmt"
 )
 
 // Updater is updater
@@ -12,8 +18,8 @@ type Updater struct {
 }
 
 type recordRequest struct {
-	Content string
-	Disable string
+	Content  string
+	Disabled string
 }
 
 type commentRequest struct {
@@ -71,10 +77,13 @@ func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatc
 		Type:     "SOA",
 		TTL:      3600,
 		Comments: make(commentRequest, 0),
-		Records: make(recordRequest, 1),
+		Records: make(recordRequest, 0, 1),
 	}
-	soa.recordRequest.Content = fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email))
-	soa.recordRequest.Disable = false
+	record = &recordRequest {
+		Content : fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email)),
+		Disabled : false,
+	}
+	soa.Records = append(soa.Records, record)
 	zoneRequest.Rrsets = append(zoneRequest.Rrsets, soa)
 	return zoneRequest, nil
 }
@@ -90,9 +99,13 @@ func (u *Updater) zoneWatcherResultResponseToRrsetRequest(domain string, zoneWat
 			Type:     nameServer.Type,
 			TTL:      nameServer.TTTL,
 			Comments: make(commentRequest, 0),
-			Records: make(recordRequest, 1),
-		rrset.recordRequest.Content = content
-		rrset.recordRequest.Disable = false
+			Records: make(recordRequest, 0, 1),
+		}
+		record = &recordRequest {
+			Content : content,
+			Disabled : false,
+		}
+		rrset.Records = append(rrset.Records, record)
 		rrsets = append(rrsets, rrset)
 	}
 	// static record
@@ -104,9 +117,13 @@ func (u *Updater) zoneWatcherResultResponseToRrsetRequest(domain string, zoneWat
 			Type:     staticRecord.Type,
 			TTL:      staticRecord.TTTL,
 			Comments: make(commentRequest, 0),
-			Records: make(recordRequest, 1),
-		rrset.recordRequest.Content = content
-		rrset.recordRequest.Disable = false
+			Records: make(recordRequest, 0, 1),
+		}
+		record = &recordRequest {
+			Content : content,
+			Disabled : false,
+		}
+		rrset.Records = append(rrset.Records, record)
 		rrsets = append(rrsets, rrset)
 	}
 	// dynamic record
@@ -118,9 +135,13 @@ func (u *Updater) zoneWatcherResultResponseToRrsetRequest(domain string, zoneWat
 			Type:     dynamicRecord.Type,
 			TTL:      dynamicRecord.TTTL,
 			Comments: make(commentRequest, 0),
-			Records: make(recordRequest, 1),
-		rrset.recordRequest.Content = content
-		rrset.recordRequest.Disable = false
+			Records: make(recordRequest, 0, 1),
+		}
+		record = &recordRequest {
+			Content : content,
+			Disabled : !dynamicRecord.Alive,
+		}
+		rrset.Records = append(rrset.Records, record)
 		rrsets = append(rrsets, rrset)
 	}
 }
@@ -197,7 +218,7 @@ func (u *Updater) postPutPatch(resource string, method string, request interface
 func (u *Updater) zoneUpdate(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
 	rrsetRequest, err := zoneWatcherResultResponseToRrsetRequest(zoneWatchResultResponse)
 	resource := fmt.Sprintf("api/v1/servers/localhost/zones/%v", domain)
-	return u.postPutPatch(resource, "PATCH" rrserRequest)
+	return u.postPutPatch(resource, "PATCH", rrserRequest)
 }
 
 func (u *Updater) zoneCreate(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
@@ -212,10 +233,10 @@ func (u *Updater) getZone(domain string) (bool, error) {
 		if res.Stauscode == 0 {
 			return false, errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource))
 		} else if res.StatusCode != 200 && res.StatusCode != 204 {
-			belog.Debug("%v", errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource))
+			belog.Debug("%v", errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource)))
 			return false, nil
 		} else {
-			belog.Debug("%v", errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource))
+			belog.Debug("%v", errors.Warp(err, fmt.Sprintf("can not get api (%v)", resource)))
 			return true, nil
 		}
 	}

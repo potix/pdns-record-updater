@@ -11,7 +11,6 @@ import (
         "github.com/potix/pdns-record-updater/api/structure"
         "github.com/potix/pdns-record-updater/helper"
 	"time"
-	"strings"
 	"fmt"
 )
 
@@ -34,7 +33,7 @@ func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultRes
 	if err != nil {
 		return 0, errors.Wrap(err, "can not execute statement of domain")
 	}
-	domainId, err := result.LastInsertId()
+	domainID, err := result.LastInsertId()
 	if err != nil {
 		return 0, errors.Wrap(err, "can not get domain id")
 	}
@@ -42,7 +41,7 @@ func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultRes
 	return domainId, nil
 }
 
-func (i *Initializer) insertRecord(db *sql.DB, domainId int64, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
+func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
 	stmt, err := db.Prepare(`INSERT INTO "records" ("domain_id", "name", "type", "content", "ttl", "prio", disable, auth) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return errors.Wrap(err, "can not prepare of domain")
@@ -111,11 +110,11 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 	}
 	defer db.Close();
 	for domain, zoneWatchResultResponse := range watchResultResponse.Zone {
-		domainId, err := i.insertDomain(db, domain, zoneWatchResultResponse)
+		domainID, err := i.insertDomain(db, domain, zoneWatchResultResponse)
 		if err != nil {
 			return err;
 		}
-		err = i.insertRecord(db, domainId, domain, zoneWatchResultResponse)
+		err = i.insertRecord(db, domainID, domain, zoneWatchResultResponse)
 		if err != nil {
 			return err;
 		}
