@@ -26,33 +26,33 @@ type Updater struct {
 }
 
 type record struct {
-	Content  string
-	Disabled bool
+	Content  string `json:"content"`
+	Disabled bool   `json:"disabled"`
 }
 
 type comment struct {
-	Content    string
-	Account    string
-	ModifiedAt int `json:"modified_at"`
+	Content    string `json:"content"`
+	Account    string `json:"account"`
+	ModifiedAt int    `json:"modified_at"`
 }
 
 type rrset struct {
-	Name     string
-	Type     string
-	TTL      int32
-	Comments []*comment
-	Records  []*record
+	Name        string     `json:"name"`
+	Type        string     `json:"type"`
+	TTL         int32      `json:"ttl"`
+	CommentList []*comment `json:"comments"`
+	RecordList  []*record  `json:"records"`
 }
 
 type rrsetRequest struct {
-	Rrsets      []*rrset
+	Rrsets []*rrset `json:"rrsets"`
 }
 
 type zoneRequest struct {
-	Name        string
-	Kind        string
-	Nameservers []string
-	Rrsets      []*rrset
+	Name           string   `json:"name"`
+	Kind           string   `json:"kind"`
+	NameServerList []string `json:"nameservers"`
+	RrsetList      []*rrset `json:"rrsets"`
 }
 
 func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (*zoneRequest, error) {

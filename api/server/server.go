@@ -64,7 +64,7 @@ func (s *Server) Start() (err error) {
         }
 	engine := gin.Default()
 	var newGroup *gin.RouterGroup
-	if s.serverContext.Username != "" && s.serverContext.Password != "" {
+	if s.serverContext.Username != "" {
 		authHandler := gin.BasicAuth(gin.Accounts{s.serverContext.Username : s.serverContext.Password})
 		newGroup = engine.Group("/v1", authHandler, s.commonHandler)
 	} else {
@@ -78,6 +78,8 @@ func (s *Server) Start() (err error) {
 	s.addGetHandler(newGroup, "/zone", s.zone)  // ゾーン一覧取得
 	s.addPostHandler(newGroup, "/zone", s.zone)  // ゾーン作成
 
+	s.addGetHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
+	s.addPutHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
 	s.addDeleteHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
 
 	s.addGetHandler(newGroup, "/zone/:domain/nameserver", s.zoneNameServer)  // ネームサーバ一覧取得

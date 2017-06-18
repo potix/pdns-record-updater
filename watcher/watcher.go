@@ -72,10 +72,9 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w *Watcher) updateAlive(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
-	oldAlive := record.SwapAlive(newAlive);
+func (w Watcher) notify(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool, oldAlive bool) {
 	var triggerFlags uint32
-	for _, trigger := range record.NotifyTrigger {
+	for _, trigger := range record.NotifyTriggerList {
 		if strings.ToUpper(trigger) == "CHANGED" {
 			triggerFlags |= tfChanged
 		} else if strings.ToUpper(trigger) == "LATESTDOWN" {
@@ -113,6 +112,13 @@ func (w *Watcher) updateAlive(domain string, groupName string, record *contexter
 	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == true  {
 		belog.Debug("notify latestup")
 		w.notifier.Notify(replacer, subject, body)
+	}
+}
+
+func (w *Watcher) updateAlive(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
+	oldAlive := record.SwapAlive(newAlive);
+	if record.NotifyTriggerList != nil {
+		w.notify(domain, groupName, record, targetResult, newAlive, oldAlive)
 	}
 }
 

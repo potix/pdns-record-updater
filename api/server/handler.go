@@ -40,15 +40,14 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			continue
 		}
 		newZoneWatchResultResponse := &structure.ZoneWatchResultResponse {
+				PrimaryNameServer: zone.GetPrimaryNameServer(),
+				Email: zone.GetEmail(),
 				NameServer : make([]*structure.NameServerRecordWatchResultResponse, 0),
 				StaticRecord : make([]*structure.StaticRecordWatchResultResponse, 0),
 				DynamicRecord : make([]*structure.DynamicRecordWatchResultResponse, 0),
 		}
 		newWatchResultResponse.Zone[d] = newZoneWatchResultResponse
 		for _, record := range zone.GetNameServer() {
-			if !record.Validate() {
-				continue
-			}
 			newRecordWatchResultResponse := &structure.NameServerRecordWatchResultResponse {
 				Name:    record.Name,
 				Type:    strings.ToUpper(record.Type),
@@ -59,9 +58,6 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			newZoneWatchResultResponse.NameServer = append(newZoneWatchResultResponse.NameServer, newRecordWatchResultResponse)
 		}
 		for _, record := range zone.GetStaticRecord() {
-			if !record.Validate() {
-				continue
-			}
 			newRecordWatchResultResponse := &structure.StaticRecordWatchResultResponse {
 				Name:    record.Name,
 				Type:    strings.ToUpper(record.Type),
@@ -79,9 +75,6 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			}
 			var aliveRecordCount uint32
 			for _, record := range dynamicGroup.GetDynamicRecord() {
-				if !record.Validate() {
-					continue
-				}
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
 					Name:    record.Name,
 					Type:    strings.ToUpper(record.Type),
@@ -104,9 +97,6 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 				negativeRecordAlive = false
 			}
 			for _, record := range dynamicGroup.GetNegativeRecord() {
-				if !record.Validate() {
-					continue
-				}
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
 					Name:    record.Name,
 					Type:    strings.ToUpper(record.Type),
@@ -152,8 +142,12 @@ func (s *Server) config(context *gin.Context) {
 		return
         case http.MethodPost:
 		var configRequest structure.ConfigRequest
-		if err := context.BindJSON(configRequest); err != nil {
+		if err := context.BindJSON(&configRequest); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if !configRequest.Validate() {
+			context.String(http.StatusStatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
 		switch strings.ToUpper(configRequest.Action) {
@@ -173,6 +167,7 @@ func (s *Server) config(context *gin.Context) {
 			context.Status(http.StatusOK)
 		default:
 			context.String(http.StatusBadRequest, "{\"reason\":\"unexpected action\"}")
+			return
 		}
 	}
 }
@@ -220,11 +215,15 @@ func (s *Server) zone(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
+		if !zoneRequest.Validate() {
+			context.String(http.StatusStatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
 		if zoneRequest.Domain == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"no domain\"}")
 			return
 		}
-		if err := s.contexter.Context.Watcher.AddZone(zoneRequest.Domain); err != nil {
+		if err := s.contexter.Context.Watcher.AddZone(zoneRequest.Domain, zoneRequest.PrimaryNameServer, zoneRequest.Email); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
@@ -235,6 +234,43 @@ func (s *Server) zone(context *gin.Context) {
 
 func (s *Server) zoneDomain(context *gin.Context) {
         switch context.Request.Method {
+	case http.MethodHead:
+		fallthrough
+	case http.MethodGet:
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		if context.Request.Method == http.MethodHead {
+			context.Status(http.StatusOK)
+		} else {
+			zoneDomainResponse := &structure.ZoneDomainResponse {
+				PrimaryNameServer : zone.GetPrimaryNameServer(),
+				Email : zone.GetEmail(),
+			}
+			s.jsonResponse(context, zoneDomainResponse)
+		}
+		return
+        case http.MethodPut:
+		zone, err := s.getZone(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		var zoneDomainRequest structure.ZoneDomainRequest
+		if err := context.BindJSON(&zoneDomainRequest); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if !zoneDomainRequest.Validate() {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		zone.SetPrimaryNameServer(zoneDomainRequest.PrimaryNameServer)
+		zone.SetEmail(zoneDomainRequest.Email)
+		context.Status(http.StatusOK)
+		return
         case http.MethodDelete:
 		domain := context.Param("domain")
 		if domain == "" {
@@ -516,6 +552,10 @@ func (s *Server) zoneDynamicGroup(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
+		if !zoneDynamicGroupRequest.Validate() {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
 		if zoneDynamicGroupRequest.DynamicGroupName == "" {
 			context.String(http.StatusBadRequest, "{\"reason\":\"no dynamic group name\"}")
 			return
@@ -583,6 +623,12 @@ func (s *Server) zoneDynamicGroupDynamicRecord(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
+		for _, target := range dynamicRecord.TargetList {
+			if !target.Validate() {
+				context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+				return
+			}
+		}
 		if err := dynamicGroup.AddDynamicRecord(dynamicRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -641,6 +687,12 @@ func (s *Server) zoneDynamicGroupDynamicRecordNTC(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
+		for _, target := range dynamicRecord.TargetList {
+			if !target.Validate() {
+				context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+				return
+			}
+		}
 		if err := dynamicGroup.ReplaceDynamicRecord(n, t, c, dynamicRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -684,13 +736,9 @@ func (s *Server) zoneDynamicGroupDynamicRecordNTCForceDown(context *gin.Context)
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		dynamicRecord := dynamicGroup.FindDynamicRecord(n, t, c)
-		if len(dynamicRecord) == 0  {
+		dynamicRecordList := dynamicGroup.FindDynamicRecord(n, t, c)
+		if len(dynamicRecordList) == 0  {
 			context.String(http.StatusNotFound, "{\"reason\":\"not found\"}", err)
-			return
-		}
-		if len(dynamicRecord) > 0  {
-			context.String(http.StatusNotFound, "{\"reason\":\"match too many record\"}", err)
 			return
 		}
 		var zoneDynamicGroupDynamicRecordForceDownRequest structure.ZoneDynamicGroupDynamicRecordForceDownRequest
@@ -698,7 +746,9 @@ func (s *Server) zoneDynamicGroupDynamicRecordNTCForceDown(context *gin.Context)
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
-		dynamicRecord[0].SetForceDown(zoneDynamicGroupDynamicRecordForceDownRequest.ForceDown)
+		for _, dr :=  range dynamicRecord {
+			dr.SetForceDown(zoneDynamicGroupDynamicRecordForceDownRequest.ForceDown)
+		}
 		context.Status(http.StatusOK)
 		return
 	}

@@ -101,16 +101,18 @@ func main() {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	contexter := contexter.New(configurator)
+	contexter := contexter.New(*mode, configurator)
 	err = contexter.LoadConfig()
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);
 	}
-	err = belog.SetupLoggers(contexter.Context.Logger)
-	if err != nil {
-		belog.Error("%v", err)
-                os.Exit(1);
+	if contexter.Context.Logger != nil {
+		err = belog.SetupLoggers(contexter.Context.Logger)
+		if err != nil {
+			belog.Error("%v", err)
+			os.Exit(1);
+		}
 	}
 	dump, err := contexter.DumpContext("toml")
 	if err != nil {

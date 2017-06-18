@@ -9,25 +9,39 @@ import (
 	"github.com/potix/pdns-record-updater/configurator"
 	"sync"
 	"bytes"
+	"strings"
 )
 
 var mutableMutex *sync.Mutex
 
 // Target is config of target
 type Target struct {
-	Name          string   // target名
-	Protocol      string   // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
-	Dest          string   // 宛先
-	TCPTLS        bool     // TCPにTLSを使う
-	HTTPMethod    string   // HTTPメソッド
-	HTTPStatus    []string // OKとみなすHTTPステータスコード
-	Regexp        string   // OKとみなす正規表現  
-	ResSize       uint32   // 受信する最大レスポンスサイズ   
-	Retry         uint32   // リトライ回数 
-	RetryWait     uint32   // 次のリトライまでの待ち時間   
-	Timeout       uint32   // タイムアウトしたとみなす時間  
-	TLSSkipVerify bool     // TLSの検証をスキップする 
-	alive         bool     // 生存フラグ 
+	Name           string   `json:"name"           yaml:"name"           toml:"name"`           // target名
+	Protocol       string   `json:"protocol"       yaml:"protocol"       toml:"protocol"`       // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
+	Dest           string   `json:"dest"           yaml:"dest"           toml:"dest"`           // 宛先
+	TCPTLS         bool     `json:"tcpTls"         yaml:"tcpTls"         toml:"tcpTls"`         // TCPにTLSを使う
+	HTTPMethod     string   `json:"httpMethod"     yaml:"httpMethod"     toml:"httpMethod"`     // HTTPメソッド
+	HTTPStatusList []string `json:"httpStatusList" yaml:"httpStatusList" toml:"httpStatusList"` // OKとみなすHTTPステータスコード
+	Regexp         string   `json:"regexp"         yaml:"regexp"         toml:"regexp"`         // OKとみなす正規表現  
+	ResSize        uint32   `json:"resSize"        yaml:"resSize"        toml:"resSize"`        // 受信する最大レスポンスサイズ   
+	Retry          uint32   `json:"retry"          yaml:"retry"          toml:"retry"`          // リトライ回数 
+	RetryWait      uint32   `json:"retryWait"      yaml:"retryWait"      toml:"retryWait"`      // 次のリトライまでの待ち時間   
+	Timeout        uint32   `json:"timeout"        yaml:"timeout"        toml:"timeout"`        // タイムアウトしたとみなす時間  
+	TLSSkipVerify  bool     `json:"tlsSkipVerify"  yaml:"tlsSkipVerify"  toml:"tlsSkipVerify"`  // TLSの検証をスキップする 
+	alive          bool                                                                         // 生存フラグ 
+}
+
+// Validate ins validate target (no lock)
+func (t *Target) Validate() (bool) {
+	if t.Name == "" || t.Protocol == "" || t.Dest == "" {
+		return false
+	}
+	if t.Protocol == "http" || t.Protocol == "httpRegexp" {
+		if t.HTTPMethod == "" || t.HTTPStatusList == nil || len(t.HTTPStatusList) == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // SetAlive is set alive
@@ -44,38 +58,10 @@ func (t *Target) GetAlive() (bool) {
 	return t.alive
 }
 
-// NameServerRecord is static record
-type NameServerRecord struct {
-	Name        string  // SOAプライマリ,DNSレコード名
-	Type        string  // DNSレコードタイプ
-	TTL         int32   // DNSレコードTTL
-	Content     string  // DNSレコード内容
-	Email       string  // SOAレコードEmail
-}
+type NotifyTrigger string
 
-// Validate is validate static record
-func (n *NameServerRecord) Validate() (bool) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	if n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "" || n.Email == "" {
-		return false
-	}
-	return true
-}
-
-// StaticRecord is static record
-type StaticRecord struct {
-	Name        string  // DNSレコード名
-	Type        string  // DNSレコードタイプ
-	TTL         int32   // DNSレコードTTL
-	Content     string  // DNSレコード内容
-}
-
-// Validate is validate static record
-func (s *StaticRecord) Validate() (bool) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	if s.Name == "" || s.Type == "" || s.TTL == 0 || s.Content == "" {
+func (n NotifyTrigger) Validate() (bool) {
+	if strings.ToUpper(string(n)) != "CHANGED" && strings.ToUpper(string(n)) != "LATESTDOWN" && strings.ToUpper(string(n)) != "LATESTUP" {
 		return false
 	}
 	return true
@@ -83,31 +69,36 @@ func (s *StaticRecord) Validate() (bool) {
 
 // DynamicRecord is config of record
 type DynamicRecord struct {
-	Name                 string    // DNSレコード名
-	Type                 string    // DNSレコードタイプ
-	TTL                  int32     // DNSレコードTTL 
-	Content              string    // DNSレコード内容                  
-	Target               []*Target // ターゲットリスト
-	EvalRule             string    // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
-	WatchInterval        uint32    // 監視する間隔
-	currentIntervalCount uint32    // 現在の時間                       [mutable]
-	progress             bool      // 監視中を示すフラグ               [mutable]
-	Alive                bool      // 生存フラグ                       [mutable]
-	ForceDown            bool      // 強制的にダウンしたとみなすフラグ [mutable]
-	NotifyTrigger        []string  // notifierを送信するトリガー changed, latestDown, latestUp
+	Name                 string          `json:"name"              yaml:"name"              toml:"name"`              // DNSレコード名
+	Type                 string          `json:"type"              yaml:"type"              toml:"type"`              // DNSレコードタイプ
+	TTL                  int32           `json:"ttl"               yaml:"ttl"               toml:"ttl"`               // DNSレコードTTL 
+	Content              string          `json:"content"           yaml:"content"           toml:"content"`           // DNSレコード内容                  
+	TargetList           []*Target       `json:"targetList"        yaml:"targetList"        toml:"targetList"`        // ターゲットリスト
+	EvalRule             string          `json:"evalRule"          yaml:"evalRule"          toml:"evalRule"`          // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
+	WatchInterval        uint32          `json:"watchInterval"     yaml:"watchInterval"     toml:"watchInterval"`     // 監視する間隔
+	currentIntervalCount uint32                                                                                 // 現在の時間                       [mutable]
+	progress             bool                                                                                   // 監視中を示すフラグ               [mutable]
+	Alive                bool            `json:"alive"             yaml:"alive"             toml:"alive"`             // 生存フラグ                       [mutable]
+	ForceDown            bool            `json:"forceDown"         yaml:"forceDown"         toml:"forceDown"`         // 強制的にダウンしたとみなすフラグ [mutable]
+	NotifyTriggerList    []NotifyTrigger `json:"notifyTriggerList" yaml:"notifyTriggerList" toml:"notifyTriggerList"` // notifierを送信するトリガー changed, latestDown, latestUp
 }
 
-// Validate is validate dynamic record
+// Validate is validate dynamic record (no lock)
 func (d *DynamicRecord) Validate() (bool) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
 	if d.Name == "" || d.Type == "" || d.TTL == 0 || d.Content == "" ||
-            d.WatchInterval == 0 || d.EvalRule == "" || d.Target == nil {
+            d.WatchInterval == 0 || d.EvalRule == "" || d.TargetList == nil {
 		return false
 	}
-	for _, target := range d.Target {
-		if target.Name == "" || target.Protocol == "" || target.Dest == "" {
+	for _, target := range d.TargetList {
+		if !target.Validate() {
 			return false
+		}
+	}
+	if d.NotifyTriggerList != nil {
+		for _, notifyTrigger := range d.NotifyTriggerList {
+			if !notifyTrigger.Validate() {
+				return false
+			}
 		}
 	}
 	return true
@@ -184,17 +175,47 @@ func (d *DynamicRecord) GetForceDown() (bool) {
 
 // NegativeRecord is negative record
 type NegativeRecord struct {
-	Name        string  // DNSレコード名
-	Type        string  // DNSレコードタイプ
-	TTL         int32   // DNSレコードTTL
-	Content     string  // DNSレコード内容
+	Name        string `json:"name"    yaml:"name"    toml:"name"`     // DNSレコード名
+	Type        string `json:"type"    yaml:"type"    toml:"type"`     // DNSレコードタイプ
+	TTL         int32  `json:"ttl"     yaml:"ttl"     toml:"ttl"`      // DNSレコードTTL
+	Content     string `json:"content" yaml:"content" toml:"content"`  // DNSレコード内容
 }
 
-// Validate is validate negative record
+// Validate is validate negative record (no lock)
 func (n *NegativeRecord) Validate() (bool) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
 	if n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "" {
+		return false
+	}
+	return true
+}
+
+// NameServerRecord is static record
+type NameServerRecord struct {
+	Name        string `json:"name"    yaml:"name"    toml:"name"`    // SOAプライマリ,DNSレコード名
+	Type        string `json:"type"    yaml:"type"    toml:"type"`    // DNSレコードタイプ
+	TTL         int32  `json:"ttl"     yaml:"ttl"     toml:"ttl"`     // DNSレコードTTL
+	Content     string `json:"content" yaml:"content" toml:"content"` // DNSレコード内容
+}
+
+// Validate is validate static record (no lock)
+func (n *NameServerRecord) Validate() (bool) {
+	if n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "" {
+		return false
+	}
+	return true
+}
+
+// StaticRecord is static record
+type StaticRecord struct {
+	Name        string `json:"name"    yaml:"name"    toml:"name"`    // DNSレコード名
+	Type        string `json:"type"    yaml:"type"    toml:"type"`    // DNSレコードタイプ
+	TTL         int32  `json:"ttl"     yaml:"ttl"     toml:"ttl"`     // DNSレコードTTL
+	Content     string `json:"content" yaml:"content" toml:"content"` // DNSレコード内容
+}
+
+// Validate is validate static record (no lock)
+func (s *StaticRecord) Validate() (bool) {
+	if s.Name == "" || s.Type == "" || s.TTL == 0 || s.Content == "" {
 		return false
 	}
 	return true
@@ -202,42 +223,70 @@ func (n *NegativeRecord) Validate() (bool) {
 
 // DynamicGroup is dynamicGroup
 type DynamicGroup struct {
-	DynamicRecord  []*DynamicRecord  // 動的レコード                                     [mutable]
-	NegativeRecord []*NegativeRecord // 動的レコードが全て死んだ場合に有効になるレコード [mutable]
+	DynamicRecordList  []*DynamicRecord  `json:"dynamicRecordList"  yaml:"dynamicRecordList"  toml:"dynamicRecordList"` // 動的レコード                                     [mutable]
+	NegativeRecordList []*NegativeRecord `json:"negativeRecordList" yaml:"negativeRecordList" toml:"negativeRecordList"` // 動的レコードが全て死んだ場合に有効になるレコード [mutable]
+}
+
+// Validate is validate dynamic group (no lock)
+func (d *DynamicGroup) Validate() (bool) {
+	if d.DynamicRecordList != nil {
+		for _, dynamicRecord := range d.DynamicRecordList {
+			if !dynamicRecord.Validate() {
+				return false
+			}
+		}
+	}
+	if d.NegativeRecordList != nil {
+		for _, negativeRecord := range d.NegativeRecordList {
+			if !negativeRecord.Validate() {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // GetDynamicRecord is get name server
 func (d *DynamicGroup) GetDynamicRecord() ([]*DynamicRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newDynamicRecord := make([]*DynamicRecord, len(d.DynamicRecord))
-	copy(newDynamicRecord, d.DynamicRecord)
-	return newDynamicRecord
+	if d.DynamicRecordList == nil {
+		d.DynamicRecordList = make([]*DynamicRecord, 0)
+	}
+	newDynamicRecordList := make([]*DynamicRecord, len(d.DynamicRecordList))
+	copy(newDynamicRecordList, d.DynamicRecordList)
+	return newDynamicRecordList
 }
 
 // FindDynamicRecord is fins name server
 func (d *DynamicGroup) FindDynamicRecord(n string, t string, c string) ([]*DynamicRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newDynamicRecord := make([]*DynamicRecord, 0, len(d.DynamicRecord))
-	for _, dr := range d.DynamicRecord {
+	if d.DynamicRecordList == nil {
+		d.DynamicRecordList = make([]*DynamicRecord, 0)
+	}
+	newDynamicRecordList := make([]*DynamicRecord, 0, len(d.DynamicRecordList))
+	for _, dr := range d.DynamicRecordList {
 		if dr.Name == n && dr.Type == t && dr.Content == c {
-			newDynamicRecord = append(newDynamicRecord, dr)
+			newDynamicRecordList = append(newDynamicRecordList, dr)
 		}
 	}
-	return newDynamicRecord
+	return newDynamicRecordList
 }
 
 // AddDynamicRecord is add name server
 func (d *DynamicGroup) AddDynamicRecord(dynamicRecord *DynamicRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	for _, dr := range d.DynamicRecord {
+	if d.DynamicRecordList == nil {
+		d.DynamicRecordList = make([]*DynamicRecord, 0, 1)
+	}
+	for _, dr := range d.DynamicRecordList {
 		if dr.Name == dynamicRecord.Name && dr.Type == dynamicRecord.Type && dr.Content == dynamicRecord.Content {
-			return errors.Errorf("already exists")
+			return errors.Errorf("can not add because already exists")
 		}
 	}
-	d.DynamicRecord = append(d.DynamicRecord, dynamicRecord)
+	d.DynamicRecordList = append(d.DynamicRecordList, dynamicRecord)
 	return nil
 }
 
@@ -246,18 +295,21 @@ func (d *DynamicGroup) DeleteDynamicRecord(n string, t string, c string) (error)
 	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newDynamicRecord := make([]*DynamicRecord, 0, len(d.DynamicRecord) - 1)
-	for _, dr := range d.DynamicRecord {
+	if d.DynamicRecordList == nil {
+		d.DynamicRecordList = make([]*DynamicRecord, 0)
+	}
+	newDynamicRecordList := make([]*DynamicRecord, 0, len(d.DynamicRecordList))
+	for _, dr := range d.DynamicRecordList {
 		if dr.Name == n && dr.Type == t && dr.Content == c {
 			deleted = true
 			continue
 		}
-		newDynamicRecord = append(newDynamicRecord, dr)
+		newDynamicRecordList = append(newDynamicRecordList, dr)
 	}
 	if !deleted {
-		return errors.Errorf("not exists")
+		return errors.Errorf("can not delete because not exists")
 	}
-	d.DynamicRecord = newDynamicRecord
+	d.DynamicRecordList = newDynamicRecordList
 	return nil
 }
 
@@ -266,19 +318,22 @@ func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynami
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newDynamicRecord := make([]*DynamicRecord, 0, len(d.DynamicRecord) - 1)
-	for _, dr := range d.DynamicRecord {
+	if d.DynamicRecordList == nil {
+		d.DynamicRecordList = make([]*DynamicRecord, 0)
+	}
+	newDynamicRecordList := make([]*DynamicRecord, 0, len(d.DynamicRecordList) - 1)
+	for _, dr := range d.DynamicRecordList {
 		if dr.Name == n && dr.Type == t && dr.Content == c {
-			newDynamicRecord = append(newDynamicRecord, dynamicRecord)
+			newDynamicRecordList = append(newDynamicRecordList, dynamicRecord)
 			replaced = true
 		} else {
-			newDynamicRecord = append(newDynamicRecord, dr)
+			newDynamicRecordList = append(newDynamicRecordList, dr)
 		}
 	}
 	if !replaced {
-		return errors.Errorf("not exists")
+		return errors.Errorf("can not replace because not exists")
 	}
-	d.DynamicRecord = newDynamicRecord
+	d.DynamicRecordList = newDynamicRecordList
 	return nil
 }
 
@@ -286,34 +341,43 @@ func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynami
 func (d *DynamicGroup) GetNegativeRecord() ([]*NegativeRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNegativeRecord := make([]*NegativeRecord, len(d.NegativeRecord))
-	copy(newNegativeRecord, d.NegativeRecord)
-	return newNegativeRecord
+	if d.NegativeRecordList == nil {
+		d.NegativeRecordList = make([]*NegativeRecord, 0)
+	}
+	newNegativeRecordList := make([]*NegativeRecord, len(d.NegativeRecordList))
+	copy(newNegativeRecordList, d.NegativeRecordList)
+	return newNegativeRecordList
 }
 
 // FindNegativeRecord is fins name server
 func (d *DynamicGroup) FindNegativeRecord(n string, t string, c string) ([]*NegativeRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNegativeRecord := make([]*NegativeRecord, 0, len(d.NegativeRecord))
-	for _, nr := range d.NegativeRecord {
+	if d.NegativeRecordList == nil {
+		d.NegativeRecordList = make([]*NegativeRecord, 0)
+	}
+	newNegativeRecordList := make([]*NegativeRecord, 0, len(d.NegativeRecordList))
+	for _, nr := range d.NegativeRecordList {
 		if nr.Name == n && nr.Type == t && nr.Content == c {
-			newNegativeRecord = append(newNegativeRecord, nr)
+			newNegativeRecordList = append(newNegativeRecordList, nr)
 		}
 	}
-	return newNegativeRecord
+	return newNegativeRecordList
 }
 
 // AddNegativeRecord is add name server
 func (d *DynamicGroup) AddNegativeRecord(negativeRecord *NegativeRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	for _, nr := range d.NegativeRecord {
+	if d.NegativeRecordList == nil {
+		d.NegativeRecordList = make([]*NegativeRecord, 0, 1)
+	}
+	for _, nr := range d.NegativeRecordList {
 		if nr.Name == negativeRecord.Name && nr.Type == negativeRecord.Type && nr.Content == negativeRecord.Content {
-			errors.Errorf("already exists");
+			errors.Errorf("can not add because already exists");
 		}
 	}
-	d.NegativeRecord = append(d.NegativeRecord, negativeRecord)
+	d.NegativeRecordList = append(d.NegativeRecordList, negativeRecord)
 	return nil
 }
 
@@ -322,18 +386,21 @@ func (d *DynamicGroup) DeleteNegativeRecord(n string, t string, c string) (error
 	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNegativeRecord := make([]*NegativeRecord, 0, len(d.NegativeRecord) - 1)
-	for _, nr := range d.NegativeRecord {
+	if d.NegativeRecordList == nil {
+		d.NegativeRecordList = make([]*NegativeRecord, 0)
+	}
+	newNegativeRecordList := make([]*NegativeRecord, 0, len(d.NegativeRecordList))
+	for _, nr := range d.NegativeRecordList {
 		if nr.Name == n && nr.Type == t && nr.Content == c {
 			deleted = true
 			continue
 		}
-		newNegativeRecord = append(newNegativeRecord, nr)
+		newNegativeRecordList = append(newNegativeRecordList, nr)
 	}
 	if !deleted {
-		errors.Errorf("not exists");
+		errors.Errorf("can not delete because not exists");
 	}
-	d.NegativeRecord = newNegativeRecord
+	d.NegativeRecordList = newNegativeRecordList
 	return nil
 }
 
@@ -342,61 +409,132 @@ func (d *DynamicGroup) ReplaceNegativeRecord(n string, t string, c string, negat
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNegativeRecord := make([]*NegativeRecord, 0, len(d.NegativeRecord) - 1)
-	for _, nr := range d.NegativeRecord {
+	if d.NegativeRecordList == nil {
+		d.NegativeRecordList = make([]*NegativeRecord, 0)
+	}
+	newNegativeRecordList := make([]*NegativeRecord, 0, len(d.NegativeRecordList) - 1)
+	for _, nr := range d.NegativeRecordList {
 		if nr.Name == n && nr.Type == t && nr.Content == c {
-			newNegativeRecord = append(newNegativeRecord, negativeRecord)
+			newNegativeRecordList = append(newNegativeRecordList, negativeRecord)
 			replaced = true
 		} else {
-			newNegativeRecord = append(newNegativeRecord, nr)
+			newNegativeRecordList = append(newNegativeRecordList, nr)
 		}
 	}
-	if !replaced {
-		errors.Errorf("not exists");
+	if !replaced  {
+		errors.Errorf("can not replace because not exists");
 	}
-	d.NegativeRecord = newNegativeRecord
+	d.NegativeRecordList = newNegativeRecordList
 	return nil
 }
 
 // Zone is zone
 type Zone struct {
-	NameServer     []*NameServerRecord           // ネームサーバーレコードリスト   [mutable]
-	StaticRecord   []*StaticRecord           // 固定レコードリスト             [mutable]
-	DynamicGroup   map[string]*DynamicGroup  // 動的なレコードグループのリスト [mutable]
+        PrimaryNameServer string                   `json:"email"            yaml:"email"            toml:"email"`            // primary name server [mutable]
+        Email             string                   `json:"email"            yaml:"email"            toml:"email"`            // email [mutable]
+	NameServerList    []*NameServerRecord      `json:"nameServerList "  yaml:"nameServerList"   toml:"nameServerList"`   // ネームサーバーレコードリスト   [mutable]
+	StaticRecordList  []*StaticRecord          `json:"staticRecordList" yaml:"staticRecordList" toml:"staticRecordList"` // 固定レコードリスト             [mutable]
+	DynamicGroupMap   map[string]*DynamicGroup `json:"dynamicGroupMap " yaml:"dynamicGroupMap"  toml:"dynamicGroupMap"`  // 動的なレコードグループのリスト [mutable]
+}
+
+// Validate is validate zone (no lock)
+func (z *Zone) Validate() (bool) {
+	if z.PrimaryNameServer == "" || z.Email == "" {
+		return false
+	}
+	if z.NameServerList != nil {
+		for _, nameServer := range z.NameServerList {
+			if !nameServer.Validate() {
+				return false
+			}
+		}
+	}
+	if z.StaticRecordList != nil {
+		for _, staticRecord := range z.StaticRecordList {
+			if !staticRecord.Validate() {
+				return false
+			}
+		}
+	}
+	if z.DynamicGroupMap != nil {
+		for dynamicGroupName, dynamicGroup := range z.DynamicGroupMap {
+			if dynamicGroupName == "" || !dynamicGroup.Validate() {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// GetPrimaryNameServer is get primary name server
+func  (z *Zone) GetPrimaryNameServer() (string) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	return z.PrimaryNameServer
+}
+
+// SetPrimaryNameServer is set primary name server
+func  (z *Zone) SetPrimaryNameServer(primaryNameServer string) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	z.PrimaryNameServer = primaryNameServer
+}
+
+// GetEmail is get email
+func  (z *Zone) GetEmail() (string) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	return z.Email
+}
+
+// SetEmail is set email
+func  (z *Zone) SetEmail(email string) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	z.Email = email
 }
 
 // GetNameServer is get name server
 func (z *Zone) GetNameServer() ([]*NameServerRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*NameServerRecord, len(z.NameServer))
-	copy(newNameServer, z.NameServer)
-	return newNameServer
+	if z.NameServerList == nil {
+		z.NameServerList = make([]*NameServerRecord, 0)
+	}
+	newNameServerList := make([]*NameServerRecord, len(z.NameServerList))
+	copy(newNameServerList, z.NameServerList)
+	return newNameServerList
 }
 
 // FindNameServer is fins name server
 func (z *Zone) FindNameServer(n string, t string, c string) ([]*NameServerRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*NameServerRecord, 0, len(z.NameServer))
-	for _, ns := range z.NameServer {
+	if z.NameServerList == nil {
+		z.NameServerList = make([]*NameServerRecord, 0)
+	}
+	newNameServerList := make([]*NameServerRecord, 0, len(z.NameServerList))
+	for _, ns := range z.NameServerList {
 		if ns.Name == n && ns.Type == t && ns.Content == c {
-			newNameServer = append(newNameServer, ns)
+			newNameServerList = append(newNameServerList, ns)
 		}
 	}
-	return newNameServer
+	return newNameServerList
 }
 
 // AddNameServer is add name server
 func (z *Zone) AddNameServer(nameServer *NameServerRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	for _, ns := range z.NameServer {
+	if z.NameServerList == nil {
+		z.NameServerList = make([]*NameServerRecord, 0, 1)
+	}
+	for _, ns := range z.NameServerList {
 		if ns.Name == nameServer.Name && ns.Type == nameServer.Type && ns.Content == nameServer.Content {
-			return errors.Errorf("already exists")
+			return errors.Errorf("can not add because already exists")
 		}
 	}
-	z.NameServer = append(z.NameServer, nameServer)
+	z.NameServerList = append(z.NameServerList, nameServer)
 	return nil
 }
 
@@ -405,18 +543,21 @@ func (z *Zone) DeleteNameServer(n string, t string, c string) (error) {
 	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*NameServerRecord, 0, len(z.NameServer) - 1)
-	for _, ns := range z.NameServer {
+	if z.NameServerList == nil {
+		z.NameServerList = make([]*NameServerRecord, 0)
+	}
+	newNameServerList := make([]*NameServerRecord, 0, len(z.NameServerList) - 1)
+	for _, ns := range z.NameServerList {
 		if ns.Name == n && ns.Type == t && ns.Content == c {
 			deleted = true
 			continue
 		}
-		newNameServer = append(newNameServer, ns)
+		newNameServerList = append(newNameServerList, ns)
 	}
 	if !deleted {
-		return errors.Errorf("not exists")
+		return errors.Errorf("can not delete because not exists")
 	}
-	z.NameServer = newNameServer
+	z.NameServerList = newNameServerList
 	return nil
 }
 
@@ -425,19 +566,22 @@ func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *NameS
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newNameServer := make([]*NameServerRecord, 0, len(z.NameServer) - 1)
-	for _, ns := range z.NameServer {
+	if z.NameServerList == nil {
+		z.NameServerList = make([]*NameServerRecord, 0)
+	}
+	newNameServerList := make([]*NameServerRecord, 0, len(z.NameServerList) - 1)
+	for _, ns := range z.NameServerList {
 		if ns.Name == n && ns.Type == t && ns.Content == c {
-			newNameServer = append(newNameServer, nameServer)
+			newNameServerList = append(newNameServerList, nameServer)
 			replaced = true
 		} else {
-			newNameServer = append(newNameServer, ns)
+			newNameServerList = append(newNameServerList, ns)
 		}
 	}
 	if !replaced {
-		return errors.Errorf("not exists")
+		return errors.Errorf("can not replace because not exists")
 	}
-	z.NameServer = newNameServer
+	z.NameServerList = newNameServerList
 	return nil
 }
 
@@ -445,34 +589,43 @@ func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *NameS
 func (z *Zone) GetStaticRecord() ([]*StaticRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newStaticRecord := make([]*StaticRecord, len(z.StaticRecord))
-	copy(newStaticRecord, z.StaticRecord)
-	return newStaticRecord
+	if z.StaticRecordList == nil {
+		z.StaticRecordList = make([]*StaticRecord, 0)
+	}
+	newStaticRecordList := make([]*StaticRecord, len(z.StaticRecordList))
+	copy(newStaticRecordList, z.StaticRecordList)
+	return newStaticRecordList
 }
 
 // FindStaticRecord is fins name server
 func (z *Zone) FindStaticRecord(n string, t string, c string) ([]*StaticRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newStaticRecord := make([]*StaticRecord, 0, len(z.StaticRecord))
-	for _, sr := range z.StaticRecord {
+	if z.StaticRecordList == nil {
+		z.StaticRecordList = make([]*StaticRecord, 0)
+	}
+	newStaticRecordList := make([]*StaticRecord, 0, len(z.StaticRecordList))
+	for _, sr := range z.StaticRecordList {
 		if sr.Name == n && sr.Type == t && sr.Content == c {
-			newStaticRecord = append(newStaticRecord, sr)
+			newStaticRecordList = append(newStaticRecordList, sr)
 		}
 	}
-	return newStaticRecord
+	return newStaticRecordList
 }
 
 // AddStaticRecord is add name server
 func (z *Zone) AddStaticRecord(staticRecord *StaticRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	for _, sr := range z.StaticRecord {
+	if z.StaticRecordList == nil {
+		z.StaticRecordList = make([]*StaticRecord, 0, 1)
+	}
+	for _, sr := range z.StaticRecordList {
 		if sr.Name == staticRecord.Name && sr.Type == staticRecord.Type && sr.Content == staticRecord.Content {
-			return errors.Errorf("already exists")
+			return errors.Errorf("can not add because already exists")
 		}
 	}
-	z.StaticRecord = append(z.StaticRecord, staticRecord)
+	z.StaticRecordList = append(z.StaticRecordList, staticRecord)
 	return nil
 }
 
@@ -481,18 +634,21 @@ func (z *Zone) DeleteStaticRecord(n string, t string, c string) (error) {
 	deleted := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newStaticRecord := make([]*StaticRecord, 0, len(z.StaticRecord) - 1)
-	for _, sr := range z.StaticRecord {
+	if z.StaticRecordList == nil {
+		z.StaticRecordList = make([]*StaticRecord, 0)
+	}
+	newStaticRecordList := make([]*StaticRecord, 0, len(z.StaticRecordList) - 1)
+	for _, sr := range z.StaticRecordList {
 		if sr.Name == n && sr.Type == t && sr.Content == c {
 			deleted = true
 			continue
 		}
-		newStaticRecord = append(newStaticRecord, sr)
+		newStaticRecordList = append(newStaticRecordList, sr)
 	}
 	if !deleted {
-		return errors.Errorf("not exists")
+		return errors.Errorf("can not delete because not exists")
 	}
-	z.StaticRecord = newStaticRecord
+	z.StaticRecordList = newStaticRecordList
 	return nil
 }
 
@@ -501,38 +657,47 @@ func (z *Zone) ReplaceStaticRecord(n string, t string, c string, staticRecord *S
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	newStaticRecord := make([]*StaticRecord, 0, len(z.StaticRecord) - 1)
-	for _, sr := range z.StaticRecord {
+	if z.StaticRecordList == nil {
+		z.StaticRecordList = make([]*StaticRecord, 0)
+	}
+	newStaticRecordList := make([]*StaticRecord, 0, len(z.StaticRecordList) - 1)
+	for _, sr := range z.StaticRecordList {
 		if sr.Name == n && sr.Type == t && sr.Content == c {
-			newStaticRecord = append(newStaticRecord, staticRecord)
+			newStaticRecordList = append(newStaticRecordList, staticRecord)
 			replaced = true
 		} else {
-			newStaticRecord = append(newStaticRecord, sr)
+			newStaticRecordList = append(newStaticRecordList, sr)
 		}
 	}
 	if !replaced {
-		return errors.Errorf("not exists")
+		return errors.Errorf("can not replace because not exists")
 	}
-	z.StaticRecord = newStaticRecord
+	z.StaticRecordList = newStaticRecordList
 	return nil
 }
 
 // GetDynamicGroupName is get dynamic group name
-func (z *Zone) GetDynamicGroupName() ([]string) {
+func (z *Zone) GetDynamicGroupNameList() ([]string) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	dynamicGroupName := make([]string, 0, len(z.DynamicGroup))
-	for n := range z.DynamicGroup {
-		dynamicGroupName = append(dynamicGroupName, n)
+	if z.DynamicGroupMap == nil {
+		z.DynamicGroupMap = make(map[string]*DynamicGroup)
 	}
-	return dynamicGroupName
+	dynamicGroupNameList := make([]string, 0, len(z.DynamicGroupMap))
+	for n := range z.DynamicGroupMap {
+		dynamicGroupNameList = append(dynamicGroupNameList, n)
+	}
+	return dynamicGroupNameList
 }
 
 // GetDynamicGroup is get dynamicGroup
 func (z *Zone) GetDynamicGroup(dynamicGroupName string) (*DynamicGroup, error) {
         mutableMutex.Lock()
         defer mutableMutex.Unlock()
-        dynamicGroup, ok := z.DynamicGroup[dynamicGroupName]
+	if z.DynamicGroupMap == nil {
+		z.DynamicGroupMap = make(map[string]*DynamicGroup)
+	}
+        dynamicGroup, ok := z.DynamicGroupMap[dynamicGroupName]
 	if !ok {
 		return nil, errors.Errorf("not exist synamic group")
 	}
@@ -543,15 +708,18 @@ func (z *Zone) GetDynamicGroup(dynamicGroupName string) (*DynamicGroup, error) {
 func (z *Zone) AddDynamicGroup(dynamicGroupName string) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	_, ok := z.DynamicGroup[dynamicGroupName]
+	if z.DynamicGroupMap == nil {
+		z.DynamicGroupMap = make(map[string]*DynamicGroup)
+	}
+	_, ok := z.DynamicGroupMap[dynamicGroupName]
 	if ok {
 		return errors.Errorf("already exists dynamic group name")
 	}
 	newDynamicGroup := &DynamicGroup {
-		DynamicRecord:  make([]*DynamicRecord, 0),
-		NegativeRecord: make([]*NegativeRecord, 0),
+		DynamicRecordList:  make([]*DynamicRecord, 0),
+		NegativeRecordList: make([]*NegativeRecord, 0),
 	}
-	z.DynamicGroup[dynamicGroupName] = newDynamicGroup
+	z.DynamicGroupMap[dynamicGroupName] = newDynamicGroup
 	return nil
 }
 
@@ -559,12 +727,15 @@ func (z *Zone) AddDynamicGroup(dynamicGroupName string) (error) {
 func (z *Zone) DeleteDynamicGroup(dynamicGroupName string) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	dynamicGroup, ok := z.DynamicGroup[dynamicGroupName]
+	if z.DynamicGroupMap == nil {
+		z.DynamicGroupMap = make(map[string]*DynamicGroup)
+	}
+	dynamicGroup, ok := z.DynamicGroupMap[dynamicGroupName]
 	if !ok {
 		return errors.Errorf("not exist dynamic group name")
 	}
 	if len(dynamicGroup.DynamicRecord) == 0 && len(dynamicGroup.NegativeRecord) == 0 {
-		delete(z.DynamicGroup, dynamicGroupName)
+		delete(z.DynamicGroupMap, dynamicGroupName)
 		return nil
 	}
 	return errors.Errorf("not empty dynamic group")
@@ -572,17 +743,32 @@ func (z *Zone) DeleteDynamicGroup(dynamicGroupName string) (error) {
 
 // Watcher is watcher
 type Watcher struct {
-	Zone          map[string]*Zone  // ゾーン [mutable]
-	NotifySubject string            // Notifyの題名テンプレート
-	NotifyBody    string            // Notifyの本文テンプレート
+	ZoneMap       map[string]*Zone `json:"zoneMap"      yaml:"zoneMap"        toml:"zoneMap"`       // ゾーン [mutable]
+	NotifySubject string           `json:"notifySybject" yaml:"notifySybject" toml:"notifySybject"` // Notifyの題名テンプレート
+	NotifyBody    string           `json:"notifyBody"    yaml:"notifyBody"    toml:"notifyBody"`    // Notifyの本文テンプレート
+}
+
+// Validate is validate Wacther (no lock)
+func (z *Watcher) Validate() (bool) {
+	if z.ZoneMap != nil {
+		for domain, zone := range z.ZoneMap {
+			if domain == "" || !zone.Validate() {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // GetDomain is get domain
 func (w *Watcher) GetDomain() ([]string) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	domain := make([]string, 0, len(w.Zone))
-	for d := range w.Zone {
+	if w.ZoneMap == nil {
+		w.ZoneMap = make(map[string]*Zone)
+	}
+	domain := make([]string, 0, len(w.ZoneMap))
+	for d := range w.ZoneMap {
 		domain = append(domain, d)
 	}
 	return domain
@@ -592,7 +778,10 @@ func (w *Watcher) GetDomain() ([]string) {
 func (w *Watcher) GetZone(domain string) (*Zone, error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	zone, ok := w.Zone[domain]
+	if w.ZoneMap == nil {
+		w.ZoneMap = make(map[string]*Zone)
+	}
+	zone, ok := w.ZoneMap[domain]
 	if !ok {
 		return nil, errors.Errorf("not exist domain")
 	}
@@ -600,19 +789,24 @@ func (w *Watcher) GetZone(domain string) (*Zone, error) {
 }
 
 // AddZone is get force down
-func (w *Watcher) AddZone(domain string) (error) {
+func (w *Watcher) AddZone(domain string, email string, primaryNameServer string) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	_, ok := w.Zone[domain]
+	if w.ZoneMap == nil {
+		w.ZoneMap = make(map[string]*Zone)
+	}
+	_, ok := w.ZoneMap[domain]
 	if ok {
 		return errors.Errorf("already exist domain")
 	}
 	newZone := &Zone {
-		NameServer:     make([]*NameServerRecord, 0),
-		StaticRecord:   make([]*StaticRecord, 0),
-		DynamicGroup:   make(map[string]*DynamicGroup),
+		Email:              email,
+		PrimaryNameServer:  primaryNameServer,
+		NameServerList:     make([]*NameServerRecord, 0),
+		StaticRecordList:   make([]*StaticRecord, 0),
+		DynamicGroupList:   make(map[string]*DynamicGroup),
 	}
-	w.Zone[domain] = newZone
+	w.ZoneMap[domain] = newZone
 	return nil
 }
 
@@ -620,12 +814,15 @@ func (w *Watcher) AddZone(domain string) (error) {
 func (w *Watcher) DeleteZone(domain string) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	zone, ok := w.Zone[domain]
+	if w.ZoneMap == nil {
+		w.ZoneMap = make(map[string]*Zone)
+	}
+	zone, ok := w.ZoneMap[domain]
 	if !ok {
 		return errors.Errorf("not exist domain")
 	}
 	if len(zone.NameServer) == 0 && len(zone.StaticRecord) == 0 && len(zone.DynamicGroup) == 0 {
-		delete(w.Zone, domain)
+		delete(w.ZoneMap, domain)
 		return nil
 	}
 	return errors.Errorf("not empty zone")
@@ -633,74 +830,185 @@ func (w *Watcher) DeleteZone(domain string) (error) {
 
 // Mail is Mail
 type Mail struct {
-	HostPort      string   // smtp接続先ホストとポート
-	Username      string   // ユーザ名
-	Password      string   // パスワード
-	To            string   // 宛先メールアドレス 複数書く場合は,で区切る
-	From          string   // 送り元メールアドレス
-	AuthType      string   // 認証タイプ  cram-md5, plain
-	UseStartTLS   bool     // startTLSの使用フラグ
-	UseTLS        bool     // TLS接続の使用フラグ
-	TLSSkipVerify bool     // TLSの検証をスキップする
+	HostPort      string `json:"hostPort"      yaml:"hostPort"      toml:"hostPort"`      // smtp接続先ホストとポート
+	Username      string `json:"username"      yaml:"username"      toml:"username"`      // ユーザ名
+	Password      string `json:"password"      yaml:"password"      toml:"password"`      // パスワード
+	To            string `json:"to"            yaml:"to"            toml:"to"`            // 宛先メールアドレス 複数書く場合は,で区切る
+	From          string `json:"from"          yaml:"from"          toml:"from"`          // 送り元メールアドレス
+	AuthType      string `json:"authType"      yaml:"authType"      toml:"authType"`      // 認証タイプ  cram-md5, plain
+	UseStartTLS   bool   `json:"useStartTls"   yaml:"useStartTls"   toml:"useStartTls"`   // startTLSの使用フラグ
+	UseTLS        bool   `json:"useTls"        yaml:"useTls"        toml:"useTls"`        // TLS接続の使用フラグ
+	TLSSkipVerify bool   `json:"tlsSkipVerify" yaml:"tlsSkipVerify" toml:"tlsSkipVerify"` // TLSの検証をスキップする
+}
+
+// Validate is validate Mail (no lock)
+func (m *Mail) Validate() (bool) {
+	if m.HostPort == nil || m.To == nil || m.From == nil {
+		return false
+	}
+	return true
 }
 
 // Notifier is Notifier
 type Notifier struct {
-	Mail []*Mail // メールリスト
+	MailList []*Mail `json:"mailList" yaml:"mailList" toml:"mailList"` // メールリスト
+}
+
+// Validate is validate notifier (no lock)
+func (n *Notifier) Validate() (bool) {
+	if n.MailList != nil {
+		for _, mail := range n.MailList {
+			if !mail.Validate() {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // Listen is listen
 type Listen struct {
-	AddrPort string // リッスンするアドレスとポート
-	UseTLS   bool   // TLSを使うかどうか
-	Certfile string // 証明書ファイルパス
-	Keyfile  string // プライベートキーファイルパス
+	AddrPort string `json:"addrPort" yaml:"addrPort" toml:"addrPort"` // リッスンするアドレスとポート
+	UseTLS   bool   `json:"useTls"   yaml:"useTls"   toml:"useTls"`   // TLSを使うかどうか
+	CertFile string `json:"certFile" yaml:"certFile" toml:"certFile"` // 証明書ファイルパス
+	KeyFile  string `json:"keyFile"  yaml:"keyFile"  toml:"keyFile"`  // プライベートキーファイルパス
+}
+
+// Validate is validate listen (no lock)
+func (l *Listen) Validate() (bool) {
+	if AddrPort == nil {
+		return false
+	}
+	return true
 }
 
 // Server is server
 type Server struct {
-	Debug        bool      // デバッグモードにする
-	Listen       []*Listen // リッスンリスト
-	Username     string    // ユーザー名
-	Password     string    // パスワード
-	StaticPath   string    // Staticリソースのパス
+	Debug        bool      `json:"debug"      yaml:"debug"      toml:"debug"`      // デバッグモードにする
+	ListenList   []*Listen `json:"listenList  yaml:"listenList" toml:"listenList"` // リッスンリスト
+	Username     string    `json:"username"   yaml:"username"   toml:"username"`   // ユーザー名
+	Password     string    `json:"password"   yaml:"password"   toml:"password"`   // パスワード
+	StaticPath   string    `json:"staticPath" yaml:"staticPath" toml:"staticPath"` // Staticリソースのパス
+}
+
+// Validate is validate Server (no lock)
+func (s *Server) Validate() (bool) {
+	if s.ListenList == nil || len(s.ListenList) == 0 {
+		return false
+	}
+	for _, listen := range s.ListenList {
+		if !listen.Validate() {
+			return falase
+		}
+	}
+	return true
+}
+
+type ServerURL string
+
+// Validate is validate Server url (no lock)
+func (s ServerURL) validate() {
+	if s == "" {
+		return false
+	}
+	return true
 }
 
 // Client is server
 type Client struct {
-	URL           []string // url list
-	Retry         uint32   // retry回数
-	RetryWait     uint32   // retry時のwait時間
-	Timeout       uint32   // タイムアウト
-	TLSSkipVerify bool     // TLSのverifyをスキップルするかどうか
-	Username      string   // ユーザー名
-	Password      string   // パスワード
+	ServerURLList []ServerURL `json:"serverURLList" yaml:"serverURLList" toml:"serverURLList"` // server url list
+	Username      string      `json:"username"      yaml:"username"      toml:"username"`      // ユーザー名
+	Password      string      `json:"password"      yaml:"password"      toml:"password"`      // パスワード
+	TLSSkipVerify bool        `json:"tlsSkipVerify" yaml:"tlsSkipVerify" toml:"tlsSkipVerify"` // TLSのverifyをスキップルするかどうか
+	Retry         uint32      `json:"retry"         yaml:"retry"         toml:"retry"`         // retry回数
+	RetryWait     uint32      `json:"retryWait"     yaml:"retryWait"     toml:"retryWait"`     // retry時のwait時間
+	Timeout       uint32      `json:"timeout"       yaml:"timeout"       toml:"timeout"`       // タイムアウト
+}
+
+// Validate is validate client (no lock)
+func (c *Client) Validate() (bool) {
+	if c.ServerURLList == nil || len(c.ServerURLList) == 0 {
+		return false
+	}
+	for _, serverURL := range c.ServerURLList {
+		if !serverURL.Validate() {
+			return false
+		}
+	}
+	return true
 }
 
 // Updater is updater
 type Updater struct {
-	PdnsServer string
-        PdnsAPIKey string
+	PdnsServer string `json:"pdnsServer" yaml:"pdnsServer" toml:"pdnsServer"` // power dns server url
+        PdnsAPIKey string `json:"pdnsApiKey" yaml:"pdnsApiKey" toml:"pdnsApiKey"` // power dns api key
+}
+
+// Validate is validate updater (no lock)
+func (u *Updater) Validate() (bool) {
+	if u.PdnsServer == "" || u.PdnsAPIKey == "" {
+		return false
+	}
+	return true
 }
 
 // Initializer is initializer
 type Initializer struct {
-	PdnsSqlitePath       string
+	PdnsSqlitePath string `json:"pdnsSqlitePath" yaml:"pdnsSqlitePath" toml:"pdnsSqlitePath"` // power dns sqlite path
+}
+
+// Validate is validate initializer (no lock)
+func (i *Initializer) Validate() (bool) {
+	if i.PdnsSqlitePath == "" {
+		return false
+	}
+	return true
 }
 
 // Context is context
 type Context struct {
-	Watcher     *Watcher             // 監視設定
-	Notifier    *Notifier            // 通知設定
-	Server      *Server              // サーバー設定
-	Client      *Client              // クライアント設定
-	Initializer *Initializer         // Initializer設定
-	Updater     *Updater             // Updater設定
-	Logger      *belog.ConfigLoggers // ログ設定
+	Watcher     *Watcher             `json:"watcher"     yaml:"watcher"     toml:"watcher"`     // 監視設定
+	Notifier    *Notifier            `json:"notifier"    yaml:"notifier"    toml:"notifier"`    // 通知設定
+	Server      *Server              `json:"server"      yaml:"server"      toml:"server"`      // サーバー設定
+	Client      *Client              `json:"client"      yaml:"client"      toml:"client"`      // クライアント設定
+	Initializer *Initializer         `json:"initializer" yaml:"initializer" toml:"initializer"` // Initializer設定
+	Updater     *Updater             `json:"updater"     yaml:"updater"     toml:"updater"`     // Updater設定
+	Logger      *belog.ConfigLoggers `json:"logger"      yaml:"logger"      toml:"logger"`      // ログ設定
+}
+
+// Validate is validate Context (no lock)
+func (c *Context) Validate(mode string) (bool) {
+	switch strings.ToUpdater(mode) {
+	case "WATCHER":
+		if c.Watcher == nil || c.Server == nil  {
+			return false
+		}
+		if !c.Watcher.Validate() || !c.Server.Validate() {
+			return false
+		}
+	case "UPDATER":
+		if c.Client  == nil || c.Initializer == nil || Updater == nil {
+			return false
+		}
+		if !c.Client.Validate() || !c.Initializer.Validate() || !Updater.Validate() {
+                        return false
+                }
+	case "CLIENT":
+		if c.Client  == nil {
+			return false
+		}
+		if !c.Client.Validate() {
+                        return false
+                }
+	default:
+		return false
+	}
+	return true
 }
 
 // Contexter is contexter
 type Contexter struct {
+	mode string
 	Context *Context
 	configurator *configurator.Configurator
 }
@@ -723,6 +1031,9 @@ func (c *Contexter) LoadConfig() (error){
 	err := c.configurator.Load(newContext)
 	if err != nil {
 		return err
+	}
+	if !newContext.Validate(c.mode) {
+		return errors.Errorf("invalid config")
 	}
 	c.Context = newContext
 	return nil
@@ -766,8 +1077,9 @@ func (c *Contexter) DumpContext(format string) ([]byte, error) {
 }
 
 // New is create new contexter
-func New(configurator *configurator.Configurator) (*Contexter) {
+func New(mode string, configurator *configurator.Configurator) (*Contexter) {
 	return &Contexter {
+		mode: mode,
 		Context: nil,
 		configurator: configurator,
 	}

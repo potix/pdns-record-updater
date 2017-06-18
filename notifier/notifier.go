@@ -34,10 +34,12 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 	host, _, _ := net.SplitHostPort(mailContext.HostPort)
 
 	var auth smtp.Auth
-	if strings.ToUpper(mailContext.AuthType) == "PLAIN" {
-		auth = smtp.PlainAuth("", mailContext.Username, mailContext.Password, host)
-	} else if strings.ToUpper(mailContext.AuthType) == "CRAM-MD5" {
-		auth = smtp.CRAMMD5Auth(mailContext.Username, mailContext.Password)
+	if mailContext.Username != "" {
+		if strings.ToUpper(mailContext.AuthType) == "PLAIN" {
+			auth = smtp.PlainAuth("", mailContext.Username, mailContext.Password, host)
+		} else if strings.ToUpper(mailContext.AuthType) == "CRAM-MD5" {
+			auth = smtp.CRAMMD5Auth(mailContext.Username, mailContext.Password)
+		}
 	}
 
 	var conn net.Conn
@@ -75,11 +77,13 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 			belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not start tls (%v)", mailContext.HostPort)))
 			return
 		}
-	    }
+	}
 
-	if err = client.Auth(auth); err != nil {
-		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not authentication (%v) (%v)", mailContext.Username, mailContext.Password)))
-		return
+	if auth != nil {
+		if err = client.Auth(auth); err != nil {
+			belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not authentication (%v) (%v)", mailContext.Username, mailContext.Password)))
+			return
+		}
 	}
 
 	if err = client.Mail(from.Address); err != nil {
@@ -124,6 +128,9 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 
 // Notify is Notify
 func (n *Notifier) Notify(replacer *strings.Replacer, subject string, body string) {
+	if n.notifierContext == nil || n.notifierContext.Mail == nil {
+		return
+	}
 	for _, mailContext := range n.notifierContext.Mail {
 		go n.sendMail(mailContext, replacer, subject, body)
 	}
