@@ -74,7 +74,7 @@ func FixupRrsetName(name string, domain string, t string, withDot bool) (string)
 // FixupRrsetContent is fixup contentof rrset
 func FixupRrsetContent(content string, domain string, t string,  withDot bool) (string) {
 	t = strings.ToUpper(t)
-        if t == "PTR" || t == "CNAME" {
+        if t == "PTR" || t == "CNAME" || t == "NS" {
 		if (withDot) {
 			if content == "" {
 				content = DotDomain(domain)

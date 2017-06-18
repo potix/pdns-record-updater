@@ -25,135 +25,144 @@ type Updater struct {
 	running        uint32
 }
 
-type record struct {
+type recordData struct {
 	Content  string `json:"content"`
 	Disabled bool   `json:"disabled"`
 }
 
-type comment struct {
+type commentData struct {
 	Content    string `json:"content"`
 	Account    string `json:"account"`
 	ModifiedAt int    `json:"modified_at"`
 }
 
-type rrset struct {
-	Name        string     `json:"name"`
-	Type        string     `json:"type"`
-	TTL         int32      `json:"ttl"`
-	CommentList []*comment `json:"comments"`
-	RecordList  []*record  `json:"records"`
+type rrsetData struct {
+	Name        string         `json:"name"`
+	Type        string         `json:"type"`
+	TTL         int32          `json:"ttl"`
+	CommentList []*commentData `json:"comments"`
+	RecordList  []*recordData  `json:"records"`
 }
 
 type rrsetRequest struct {
-	Rrsets []*rrset `json:"rrsets"`
+	Rrsets []*rrsetData `json:"rrsets"`
 }
 
 type zoneRequest struct {
-	Name           string   `json:"name"`
-	Kind           string   `json:"kind"`
-	NameServerList []string `json:"nameservers"`
-	RrsetList      []*rrset `json:"rrsets"`
+	Name           string       `json:"name"`
+	Kind           string       `json:"kind"`
+	NameServerList []string     `json:"nameservers"`
+	RrsetList      []*rrsetData `json:"rrsets"`
 }
 
 func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (*zoneRequest, error) {
 	zoneRequest := new(zoneRequest)
 	zoneRequest.Name = helper.DotDomain(domain)
 	zoneRequest.Kind = "NATIVE"
-	zoneRequest.Nameservers = make([]string, 0, len(zoneWatchResultResponse.NameServer))
-	for _, nameServer := range zoneWatchResultResponse.NameServer {
+	zoneRequest.NameServerList = make([]string, 0, len(zoneWatchResultResponse.NameServerList))
+	for _, nameServer := range zoneWatchResultResponse.NameServerList {
 		t := strings.ToUpper(nameServer.Type)
 		if t != "A" || t != "AAA" {
 			continue
 		}
-		zoneRequest.Nameservers = append(zoneRequest.Nameservers, helper.DotHostname(nameServer.Name, domain))
+		zoneRequest.NameServerList = append(zoneRequest.NameServerList, helper.DotHostname(nameServer.Name, domain))
 	}
-	if len(zoneWatchResultResponse.NameServer) == 0 {
+	if len(zoneWatchResultResponse.NameServerList) == 0 {
 		return nil, errors.Errorf("can not create soa, because no nameserver")
 	}
-	rrsets := u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse)
-	// create soa
-	var primary *structure.NameServerRecordWatchResultResponse
-	for _, nameServer := range zoneWatchResultResponse.NameServer {
-		if nameServer.Type != "A" && nameServer.Type != "AAA" {
-			continue
-		}
-		primary = nameServer
-		break
-	}
-	if primary != nil {
-		return nil, errors.Errorf("can not create soa, because no primary nameserver")
-	}
-	soa := &rrset{
-		Name:     helper.DotDomain(domain),
-		Type:     "SOA",
-		TTL:      3600,
-		Comments: make([]*comment, 0),
-		Records: make([]*record, 0, 1),
-	}
-	record := &record {
-		Content : fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email)),
-		Disabled : false,
-	}
-	soa.Records = append(soa.Records, record)
-	rrsets = append(rrsets, soa)
-	zoneRequest.Rrsets =  rrsets
+	zoneRequest.RrsetList = u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse)
 	return zoneRequest, nil
 }
 
-func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) ([]*rrset) {
-	rrsets := make([]*rrset, 0, 1 + len(zoneWatchResultResponse.NameServer) + len(zoneWatchResultResponse.StaticRecord) + len(zoneWatchResultResponse.DynamicRecord))
+func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) ([]*rrsetData) {
+	rrsets := make([]*rrsetData, 0, 1 + len(zoneWatchResultResponse.NameServerList) + len(zoneWatchResultResponse.StaticRecordList) + len(zoneWatchResultResponse.DynamicRecordList))
+	// soa
+	soa := &rrsetData {
+		Name:     helper.DotDomain(domain),
+		Type:     "SOA",
+		TTL:      3600,
+		CommentList: make([]*commentData, 0),
+		RecordList: make([]*recordData, 0, 1),
+	}
+	record := &recordData {
+		Content : fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(zoneWatchResultResponse.PrimaryNameServer, domain), helper.DotEmail(zoneWatchResultResponse.Email)),
+		Disabled : false,
+	}
+	soa.RecordList = append(soa.RecordList, record)
+	rrsets = append(rrsets, soa)
+	// ns record 
+	for _, nameServer := range zoneWatchResultResponse.NameServerList {
+                if nameServer.Type != "A" && nameServer.Type != "AAAA" {
+                        continue
+                }
+                name := helper.DotDomain(domain)
+                content := helper.FixupRrsetContent(nameServer.Name, domain, "NS", true)
+		rrset := &rrsetData {
+			Name:     name,
+			Type:     "NS",
+			TTL:      nameServer.TTL,
+			CommentList: make([]*commentData, 0),
+			RecordList: make([]*recordData, 0, 1),
+		}
+		record := &recordData {
+			Content : content,
+			Disabled : false,
+		}
+		rrset.RecordList = append(rrset.RecordList, record)
+		rrsets = append(rrsets, rrset)
+	}
 	// name server
-	for _, nameServer := range zoneWatchResultResponse.NameServer {
+	for _, nameServer := range zoneWatchResultResponse.NameServerList {
                 name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
                 content := helper.FixupRrsetContent(nameServer.Content, domain, nameServer.Type, true)
-		rrset := &rrset{
+		rrset := &rrsetData {
 			Name:     name,
 			Type:     nameServer.Type,
 			TTL:      nameServer.TTL,
-			Comments: make([]*comment, 0),
-			Records: make([]*record, 0, 1),
+			CommentList: make([]*commentData, 0),
+			RecordList: make([]*recordData, 0, 1),
 		}
-		record := &record {
+		record := &recordData {
 			Content : content,
 			Disabled : false,
 		}
-		rrset.Records = append(rrset.Records, record)
+		rrset.RecordList = append(rrset.RecordList, record)
 		rrsets = append(rrsets, rrset)
 	}
 	// static record
-	for _, staticRecord := range zoneWatchResultResponse.StaticRecord {
+	for _, staticRecord := range zoneWatchResultResponse.StaticRecordList {
                 name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, true)
                 content := helper.FixupRrsetContent(staticRecord.Content, domain, staticRecord.Type, true)
-		rrset := &rrset{
+		rrset := &rrsetData {
 			Name:     name,
 			Type:     staticRecord.Type,
 			TTL:      staticRecord.TTL,
-			Comments: make([]*comment, 0),
-			Records: make([]*record, 0, 1),
+			CommentList: make([]*commentData, 0),
+			RecordList: make([]*recordData, 0, 1),
 		}
-		record := &record {
+		record := &recordData {
 			Content : content,
 			Disabled : false,
 		}
-		rrset.Records = append(rrset.Records, record)
+		rrset.RecordList = append(rrset.RecordList, record)
 		rrsets = append(rrsets, rrset)
 	}
 	// dynamic record
-	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecord {
+	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecordList {
                 name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, true)
                 content := helper.FixupRrsetContent(dynamicRecord.Content, domain, dynamicRecord.Type, true)
-		rrset := &rrset{
+		rrset := &rrsetData {
 			Name:     name,
 			Type:     dynamicRecord.Type,
 			TTL:      dynamicRecord.TTL,
-			Comments: make([]*comment, 0),
-			Records: make([]*record, 0, 1),
+			CommentList: make([]*commentData, 0),
+			RecordList: make([]*recordData, 0, 1),
 		}
-		record := &record {
+		record := &recordData {
 			Content : content,
 			Disabled : !dynamicRecord.Alive,
 		}
-		rrset.Records = append(rrset.Records, record)
+		rrset.RecordList = append(rrset.RecordList, record)
 		rrsets = append(rrsets, rrset)
 	}
 	return rrsets
@@ -232,7 +241,7 @@ func (u *Updater) updateZone(domain string, zoneWatchResultResponse *structure.Z
 		Rrsets : u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse),
 	}
 	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, domain)
-	return u.postPutPatch(resource, "PATCH", rrsetRequest)
+	return u.postPutPatch(resource, "PUT", rrsetRequest)
 }
 
 func (u *Updater) createZone(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
@@ -273,7 +282,7 @@ func (u *Updater) updateLoop() () {
 			time.Sleep(time.Second)
 			break
 		}
-		for domain, zoneWatchResultResponse := range watchResultResponse.Zone {
+		for domain, zoneWatchResultResponse := range watchResultResponse.ZoneMap {
 			exist, err :=  u.getZone(domain)
 			if err != nil {
 				belog.Error("can not get zone (%v)", err)

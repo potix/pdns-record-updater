@@ -30,11 +30,11 @@ func (s *Server) jsonResponse(context *gin.Context, object interface{}) {
 
 func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse) {
 	newWatchResultResponse := &structure.WatchResultResponse {
-		Zone : make(map[string]*structure.ZoneWatchResultResponse),
+		ZoneMap : make(map[string]*structure.ZoneWatchResultResponse),
 	}
-	domain := s.contexter.Context.Watcher.GetDomain()
-	for _, d := range domain {
-		zone, err := s.contexter.Context.Watcher.GetZone(d)
+	domainList := s.contexter.Context.Watcher.GetDomainList()
+	for _, domain := range domainList {
+		zone, err := s.contexter.Context.Watcher.GetZone(domain)
 		if err != nil {
 			belog.Notice("%v", err)
 			continue
@@ -42,39 +42,38 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 		newZoneWatchResultResponse := &structure.ZoneWatchResultResponse {
 				PrimaryNameServer: zone.GetPrimaryNameServer(),
 				Email: zone.GetEmail(),
-				NameServer : make([]*structure.NameServerRecordWatchResultResponse, 0),
-				StaticRecord : make([]*structure.StaticRecordWatchResultResponse, 0),
-				DynamicRecord : make([]*structure.DynamicRecordWatchResultResponse, 0),
+				NameServerList : make([]*structure.NameServerRecordWatchResultResponse, 0),
+				StaticRecordList : make([]*structure.StaticRecordWatchResultResponse, 0),
+				DynamicRecordList : make([]*structure.DynamicRecordWatchResultResponse, 0),
 		}
-		newWatchResultResponse.Zone[d] = newZoneWatchResultResponse
-		for _, record := range zone.GetNameServer() {
+		newWatchResultResponse.ZoneMap[domain] = newZoneWatchResultResponse
+		for _, record := range zone.GetNameServerList() {
 			newRecordWatchResultResponse := &structure.NameServerRecordWatchResultResponse {
 				Name:    record.Name,
 				Type:    strings.ToUpper(record.Type),
 				TTL:     record.TTL,
 				Content: record.Content,
-				Email:   record.Email,
 			}
-			newZoneWatchResultResponse.NameServer = append(newZoneWatchResultResponse.NameServer, newRecordWatchResultResponse)
+			newZoneWatchResultResponse.NameServerList = append(newZoneWatchResultResponse.NameServerList, newRecordWatchResultResponse)
 		}
-		for _, record := range zone.GetStaticRecord() {
+		for _, record := range zone.GetStaticRecordList() {
 			newRecordWatchResultResponse := &structure.StaticRecordWatchResultResponse {
 				Name:    record.Name,
 				Type:    strings.ToUpper(record.Type),
 				TTL:     record.TTL,
 				Content: record.Content,
 			}
-			newZoneWatchResultResponse.StaticRecord = append(newZoneWatchResultResponse.StaticRecord, newRecordWatchResultResponse)
+			newZoneWatchResultResponse.StaticRecordList = append(newZoneWatchResultResponse.StaticRecordList, newRecordWatchResultResponse)
 		}
-		dynamicGroupName := zone.GetDynamicGroupName()
-		for _, dgname := range dynamicGroupName {
-			dynamicGroup, err := zone.GetDynamicGroup(dgname)
+		dynamicGroupNameList := zone.GetDynamicGroupNameList()
+		for _, dynamicGroupName := range dynamicGroupNameList {
+			dynamicGroup, err := zone.GetDynamicGroup(dynamicGroupName)
 			if err != nil {
 				belog.Notice("%v", err)
 				continue
 			}
 			var aliveRecordCount uint32
-			for _, record := range dynamicGroup.GetDynamicRecord() {
+			for _, record := range dynamicGroup.GetDynamicRecordList() {
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
 					Name:    record.Name,
 					Type:    strings.ToUpper(record.Type),
@@ -88,7 +87,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 				if newRecordWatchResultResponse.Alive {
 					aliveRecordCount++
 				}
-				newZoneWatchResultResponse.DynamicRecord = append(newZoneWatchResultResponse.DynamicRecord, newRecordWatchResultResponse)
+				newZoneWatchResultResponse.DynamicRecordList = append(newZoneWatchResultResponse.DynamicRecordList, newRecordWatchResultResponse)
 			}
 			var negativeRecordAlive bool
 			if aliveRecordCount == 0 {
@@ -96,7 +95,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			} else {
 				negativeRecordAlive = false
 			}
-			for _, record := range dynamicGroup.GetNegativeRecord() {
+			for _, record := range dynamicGroup.GetNegativeRecordList() {
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
 					Name:    record.Name,
 					Type:    strings.ToUpper(record.Type),
@@ -104,7 +103,7 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 					Content: record.Content,
 					Alive:   negativeRecordAlive,
 				}
-				newZoneWatchResultResponse.DynamicRecord = append(newZoneWatchResultResponse.DynamicRecord, newRecordWatchResultResponse)
+				newZoneWatchResultResponse.DynamicRecordList = append(newZoneWatchResultResponse.DynamicRecordList, newRecordWatchResultResponse)
 			}
 		}
 	}
@@ -147,7 +146,7 @@ func (s *Server) config(context *gin.Context) {
 			return
 		}
 		if !configRequest.Validate() {
-			context.String(http.StatusStatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
 		switch strings.ToUpper(configRequest.Action) {
@@ -206,8 +205,8 @@ func (s *Server) zone(context *gin.Context) {
 		context.Status(http.StatusOK)
 		return
         case http.MethodGet:
-		domain := s.contexter.Context.Watcher.GetDomain()
-		s.jsonResponse(context, domain)
+		domainList := s.contexter.Context.Watcher.GetDomainList()
+		s.jsonResponse(context, domainList)
 		return
         case http.MethodPost:
 		var zoneRequest structure.ZoneRequest
@@ -216,7 +215,7 @@ func (s *Server) zone(context *gin.Context) {
 			return
 		}
 		if !zoneRequest.Validate() {
-			context.String(http.StatusStatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
 		if zoneRequest.Domain == "" {
@@ -299,8 +298,8 @@ func (s *Server) zoneNameServer(context *gin.Context) {
 		if context.Request.Method == http.MethodHead {
 			context.Status(http.StatusOK)
 		} else {
-			nameServer := zone.GetNameServer()
-			s.jsonResponse(context, nameServer)
+			nameServerList := zone.GetNameServerList()
+			s.jsonResponse(context, nameServerList)
 		}
 		return
         case http.MethodPost:
@@ -418,8 +417,8 @@ func (s *Server) zoneStaticRecord(context *gin.Context) {
 		if context.Request.Method == http.MethodHead {
 			context.Status(http.StatusOK)
 		} else {
-			staticRecord := zone.GetStaticRecord()
-			s.jsonResponse(context, staticRecord)
+			staticRecordList := zone.GetStaticRecordList()
+			s.jsonResponse(context, staticRecordList)
 		}
 		return
         case http.MethodPost:
@@ -537,8 +536,8 @@ func (s *Server) zoneDynamicGroup(context *gin.Context) {
 		if context.Request.Method == http.MethodHead {
 			context.Status(http.StatusOK)
 		} else {
-			dynamicGroupName := zone.GetDynamicGroupName()
-			s.jsonResponse(context, dynamicGroupName)
+			dynamicGroupNameList := zone.GetDynamicGroupNameList()
+			s.jsonResponse(context, dynamicGroupNameList)
 		}
 		return
         case http.MethodPost:
@@ -605,8 +604,8 @@ func (s *Server) zoneDynamicGroupDynamicRecord(context *gin.Context) {
 		if context.Request.Method == http.MethodHead {
 			context.Status(http.StatusOK)
 		} else {
-			dynamicRecord := dynamicGroup.GetDynamicRecord()
-			s.jsonResponse(context, dynamicRecord)
+			dynamicRecordList := dynamicGroup.GetDynamicRecordList()
+			s.jsonResponse(context, dynamicRecordList)
 		}
         case http.MethodPost:
 		dynamicGroup, err := s.getDynamicGroup(context)
@@ -746,8 +745,8 @@ func (s *Server) zoneDynamicGroupDynamicRecordNTCForceDown(context *gin.Context)
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
-		for _, dr :=  range dynamicRecord {
-			dr.SetForceDown(zoneDynamicGroupDynamicRecordForceDownRequest.ForceDown)
+		for _, dynamicRecord :=  range dynamicRecordList {
+			dynamicRecord.SetForceDown(zoneDynamicGroupDynamicRecordForceDownRequest.ForceDown)
 		}
 		context.Status(http.StatusOK)
 		return
@@ -767,8 +766,8 @@ func (s *Server) zoneDynamicGroupNegativeRecord(context *gin.Context) {
 		if context.Request.Method == http.MethodHead {
 			context.Status(http.StatusOK)
 		} else {
-			negativeRecord := dynamicGroup.GetNegativeRecord()
-			s.jsonResponse(context, negativeRecord)
+			negativeRecordList := dynamicGroup.GetNegativeRecordList()
+			s.jsonResponse(context, negativeRecordList)
 		}
         case http.MethodPost:
 		dynamicGroup, err := s.getDynamicGroup(context)

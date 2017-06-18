@@ -31,7 +31,7 @@ type ZoneWatchResultResponse struct {
         Email             string                                 `json:"email"`
 	NameServerList    []*NameServerRecordWatchResultResponse `json:"nameServerList"`
 	StaticRecordList  []*StaticRecordWatchResultResponse     `json:"staticRecordList"`
-	DynamicRecordLst  []*DynamicRecordWatchResultResponse    `json:"dynamicRecordList"`
+	DynamicRecordList []*DynamicRecordWatchResultResponse    `json:"dynamicRecordList"`
 }
 
 // WatchResultResponse is watch result

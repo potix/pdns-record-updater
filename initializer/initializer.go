@@ -32,10 +32,7 @@ func (i *Initializer) selectDomain(db *sql.DB, domain string) (bool, error) {
 	return false, nil
 }
 
-func (i *Initializer) insertDomain(db *sql.DB, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (int64, error) {
-	if len(zoneWatchResultResponse.NameServer) == 0 {
-		return 0, errors.Errorf("not name server")
-	}
+func (i *Initializer) insertDomain(db *sql.DB, domain string) (int64, error) {
 	stmt, err := db.Prepare( `INSERT INTO "domains" ("name", "type") VALUES (?, ?)`);
 	if err != nil {
 		return 0, errors.Wrap(err, "can not prepare of domain")
@@ -60,22 +57,13 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	}
 	defer stmt.Close()
 	// soa record
-	var primary *structure.NameServerRecordWatchResultResponse
-	for _, nameServer := range zoneWatchResultResponse.NameServer {
-		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
-			continue
-		}
-		primary = nameServer
-	}
-	if primary != nil {
-		content := fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(primary.Name, domain), helper.DotEmail(primary.Email))
-		_, err = stmt.Exec(domainID, helper.NoDotDomain(domain), "SOA", content, primary.TTL, 0, 0, 1);
-		if err != nil {
-			return errors.Wrap(err, "can not execute statement of soa record")
-		}
+	content := fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(zoneWatchResultResponse.PrimaryNameServer, domain), helper.DotEmail(zoneWatchResultResponse.Email))
+	_, err = stmt.Exec(domainID, helper.NoDotDomain(domain), "SOA", content, 3600, 0, 0, 1);
+	if err != nil {
+		return errors.Wrap(err, "can not execute statement of soa record")
 	}
 	// ns record
-	for _, nameServer := range zoneWatchResultResponse.NameServer {
+	for _, nameServer := range zoneWatchResultResponse.NameServerList {
 		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
 			continue
 		}
@@ -85,7 +73,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 		}
 	}
 	// name server record
-	for _, nameServer := range zoneWatchResultResponse.NameServer {
+	for _, nameServer := range zoneWatchResultResponse.NameServerList {
 		name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, false)
 		content := helper.FixupRrsetContent(nameServer.Content, domain, nameServer.Type, true)
 		_, err = stmt.Exec(domainID, name, nameServer.Type, content, nameServer.TTL, 0, 0, 1);
@@ -94,7 +82,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 		}
 	}
 	// static record
-	for _, staticRecord := range zoneWatchResultResponse.StaticRecord {
+	for _, staticRecord := range zoneWatchResultResponse.StaticRecordList {
 		name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, false)
 		content := helper.FixupRrsetContent(staticRecord.Content, domain, staticRecord.Type, true)
 		_, err = stmt.Exec(domainID, name, staticRecord.Type, content, staticRecord.TTL, 0, 0, 1);
@@ -103,7 +91,7 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 		}
 	}
 	// dynamic record
-	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecord {
+	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecordList {
 		name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, false)
 		content := helper.FixupRrsetContent(dynamicRecord.Content, domain, dynamicRecord.Type, true)
 		_, err = stmt.Exec(domainID, name, dynamicRecord.Type, content, dynamicRecord.TTL, 0, 0, 1);
@@ -121,7 +109,7 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 		return errors.Wrap(err, fmt.Sprintf("can not open powedns sqlite (%v)", i.initializerContext.PdnsSqlitePath))
 	}
 	defer db.Close();
-	for domain, zoneWatchResultResponse := range watchResultResponse.Zone {
+	for domain, zoneWatchResultResponse := range watchResultResponse.ZoneMap {
 		exists, err := i.selectDomain(db, domain)
 		if err != nil {
 			return err;
@@ -130,7 +118,7 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 			belog.Info("domain is already exists")
 			continue
 		}
-		domainID, err := i.insertDomain(db, domain, zoneWatchResultResponse)
+		domainID, err := i.insertDomain(db, domain)
 		if err != nil {
 			return errors.Wrap(err, "can not insert domain");
 		}

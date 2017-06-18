@@ -59,7 +59,7 @@ func (s *Server) startServer(gracefulServer *GracefulServer) {
 
 // Start is Start
 func (s *Server) Start() (err error) {
-        if s.serverContext.Listen == nil || len(s.serverContext.Listen) == 0 {
+        if s.serverContext.ListenList == nil || len(s.serverContext.ListenList) == 0 {
                 errors.Errorf("not found linten port")
         }
 	engine := gin.Default()
@@ -121,7 +121,7 @@ func (s *Server) Start() (err error) {
 	}
 
 	// create server
-        for _, listen := range s.serverContext.Listen {
+        for _, listen := range s.serverContext.ListenList {
                 server := manners.NewWithServer(&http.Server{
                         Addr:    listen.AddrPort,
                         Handler: engine,
@@ -132,8 +132,8 @@ func (s *Server) Start() (err error) {
 		newGracefulServer := &GracefulServer{
 			server: server,
 			useTLS: listen.UseTLS,
-			certfile: listen.Certfile,
-			keyfile: listen.Keyfile,
+			certfile: listen.CertFile,
+			keyfile: listen.KeyFile,
 			startChan: make(chan error),
 		}
                 s.gracefulServers = append(s.gracefulServers, newGracefulServer)

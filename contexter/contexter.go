@@ -253,7 +253,7 @@ func (d *DynamicGroup) Validate() (bool) {
 }
 
 // GetDynamicRecord is get name server
-func (d *DynamicGroup) GetDynamicRecord() ([]*DynamicRecord) {
+func (d *DynamicGroup) GetDynamicRecordList() ([]*DynamicRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if d.DynamicRecordList == nil {
@@ -344,7 +344,7 @@ func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynami
 }
 
 // GetNegativeRecord is get name server
-func (d *DynamicGroup) GetNegativeRecord() ([]*NegativeRecord) {
+func (d *DynamicGroup) GetNegativeRecordList() ([]*NegativeRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if d.NegativeRecordList == nil {
@@ -501,7 +501,7 @@ func  (z *Zone) SetEmail(email string) {
 }
 
 // GetNameServer is get name server
-func (z *Zone) GetNameServer() ([]*NameServerRecord) {
+func (z *Zone) GetNameServerList() ([]*NameServerRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if z.NameServerList == nil {
@@ -592,7 +592,7 @@ func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *NameS
 }
 
 // GetStaticRecord is get name server
-func (z *Zone) GetStaticRecord() ([]*StaticRecord) {
+func (z *Zone) GetStaticRecordList() ([]*StaticRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if z.StaticRecordList == nil {
@@ -767,18 +767,18 @@ func (z *Watcher) Validate() (bool) {
 	return true
 }
 
-// GetDomain is get domain
-func (w *Watcher) GetDomain() ([]string) {
+// GetDomainList is get domain
+func (w *Watcher) GetDomainList() ([]string) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if w.ZoneMap == nil {
 		w.ZoneMap = make(map[string]*Zone)
 	}
-	domain := make([]string, 0, len(w.ZoneMap))
+	domainList := make([]string, 0, len(w.ZoneMap))
 	for d := range w.ZoneMap {
-		domain = append(domain, d)
+		domainList = append(domainList, d)
 	}
-	return domain
+	return domainList
 }
 
 // GetZone is get zone

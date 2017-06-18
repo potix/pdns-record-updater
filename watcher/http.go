@@ -107,7 +107,7 @@ func httpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
                 retry:         target.Retry,
                 retryWait:     target.RetryWait,
                 timeout:       target.Timeout,
-                status:        target.HTTPStatus,
+                status:        target.HTTPStatusList,
 		tlsSkipVerify: target.TLSSkipVerify,
         }, nil
 }
@@ -125,7 +125,7 @@ func httpRegexpWatcherNew(target *contexter.Target) (protoWatcherIf, error) {
                 retry:         target.Retry,
                 retryWait:     target.RetryWait,
                 timeout:       target.Timeout,
-                status:        target.HTTPStatus,
+                status:        target.HTTPStatusList,
                 regexpStr:     target.Regexp,
                 regexp:        regexp,
                 resSize:       target.ResSize,

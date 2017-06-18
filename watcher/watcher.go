@@ -75,11 +75,11 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 func (w Watcher) notify(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool, oldAlive bool) {
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTriggerList {
-		if strings.ToUpper(trigger) == "CHANGED" {
+		if strings.ToUpper(trigger.String()) == "CHANGED" {
 			triggerFlags |= tfChanged
-		} else if strings.ToUpper(trigger) == "LATESTDOWN" {
+		} else if strings.ToUpper(trigger.String()) == "LATESTDOWN" {
 			triggerFlags |= tfLatestDown
-		} else if strings.ToUpper(trigger) == "LATESTUP" {
+		} else if strings.ToUpper(trigger.String()) == "LATESTUP" {
 			triggerFlags |= tfLatestUp
 		}
 	}
@@ -125,7 +125,7 @@ func (w *Watcher) updateAlive(domain string, groupName string, record *contexter
 func (w *Watcher) recordWatch(domain string, groupName string, record *contexter.DynamicRecord) {
 	var firstTask *targetTask
 	// run target watch task
-	for _, target := range record.Target {
+	for _, target := range record.TargetList {
 		newTask := &targetTask {
 			target: target,
 		        waitChan: make(chan bool),
@@ -142,14 +142,14 @@ func (w *Watcher) recordWatch(domain string, groupName string, record *contexter
 		<-task.waitChan
 	}
 	// create replacer
-	replaceName := make([]string, 0, 2 * len(record.Target))
+	replaceNameList := make([]string, 0, 2 * len(record.TargetList))
 	targetResult := ""
-	for _, target := range record.Target {
-		replaceName = append(replaceName, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", target.GetAlive()))
+	for _, target := range record.TargetList {
+		replaceNameList = append(replaceNameList, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", target.GetAlive()))
 		targetResult = targetResult + fmt.Sprintf("%v %v %v %v %v %v %v %v\n",
 			domain, groupName, record.Name, record.Type, record.Content, target.Name, target.Dest, target.GetAlive())
 	}
-        replacer := strings.NewReplacer(replaceName...)
+        replacer := strings.NewReplacer(replaceNameList...)
 
 	// exec eval
 	tv, err := w.eval(replacer.Replace(record.EvalRule))
@@ -163,18 +163,18 @@ func (w *Watcher) recordWatch(domain string, groupName string, record *contexter
 }
 
 func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
-	dynamicGroupName := zone.GetDynamicGroupName()
-	for _, dgname := range dynamicGroupName {
-		dynamicGroup, err := zone.GetDynamicGroup(dgname)
+	dynamicGroupNameList := zone.GetDynamicGroupNameList()
+	for _, dynamicGroupName := range dynamicGroupNameList {
+		dynamicGroup, err := zone.GetDynamicGroup(dynamicGroupName)
 		if err != nil {
 			belog.Notice("%v", err)
 			continue
 		}
-		for _, record := range dynamicGroup.GetDynamicRecord() {
+		for _, record := range dynamicGroup.GetDynamicRecordList() {
 			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
 				if (record.CompareAndSwapProgress(false, true)) {
 					// run record waatch task
-					go w.recordWatch(domain, dgname, record)
+					go w.recordWatch(domain, dynamicGroupName, record)
 					record.ClearCurrentIntervalCount()
 				} else {
 					// already progress last record watch task
@@ -187,14 +187,14 @@ func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) == 1 {
-		domain := w.watcherContext.GetDomain()
-		for _, d := range domain {
-			zone, err := w.watcherContext.GetZone(d)
+		domainList := w.watcherContext.GetDomainList()
+		for _, domain := range domainList {
+			zone, err := w.watcherContext.GetZone(domain)
 			if err != nil {
 				belog.Notice("%v", err)
 				continue
 			}
-			go w.zoneWatch(d, zone)
+			go w.zoneWatch(domain, zone)
 		}
 		time.Sleep(time.Second)
 	}
@@ -202,22 +202,22 @@ func (w *Watcher) watchLoop() {
 
 // Init is Init
 func (w *Watcher) Init() {
-	domain := w.watcherContext.GetDomain()
-	for _, d := range domain {
-		zone, err := w.watcherContext.GetZone(d)
+	domainList := w.watcherContext.GetDomainList()
+	for _, domain := range domainList {
+		zone, err := w.watcherContext.GetZone(domain)
 		if err != nil {
 			belog.Notice("%v", err)
 			continue
 		}
-		dynamicGroupName := zone.GetDynamicGroupName()
-		for _, dgname := range dynamicGroupName {
-			dynamicGroup, err := zone.GetDynamicGroup(dgname)
+		dynamicGroupNameList := zone.GetDynamicGroupNameList()
+		for _, dynamicGroupName := range dynamicGroupNameList {
+			dynamicGroup, err := zone.GetDynamicGroup(dynamicGroupName)
 			if err != nil {
 				belog.Notice("%v", err)
 				continue
 			}
-			for _, record := range dynamicGroup.GetDynamicRecord() {
-				w.recordWatch(d, dgname, record)
+			for _, record := range dynamicGroup.GetDynamicRecordList() {
+				w.recordWatch(domain, dynamicGroupName, record)
 			}
 		}
 	}
