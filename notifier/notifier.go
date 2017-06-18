@@ -128,10 +128,10 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 
 // Notify is Notify
 func (n *Notifier) Notify(replacer *strings.Replacer, subject string, body string) {
-	if n.notifierContext == nil || n.notifierContext.Mail == nil {
+	if n.notifierContext == nil || n.notifierContext.MailList == nil {
 		return
 	}
-	for _, mailContext := range n.notifierContext.Mail {
+	for _, mailContext := range n.notifierContext.MailList {
 		go n.sendMail(mailContext, replacer, subject, body)
 	}
 }

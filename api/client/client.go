@@ -76,12 +76,12 @@ func (c *Client) retryRequest(methodFunc func(reqInfo *reqInfo) (response []byte
 
 func (c *Client) doRequest(methodFunc func(reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error) {
 	startEnd := [...]*startEnd{
-		&startEnd{ start: c.urlBaseIndex, end: len(c.clientContext.URL) },
+		&startEnd{ start: c.urlBaseIndex, end: len(c.clientContext.ServerURLList) },
 		&startEnd{ start: 0, end: c.urlBaseIndex },
 	}
 	for _, startEnd := range startEnd  {
 		for i := startEnd.start; i < startEnd.end; i++ {
-			reqInfo.urlBase = c.clientContext.URL[i]
+			reqInfo.urlBase = c.clientContext.ServerURLList[i].String()
 			reqInfo.url = reqInfo.urlBase + reqInfo.resource
 			response, err = c.retryRequest(methodFunc, reqInfo)
 			if err != nil {

@@ -60,11 +60,17 @@ func (t *Target) GetAlive() (bool) {
 
 type NotifyTrigger string
 
+// Validate is validate NotifyTrigger
 func (n NotifyTrigger) Validate() (bool) {
 	if strings.ToUpper(string(n)) != "CHANGED" && strings.ToUpper(string(n)) != "LATESTDOWN" && strings.ToUpper(string(n)) != "LATESTUP" {
 		return false
 	}
 	return true
+}
+
+// String is string
+func (n NotifyTrigger) String() (string) {
+	return string(n)
 }
 
 // DynamicRecord is config of record
@@ -734,7 +740,8 @@ func (z *Zone) DeleteDynamicGroup(dynamicGroupName string) (error) {
 	if !ok {
 		return errors.Errorf("not exist dynamic group name")
 	}
-	if len(dynamicGroup.DynamicRecord) == 0 && len(dynamicGroup.NegativeRecord) == 0 {
+	if (dynamicGroup.DynamicRecordList == nil || len(dynamicGroup.DynamicRecordList) == 0) &&
+	   (dynamicGroup.NegativeRecordList == nil || len(dynamicGroup.NegativeRecordList) == 0) {
 		delete(z.DynamicGroupMap, dynamicGroupName)
 		return nil
 	}
@@ -804,7 +811,7 @@ func (w *Watcher) AddZone(domain string, email string, primaryNameServer string)
 		PrimaryNameServer:  primaryNameServer,
 		NameServerList:     make([]*NameServerRecord, 0),
 		StaticRecordList:   make([]*StaticRecord, 0),
-		DynamicGroupList:   make(map[string]*DynamicGroup),
+		DynamicGroupMap:   make(map[string]*DynamicGroup),
 	}
 	w.ZoneMap[domain] = newZone
 	return nil
@@ -821,7 +828,9 @@ func (w *Watcher) DeleteZone(domain string) (error) {
 	if !ok {
 		return errors.Errorf("not exist domain")
 	}
-	if len(zone.NameServer) == 0 && len(zone.StaticRecord) == 0 && len(zone.DynamicGroup) == 0 {
+	if (zone.NameServerList == nil || len(zone.NameServerList) == 0) &&
+           (zone.StaticRecordList == nil || len(zone.StaticRecordList) == 0) &&
+	   (zone.DynamicGroupMap == nil || len(zone.DynamicGroupMap) == 0) {
 		delete(w.ZoneMap, domain)
 		return nil
 	}
@@ -843,7 +852,7 @@ type Mail struct {
 
 // Validate is validate Mail (no lock)
 func (m *Mail) Validate() (bool) {
-	if m.HostPort == nil || m.To == nil || m.From == nil {
+	if m.HostPort == "" || m.To == "" || m.From == "" {
 		return false
 	}
 	return true
@@ -876,7 +885,7 @@ type Listen struct {
 
 // Validate is validate listen (no lock)
 func (l *Listen) Validate() (bool) {
-	if AddrPort == nil {
+	if l.AddrPort == "" {
 		return false
 	}
 	return true
@@ -898,7 +907,7 @@ func (s *Server) Validate() (bool) {
 	}
 	for _, listen := range s.ListenList {
 		if !listen.Validate() {
-			return falase
+			return false
 		}
 	}
 	return true
@@ -907,11 +916,16 @@ func (s *Server) Validate() (bool) {
 type ServerURL string
 
 // Validate is validate Server url (no lock)
-func (s ServerURL) validate() {
+func (s ServerURL) Validate() (bool) {
 	if s == "" {
 		return false
 	}
 	return true
+}
+
+// String is string
+func (s ServerURL) String() (string) {
+	return string(s)
 }
 
 // Client is server
@@ -978,7 +992,7 @@ type Context struct {
 
 // Validate is validate Context (no lock)
 func (c *Context) Validate(mode string) (bool) {
-	switch strings.ToUpdater(mode) {
+	switch strings.ToUpper(mode) {
 	case "WATCHER":
 		if c.Watcher == nil || c.Server == nil  {
 			return false
@@ -987,10 +1001,10 @@ func (c *Context) Validate(mode string) (bool) {
 			return false
 		}
 	case "UPDATER":
-		if c.Client  == nil || c.Initializer == nil || Updater == nil {
+		if c.Client  == nil || c.Initializer == nil || c.Updater == nil {
 			return false
 		}
-		if !c.Client.Validate() || !c.Initializer.Validate() || !Updater.Validate() {
+		if !c.Client.Validate() || !c.Initializer.Validate() || !c.Updater.Validate() {
                         return false
                 }
 	case "CLIENT":
