@@ -1,83 +1,98 @@
 watcher:
-  notifysubject: "%(hostname) %(domain) %(groupName) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)" 
-  notifybody: "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n" 
-  zone:
+  notifySubject: "%(hostname) %(domain) %(groupName) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)" 
+  notifyBody: "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n" 
+  zoneMap:
     "example.jp":
-      nameserver:
+      primaryNameServer: "foo.example.jp"
+      email: "root.example.jp"
+      nameServerList:
         - name: "foo"
           type: "A"
           ttl: 3600
           content: "192.168.0.254"
-          email: "root.example.jp"
-      staticrecord:
+      staticRecordList:
         - name: "bar"
           type: "A"
           ttl: 3600
           content: "192.168.0.253"
-      dynamicgroup:
+      dynamicGroupMap:
         "group1":
-          dynamicrecord:
+          dynamicRecordList:
           - name: "foo"
             type: "a"
             ttl: 10 
             content: "192.168.0.1"
-            watchinterval: 5
+            watchInterval: 5
             alive: true
-            notifytrigger:
+            notifyTrigger:
             - "changed"
             - "latestDown"
-            target:
+            targetList:
             - name: "t1"
               protocol: "icmp"
               dest: "192.168.0.1"
               retry: 3
-              retrywait: 1
+              retryWait: 1
               timeout: 1
-              tlsskipverify: true
+              tlsSkipVerify: true
             - name: "t2"
               protocol: "tcpRegexp"
               dest: "192.168.0.1:80"
               regexp: "hogehoge2"
-              ressize: 2000
+              resSize: 2000
               retry: 3
-              retrywait: 1
+              retryWait: 1
               timeout: 2
               tcptls: true
-              tlsskipverify: true
+              tlsSkipVerify: true
             - name: "t3"
               protocol: "httpRegexp"
               dest: "192.168.0.1:80"
               regexp: "hogehoge3"
-              ressize: 3000
-              httpmethod: "GET"
+              resSize: 3000
+              httpMethod: "GET"
               httpstatus: ["200"]
               retry: 3
-              retrywait: 1
+              retryWait: 1
               timeout: 3
-              tlsskipverify: true
+              tlsSkipVerify: true
             evalrule: "%(t1) && %(t2) && %(t3)"
-          negativerecord:
+          negativeRecordList:
           - name: "foo"
             type: "a"
             ttl: 10
             content: "192.168.0.254"
 notifier:
   mail:
-  - hostport: "smtp.example.com:25"
+  - hostPort: "smtp.example.com:25"
     username: "bob"
     password: "password"
     to: "alice@example.com"
     from: "bob@example.com"
     authtype: "plain"
-    usestarttls: true
-    usetls: true
-    tlsskipverify: true
+    useStartTls: true
+    useTls: true
+    tlsSkipVerify: true
 server:
   debug: true
-  listen:
+  listenList:
   - addrport: "0.0.0.0:28080"
   username: "hoge"
   password: "hoge"
+client:
+  serverUrlList:
+  - http://127.0.0.1:28080
+  retry: 3
+  retryWait: 1
+  timeout: 30
+  tlsSkipVerify: false
+  username: admin
+  password: pass
+initializer:
+  pdnsSqlitePath: /var/spool/powerdns/powerdns.db
+updater:
+  pdnsServer: http://127.0.0.1:18080
+  pdnsApiKey: api-key
 logger:
   loggers:
     "default":

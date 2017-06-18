@@ -436,11 +436,11 @@ func (d *DynamicGroup) ReplaceNegativeRecord(n string, t string, c string, negat
 
 // Zone is zone
 type Zone struct {
-        PrimaryNameServer string                   `json:"email"            yaml:"email"            toml:"email"`            // primary name server [mutable]
-        Email             string                   `json:"email"            yaml:"email"            toml:"email"`            // email [mutable]
-	NameServerList    []*NameServerRecord      `json:"nameServerList "  yaml:"nameServerList"   toml:"nameServerList"`   // ネームサーバーレコードリスト   [mutable]
-	StaticRecordList  []*StaticRecord          `json:"staticRecordList" yaml:"staticRecordList" toml:"staticRecordList"` // 固定レコードリスト             [mutable]
-	DynamicGroupMap   map[string]*DynamicGroup `json:"dynamicGroupMap " yaml:"dynamicGroupMap"  toml:"dynamicGroupMap"`  // 動的なレコードグループのリスト [mutable]
+        PrimaryNameServer string                   `json:"primaryNameServer" yaml:"primaryNameServer" toml:"primaryNameServer"` // primary name server [mutable]
+        Email             string                   `json:"email"             yaml:"email"             toml:"email"`             // email [mutable]
+	NameServerList    []*NameServerRecord      `json:"nameServerList"    yaml:"nameServerList"    toml:"nameServerList"`    // ネームサーバーレコードリスト   [mutable]
+	StaticRecordList  []*StaticRecord          `json:"staticRecordList"  yaml:"staticRecordList"  toml:"staticRecordList"`  // 固定レコードリスト             [mutable]
+	DynamicGroupMap   map[string]*DynamicGroup `json:"dynamicGroupMap"  yaml:"dynamicGroupMap"    toml:"dynamicGroupMap"`   // 動的なレコードグループのリスト [mutable]
 }
 
 // Validate is validate zone (no lock)
