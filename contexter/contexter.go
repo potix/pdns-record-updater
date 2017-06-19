@@ -924,6 +924,11 @@ func (l *Listen) validate() (bool) {
 		belog.Error("no addrPort")
 		return false
 	}
+	if l.UseTLS {
+		if l.CertFile == "" || l.KeyFile == "" {
+			belog.Error("no certFile of no keyFile")
+		}
+	}
 	return true
 }
 

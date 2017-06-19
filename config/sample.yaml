@@ -79,6 +79,7 @@ server:
   - addrPort: "0.0.0.0:28080"
   username: "hoge"
   password: "hoge"
+  staticPath: "/var/tmp"
 client:
   serverUrlList:
   - http://127.0.0.1:28080
