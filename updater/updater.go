@@ -40,6 +40,7 @@ type rrsetData struct {
 	Name        string         `json:"name"`
 	Type        string         `json:"type"`
 	TTL         int32          `json:"ttl"`
+	ChangeType  string         `json:"changetype"`
 	CommentList []*commentData `json:"comments"`
 	RecordList  []*recordData  `json:"records"`
 }
@@ -79,10 +80,11 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	// soa
 	soa := &rrsetData {
 		Name:     helper.DotDomain(domain),
-		Type:     "SOA",
-		TTL:      3600,
+		Type:        "SOA",
+		TTL:         3600,
+		ChangeType:  "REPLACE",
 		CommentList: make([]*commentData, 0),
-		RecordList: make([]*recordData, 0, 1),
+		RecordList:  make([]*recordData, 0, 1),
 	}
 	record := &recordData {
 		Content : fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(zoneWatchResultResponse.PrimaryNameServer, domain), helper.DotEmail(zoneWatchResultResponse.Email)),
@@ -98,11 +100,12 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
                 name := helper.DotDomain(domain)
                 content := helper.FixupRrsetContent(nameServer.Name, domain, "NS", true)
 		rrset := &rrsetData {
-			Name:     name,
-			Type:     "NS",
-			TTL:      nameServer.TTL,
+			Name:        name,
+			Type:        "NS",
+			TTL:         nameServer.TTL,
+			ChangeType:  "REPLACE",
 			CommentList: make([]*commentData, 0),
-			RecordList: make([]*recordData, 0, 1),
+			RecordList:  make([]*recordData, 0, 1),
 		}
 		record := &recordData {
 			Content : content,
@@ -116,11 +119,12 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
                 name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
                 content := helper.FixupRrsetContent(nameServer.Content, domain, nameServer.Type, true)
 		rrset := &rrsetData {
-			Name:     name,
-			Type:     nameServer.Type,
-			TTL:      nameServer.TTL,
+			Name:        name,
+			Type:        nameServer.Type,
+			TTL:         nameServer.TTL,
+			ChangeType:  "REPLACE",
 			CommentList: make([]*commentData, 0),
-			RecordList: make([]*recordData, 0, 1),
+			RecordList:  make([]*recordData, 0, 1),
 		}
 		record := &recordData {
 			Content : content,
@@ -134,11 +138,12 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
                 name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, true)
                 content := helper.FixupRrsetContent(staticRecord.Content, domain, staticRecord.Type, true)
 		rrset := &rrsetData {
-			Name:     name,
-			Type:     staticRecord.Type,
-			TTL:      staticRecord.TTL,
+			Name:        name,
+			Type:        staticRecord.Type,
+			TTL:         staticRecord.TTL,
+			ChangeType:  "REPLACE",
 			CommentList: make([]*commentData, 0),
-			RecordList: make([]*recordData, 0, 1),
+			RecordList:  make([]*recordData, 0, 1),
 		}
 		record := &recordData {
 			Content : content,
@@ -152,11 +157,12 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
                 name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, true)
                 content := helper.FixupRrsetContent(dynamicRecord.Content, domain, dynamicRecord.Type, true)
 		rrset := &rrsetData {
-			Name:     name,
-			Type:     dynamicRecord.Type,
-			TTL:      dynamicRecord.TTL,
+			Name:        name,
+			Type:        dynamicRecord.Type,
+			TTL:         dynamicRecord.TTL,
+			ChangeType:  "REPLACE",
 			CommentList: make([]*commentData, 0),
-			RecordList: make([]*recordData, 0, 1),
+			RecordList:  make([]*recordData, 0, 1),
 		}
 		record := &recordData {
 			Content : content,
@@ -241,7 +247,7 @@ func (u *Updater) updateZone(domain string, zoneWatchResultResponse *structure.Z
 		Rrsets : u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse),
 	}
 	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, domain)
-	return u.postPutPatch(resource, "PUT", rrsetRequest)
+	return u.postPutPatch(resource, "PATCH", rrsetRequest)
 }
 
 func (u *Updater) createZone(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
