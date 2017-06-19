@@ -86,27 +86,27 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	soa.RecordList = append(soa.RecordList, record)
 	rrsets = append(rrsets, soa)
 	// ns record 
+	name := helper.DotDomain(domain)
+	nsRrset := &rrsetData {
+		Name:        name,
+		Type:        "NS",
+		TTL:         nameServer.TTL,
+		ChangeType:  "REPLACE",
+		CommentList: make([]*commentData, 0),
+		RecordList:  make([]*recordData, 0, len(zoneWatchResultResponse.NameServerList)),
+	}
 	for _, nameServer := range zoneWatchResultResponse.NameServerList {
 		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
 			continue
 		}
-		name := helper.DotDomain(domain)
 		content := helper.FixupRrsetContent(nameServer.Name, domain, "NS", true)
-		rrset := &rrsetData {
-			Name:        name,
-			Type:        "NS",
-			TTL:         nameServer.TTL,
-			ChangeType:  "REPLACE",
-			CommentList: make([]*commentData, 0),
-			RecordList:  make([]*recordData, 0, 1),
-		}
 		record := &recordData {
 			Content : content,
 			Disabled : false,
 		}
-		rrset.RecordList = append(rrset.RecordList, record)
-		rrsets = append(rrsets, rrset)
+		nsRrset.RecordList = append(rrset.RecordList, record)
 	}
+	rrsets = append(rrsets, nsRrset)
 	// name server
 	for _, nameServer := range zoneWatchResultResponse.NameServerList {
                 name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
