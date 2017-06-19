@@ -77,6 +77,7 @@ server:
   debug: true
   listenList:
   - addrPort: "0.0.0.0:28080"
+    useTls: false
   username: "hoge"
   password: "hoge"
   staticPath: "/var/tmp"
@@ -90,9 +91,9 @@ client:
   username: admin
   password: pass
 initializer:
-  pdnsSqlitePath: /var/spool/powerdns/powerdns.db
+  pdnsSqlitePath: /tmp/powerdns.db
 updater:
-  pdnsServer: http://127.0.0.1:18080
+  pdnsServer: http://127.0.0.1:38080
   pdnsApiKey: api-key
 logger:
   loggers:

@@ -934,11 +934,11 @@ func (l *Listen) validate() (bool) {
 
 // Server is server
 type Server struct {
-	Debug        bool      `json:"debug"      yaml:"debug"      toml:"debug"`      // デバッグモードにする
-	ListenList   []*Listen `json:"listenList  yaml:"listenList" toml:"listenList"` // リッスンリスト
-	Username     string    `json:"username"   yaml:"username"   toml:"username"`   // ユーザー名
-	Password     string    `json:"password"   yaml:"password"   toml:"password"`   // パスワード
-	StaticPath   string    `json:"staticPath" yaml:"staticPath" toml:"staticPath"` // Staticリソースのパス
+	Debug        bool      `json:"debug"       yaml:"debug"      toml:"debug"`      // デバッグモードにする
+	ListenList   []*Listen `json:"listenList"  yaml:"listenList" toml:"listenList"` // リッスンリスト
+	Username     string    `json:"username"    yaml:"username"   toml:"username"`   // ユーザー名
+	Password     string    `json:"password"    yaml:"password"   toml:"password"`   // パスワード
+	StaticPath   string    `json:"staticPath"  yaml:"staticPath" toml:"staticPath"` // Staticリソースのパス
 }
 
 func (s *Server) validate() (bool) {
@@ -971,7 +971,7 @@ func (s ServerURL) String() (string) {
 
 // Client is server
 type Client struct {
-	ServerURLList []ServerURL `json:"serverURLList" yaml:"serverURLList" toml:"serverURLList"` // server url list
+	ServerURLList []ServerURL `json:"serverUrlList" yaml:"serverUrlList" toml:"serverUrlList"` // server url list
 	Username      string      `json:"username"      yaml:"username"      toml:"username"`      // ユーザー名
 	Password      string      `json:"password"      yaml:"password"      toml:"password"`      // パスワード
 	TLSSkipVerify bool        `json:"tlsSkipVerify" yaml:"tlsSkipVerify" toml:"tlsSkipVerify"` // TLSのverifyをスキップルするかどうか
