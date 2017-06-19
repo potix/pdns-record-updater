@@ -313,10 +313,6 @@ func (s *Server) zoneNameServer(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
-		if !nameServer.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
 		if err := zone.AddNameServer(nameServer); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -370,10 +366,6 @@ func (s *Server) zoneNameServerNTC(context *gin.Context) {
 		nameServer := new(contexter.NameServerRecord)
 		if err := context.BindJSON(nameServer); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
-			return
-		}
-		if !nameServer.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
 		if err := zone.ReplaceNameServer(n, t, c, nameServer); err != nil {
@@ -432,10 +424,6 @@ func (s *Server) zoneStaticRecord(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
-		if !staticRecord.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
 		if err := zone.AddStaticRecord(staticRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -489,10 +477,6 @@ func (s *Server) zoneStaticRecordNTC(context *gin.Context) {
 		staticRecord := new(contexter.StaticRecord)
 		if err := context.BindJSON(staticRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
-			return
-		}
-		if !staticRecord.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
 		if err := zone.ReplaceStaticRecord(n, t, c, staticRecord); err != nil {
@@ -618,16 +602,6 @@ func (s *Server) zoneDynamicGroupDynamicRecord(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
-		if !dynamicRecord.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		for _, target := range dynamicRecord.TargetList {
-			if !target.Validate() {
-				context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-				return
-			}
-		}
 		if err := dynamicGroup.AddDynamicRecord(dynamicRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -681,16 +655,6 @@ func (s *Server) zoneDynamicGroupDynamicRecordNTC(context *gin.Context) {
 		if err := context.BindJSON(dynamicRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
-		}
-		if !dynamicRecord.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
-		for _, target := range dynamicRecord.TargetList {
-			if !target.Validate() {
-				context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-				return
-			}
 		}
 		if err := dynamicGroup.ReplaceDynamicRecord(n, t, c, dynamicRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
@@ -780,10 +744,6 @@ func (s *Server) zoneDynamicGroupNegativeRecord(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
-		if !negativeRecord.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
-			return
-		}
 		if err := dynamicGroup.AddNegativeRecord(negativeRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
@@ -836,10 +796,6 @@ func (s *Server) zoneDynamicGroupNegativeRecordNTC(context *gin.Context) {
 		negativeRecord := new(contexter.NegativeRecord)
 		if err := context.BindJSON(negativeRecord); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
-			return
-		}
-		if !negativeRecord.Validate() {
-			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
 		if err := dynamicGroup.ReplaceNegativeRecord(n, t, c, negativeRecord); err != nil {

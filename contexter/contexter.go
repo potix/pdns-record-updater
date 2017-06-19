@@ -31,13 +31,14 @@ type Target struct {
 	alive          bool                                                                         // 生存フラグ 
 }
 
-// Validate ins validate target (no lock)
-func (t *Target) Validate() (bool) {
+func (t *Target) validate() (bool) {
 	if t.Name == "" || t.Protocol == "" || t.Dest == "" {
+		belog.Error("no name or no protocol or no dest")
 		return false
 	}
 	if t.Protocol == "http" || t.Protocol == "httpRegexp" {
 		if t.HTTPMethod == "" || t.HTTPStatusList == nil || len(t.HTTPStatusList) == 0 {
+			belog.Error("no httpMethod or no httpStatusList")
 			return false
 		}
 	}
@@ -60,9 +61,9 @@ func (t *Target) GetAlive() (bool) {
 
 type NotifyTrigger string
 
-// Validate is validate NotifyTrigger
-func (n NotifyTrigger) Validate() (bool) {
+func (n NotifyTrigger) validate() (bool) {
 	if strings.ToUpper(string(n)) != "CHANGED" && strings.ToUpper(string(n)) != "LATESTDOWN" && strings.ToUpper(string(n)) != "LATESTUP" {
+		belog.Error("unexpected trigger")
 		return false
 	}
 	return true
@@ -89,20 +90,20 @@ type DynamicRecord struct {
 	NotifyTriggerList    []NotifyTrigger `json:"notifyTriggerList" yaml:"notifyTriggerList" toml:"notifyTriggerList"` // notifierを送信するトリガー changed, latestDown, latestUp
 }
 
-// Validate is validate dynamic record (no lock)
-func (d *DynamicRecord) Validate() (bool) {
+func (d *DynamicRecord) validate() (bool) {
 	if d.Name == "" || d.Type == "" || d.TTL == 0 || d.Content == "" ||
             d.WatchInterval == 0 || d.EvalRule == "" || d.TargetList == nil {
+		belog.Error("no name or no type or no ttl or no content or no watchInterval or no evalRule or no targetList")
 		return false
 	}
 	for _, target := range d.TargetList {
-		if !target.Validate() {
+		if !target.validate() {
 			return false
 		}
 	}
 	if d.NotifyTriggerList != nil {
 		for _, notifyTrigger := range d.NotifyTriggerList {
-			if !notifyTrigger.Validate() {
+			if !notifyTrigger.validate() {
 				return false
 			}
 		}
@@ -187,9 +188,9 @@ type NegativeRecord struct {
 	Content     string `json:"content" yaml:"content" toml:"content"`  // DNSレコード内容
 }
 
-// Validate is validate negative record (no lock)
-func (n *NegativeRecord) Validate() (bool) {
+func (n *NegativeRecord) validate() (bool) {
 	if n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "" {
+		belog.Error("no name or no type or no ttl or no content")
 		return false
 	}
 	return true
@@ -203,9 +204,9 @@ type NameServerRecord struct {
 	Content     string `json:"content" yaml:"content" toml:"content"` // DNSレコード内容
 }
 
-// Validate is validate static record (no lock)
-func (n *NameServerRecord) Validate() (bool) {
+func (n *NameServerRecord) validate() (bool) {
 	if n.Name == "" || n.Type == "" || n.TTL == 0 || n.Content == "" {
+		belog.Error("no name or no type or no ttl or no content")
 		return false
 	}
 	return true
@@ -219,9 +220,9 @@ type StaticRecord struct {
 	Content     string `json:"content" yaml:"content" toml:"content"` // DNSレコード内容
 }
 
-// Validate is validate static record (no lock)
-func (s *StaticRecord) Validate() (bool) {
+func (s *StaticRecord) validate() (bool) {
 	if s.Name == "" || s.Type == "" || s.TTL == 0 || s.Content == "" {
+		belog.Error("no name or no type or no ttl or no content")
 		return false
 	}
 	return true
@@ -233,18 +234,17 @@ type DynamicGroup struct {
 	NegativeRecordList []*NegativeRecord `json:"negativeRecordList" yaml:"negativeRecordList" toml:"negativeRecordList"` // 動的レコードが全て死んだ場合に有効になるレコード [mutable]
 }
 
-// Validate is validate dynamic group (no lock)
-func (d *DynamicGroup) Validate() (bool) {
+func (d *DynamicGroup) validate() (bool) {
 	if d.DynamicRecordList != nil {
 		for _, dynamicRecord := range d.DynamicRecordList {
-			if !dynamicRecord.Validate() {
+			if !dynamicRecord.validate() {
 				return false
 			}
 		}
 	}
 	if d.NegativeRecordList != nil {
 		for _, negativeRecord := range d.NegativeRecordList {
-			if !negativeRecord.Validate() {
+			if !negativeRecord.validate() {
 				return false
 			}
 		}
@@ -284,6 +284,9 @@ func (d *DynamicGroup) FindDynamicRecord(n string, t string, c string) ([]*Dynam
 func (d *DynamicGroup) AddDynamicRecord(dynamicRecord *DynamicRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !dynamicRecord.validate() {
+		return errors.Errorf("invalid dynamic record")
+	}
 	if d.DynamicRecordList == nil {
 		d.DynamicRecordList = make([]*DynamicRecord, 0, 1)
 	}
@@ -324,6 +327,9 @@ func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynami
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !dynamicRecord.validate() {
+		return errors.Errorf("invalid dynamic record")
+	}
 	if d.DynamicRecordList == nil {
 		d.DynamicRecordList = make([]*DynamicRecord, 0)
 	}
@@ -375,6 +381,9 @@ func (d *DynamicGroup) FindNegativeRecord(n string, t string, c string) ([]*Nega
 func (d *DynamicGroup) AddNegativeRecord(negativeRecord *NegativeRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !negativeRecord.validate() {
+		return errors.Errorf("invalid negative record")
+	}
 	if d.NegativeRecordList == nil {
 		d.NegativeRecordList = make([]*NegativeRecord, 0, 1)
 	}
@@ -415,6 +424,9 @@ func (d *DynamicGroup) ReplaceNegativeRecord(n string, t string, c string, negat
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !negativeRecord.validate() {
+		return errors.Errorf("invalid negative record")
+	}
 	if d.NegativeRecordList == nil {
 		d.NegativeRecordList = make([]*NegativeRecord, 0)
 	}
@@ -443,28 +455,32 @@ type Zone struct {
 	DynamicGroupMap   map[string]*DynamicGroup `json:"dynamicGroupMap"  yaml:"dynamicGroupMap"    toml:"dynamicGroupMap"`   // 動的なレコードグループのリスト [mutable]
 }
 
-// Validate is validate zone (no lock)
-func (z *Zone) Validate() (bool) {
+func (z *Zone) validate() (bool) {
 	if z.PrimaryNameServer == "" || z.Email == "" {
+		belog.Error("no primaryNameServer or no email")
 		return false
 	}
 	if z.NameServerList != nil {
 		for _, nameServer := range z.NameServerList {
-			if !nameServer.Validate() {
+			if !nameServer.validate() {
 				return false
 			}
 		}
 	}
 	if z.StaticRecordList != nil {
 		for _, staticRecord := range z.StaticRecordList {
-			if !staticRecord.Validate() {
+			if !staticRecord.validate() {
 				return false
 			}
 		}
 	}
 	if z.DynamicGroupMap != nil {
 		for dynamicGroupName, dynamicGroup := range z.DynamicGroupMap {
-			if dynamicGroupName == "" || !dynamicGroup.Validate() {
+			if dynamicGroupName == "" {
+				belog.Error("invalid dynamicGroupName")
+				return false
+			}
+			if !dynamicGroup.validate() {
 				return false
 			}
 		}
@@ -532,6 +548,9 @@ func (z *Zone) FindNameServer(n string, t string, c string) ([]*NameServerRecord
 func (z *Zone) AddNameServer(nameServer *NameServerRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !nameServer.validate() {
+		return errors.Errorf("invalid name server")
+	}
 	if z.NameServerList == nil {
 		z.NameServerList = make([]*NameServerRecord, 0, 1)
 	}
@@ -572,6 +591,9 @@ func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *NameS
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !nameServer.validate() {
+		return errors.Errorf("invalid name server")
+	}
 	if z.NameServerList == nil {
 		z.NameServerList = make([]*NameServerRecord, 0)
 	}
@@ -623,6 +645,9 @@ func (z *Zone) FindStaticRecord(n string, t string, c string) ([]*StaticRecord) 
 func (z *Zone) AddStaticRecord(staticRecord *StaticRecord) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !staticRecord.validate() {
+		return errors.Errorf("invalid static record")
+	}
 	if z.StaticRecordList == nil {
 		z.StaticRecordList = make([]*StaticRecord, 0, 1)
 	}
@@ -663,6 +688,9 @@ func (z *Zone) ReplaceStaticRecord(n string, t string, c string, staticRecord *S
 	replaced := false
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if !staticRecord.validate() {
+		return errors.Errorf("invalid static record")
+	}
 	if z.StaticRecordList == nil {
 		z.StaticRecordList = make([]*StaticRecord, 0)
 	}
@@ -714,6 +742,9 @@ func (z *Zone) GetDynamicGroup(dynamicGroupName string) (*DynamicGroup, error) {
 func (z *Zone) AddDynamicGroup(dynamicGroupName string) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if dynamicGroupName == "" {
+		return errors.Errorf("invalid dynamic group name")
+	}
 	if z.DynamicGroupMap == nil {
 		z.DynamicGroupMap = make(map[string]*DynamicGroup)
 	}
@@ -755,11 +786,14 @@ type Watcher struct {
 	NotifyBody    string           `json:"notifyBody"    yaml:"notifyBody"    toml:"notifyBody"`    // Notifyの本文テンプレート
 }
 
-// Validate is validate Wacther (no lock)
-func (z *Watcher) Validate() (bool) {
+func (z *Watcher) validate() (bool) {
 	if z.ZoneMap != nil {
 		for domain, zone := range z.ZoneMap {
-			if domain == "" || !zone.Validate() {
+			if domain == "" {
+				belog.Error("invalid domain")
+				return false
+			}
+			if !zone.validate() {
 				return false
 			}
 		}
@@ -799,6 +833,9 @@ func (w *Watcher) GetZone(domain string) (*Zone, error) {
 func (w *Watcher) AddZone(domain string, email string, primaryNameServer string) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
+	if domain == "" || email == "" || primaryNameServer == "" {
+		return errors.Errorf("invalid zone")
+	}
 	if w.ZoneMap == nil {
 		w.ZoneMap = make(map[string]*Zone)
 	}
@@ -850,9 +887,9 @@ type Mail struct {
 	TLSSkipVerify bool   `json:"tlsSkipVerify" yaml:"tlsSkipVerify" toml:"tlsSkipVerify"` // TLSの検証をスキップする
 }
 
-// Validate is validate Mail (no lock)
-func (m *Mail) Validate() (bool) {
+func (m *Mail) validate() (bool) {
 	if m.HostPort == "" || m.To == "" || m.From == "" {
+		belog.Error("no hostPort or no to or no from")
 		return false
 	}
 	return true
@@ -863,11 +900,10 @@ type Notifier struct {
 	MailList []*Mail `json:"mailList" yaml:"mailList" toml:"mailList"` // メールリスト
 }
 
-// Validate is validate notifier (no lock)
-func (n *Notifier) Validate() (bool) {
+func (n *Notifier) validate() (bool) {
 	if n.MailList != nil {
 		for _, mail := range n.MailList {
-			if !mail.Validate() {
+			if !mail.validate() {
 				return false
 			}
 		}
@@ -883,9 +919,9 @@ type Listen struct {
 	KeyFile  string `json:"keyFile"  yaml:"keyFile"  toml:"keyFile"`  // プライベートキーファイルパス
 }
 
-// Validate is validate listen (no lock)
-func (l *Listen) Validate() (bool) {
+func (l *Listen) validate() (bool) {
 	if l.AddrPort == "" {
+		belog.Error("no addrPort")
 		return false
 	}
 	return true
@@ -900,13 +936,13 @@ type Server struct {
 	StaticPath   string    `json:"staticPath" yaml:"staticPath" toml:"staticPath"` // Staticリソースのパス
 }
 
-// Validate is validate Server (no lock)
-func (s *Server) Validate() (bool) {
+func (s *Server) validate() (bool) {
 	if s.ListenList == nil || len(s.ListenList) == 0 {
+		belog.Error("no listenList")
 		return false
 	}
 	for _, listen := range s.ListenList {
-		if !listen.Validate() {
+		if !listen.validate() {
 			return false
 		}
 	}
@@ -915,9 +951,9 @@ func (s *Server) Validate() (bool) {
 
 type ServerURL string
 
-// Validate is validate Server url (no lock)
-func (s ServerURL) Validate() (bool) {
+func (s ServerURL) validate() (bool) {
 	if s == "" {
+		belog.Error("invalid server url")
 		return false
 	}
 	return true
@@ -939,13 +975,13 @@ type Client struct {
 	Timeout       uint32      `json:"timeout"       yaml:"timeout"       toml:"timeout"`       // タイムアウト
 }
 
-// Validate is validate client (no lock)
-func (c *Client) Validate() (bool) {
+func (c *Client) validate() (bool) {
 	if c.ServerURLList == nil || len(c.ServerURLList) == 0 {
+		belog.Error("no serverUrlList")
 		return false
 	}
 	for _, serverURL := range c.ServerURLList {
-		if !serverURL.Validate() {
+		if !serverURL.validate() {
 			return false
 		}
 	}
@@ -958,9 +994,9 @@ type Updater struct {
         PdnsAPIKey string `json:"pdnsApiKey" yaml:"pdnsApiKey" toml:"pdnsApiKey"` // power dns api key
 }
 
-// Validate is validate updater (no lock)
-func (u *Updater) Validate() (bool) {
+func (u *Updater) validate() (bool) {
 	if u.PdnsServer == "" || u.PdnsAPIKey == "" {
+		belog.Error("no pdnsServer or no pdnsApiKey")
 		return false
 	}
 	return true
@@ -971,9 +1007,9 @@ type Initializer struct {
 	PdnsSqlitePath string `json:"pdnsSqlitePath" yaml:"pdnsSqlitePath" toml:"pdnsSqlitePath"` // power dns sqlite path
 }
 
-// Validate is validate initializer (no lock)
-func (i *Initializer) Validate() (bool) {
+func (i *Initializer) validate() (bool) {
 	if i.PdnsSqlitePath == "" {
+		belog.Error("no pdnsSqlitePath")
 		return false
 	}
 	return true
@@ -990,28 +1026,27 @@ type Context struct {
 	Logger      *belog.ConfigLoggers `json:"logger"      yaml:"logger"      toml:"logger"`      // ログ設定
 }
 
-// Validate is validate Context (no lock)
-func (c *Context) Validate(mode string) (bool) {
+func (c *Context) validate(mode string) (bool) {
 	switch strings.ToUpper(mode) {
 	case "WATCHER":
 		if c.Watcher == nil || c.Server == nil  {
 			return false
 		}
-		if !c.Watcher.Validate() || !c.Server.Validate() {
+		if !c.Watcher.validate() || !c.Server.validate() {
 			return false
 		}
 	case "UPDATER":
 		if c.Client  == nil || c.Initializer == nil || c.Updater == nil {
 			return false
 		}
-		if !c.Client.Validate() || !c.Initializer.Validate() || !c.Updater.Validate() {
+		if !c.Client.validate() || !c.Initializer.validate() || !c.Updater.validate() {
                         return false
                 }
 	case "CLIENT":
 		if c.Client  == nil {
 			return false
 		}
-		if !c.Client.Validate() {
+		if !c.Client.validate() {
                         return false
                 }
 	default:
@@ -1046,7 +1081,7 @@ func (c *Contexter) LoadConfig() (error){
 	if err != nil {
 		return err
 	}
-	if !newContext.Validate(c.mode) {
+	if !newContext.validate(c.mode) {
 		return errors.Errorf("invalid config")
 	}
 	c.Context = newContext

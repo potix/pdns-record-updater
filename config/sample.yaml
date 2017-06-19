@@ -51,12 +51,12 @@ watcher:
               regexp: "hogehoge3"
               resSize: 3000
               httpMethod: "GET"
-              httpstatus: ["200"]
+              httpStatusList: ["200"]
               retry: 3
               retryWait: 1
               timeout: 3
               tlsSkipVerify: true
-            evalrule: "%(t1) && %(t2) && %(t3)"
+            evalRule: "%(t1) && %(t2) && %(t3)"
           negativeRecordList:
           - name: "foo"
             type: "a"
@@ -76,7 +76,7 @@ notifier:
 server:
   debug: true
   listenList:
-  - addrport: "0.0.0.0:28080"
+  - addrPort: "0.0.0.0:28080"
   username: "hoge"
   password: "hoge"
 client:
