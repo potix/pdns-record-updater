@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 	"fmt"
+	"sort"
 )
 
 // Updater is updater
@@ -85,84 +86,102 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	}
 	soa.RecordList = append(soa.RecordList, record)
 	rrsets = append(rrsets, soa)
+	// sort
+	sort.Sort(zoneWatchResultResponse.NameServerList)
+	sort.Sort(zoneWatchResultResponse.StaticRecordList)
+	sort.Sort(zoneWatchResultResponse.DynamicRecordList)
+
+	var latestRrset *rrsetData
 	// ns record 
-	name := helper.DotDomain(domain)
-	nsRrset := &rrsetData {
-		Name:        name,
-		Type:        "NS",
-		ChangeType:  "REPLACE",
-		CommentList: make([]*commentData, 0),
-		RecordList:  make([]*recordData, 0, len(zoneWatchResultResponse.NameServerList)),
-	}
+	latestRrset = nil
 	for _, nameServer := range zoneWatchResultResponse.NameServerList {
 		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
 			continue
+		}
+		if latestRrset == nil || latestRrset.Name != nameServer.Name || latestRrset.Type != nameServer.Type {
+			name := helper.DotDomain(domain)
+			latestRrset := &rrsetData {
+				Name:        name,
+				Type:        "NS",
+				TTL:         nameServer.TTL,
+				ChangeType:  "REPLACE",
+				CommentList: make([]*commentData, 0),
+				RecordList:  make([]*recordData, 0, len(zoneWatchResultResponse.NameServerList)),
+			}
+			rrsets = append(rrsets, latestRrset)
 		}
 		content := helper.FixupRrsetContent(nameServer.Name, domain, "NS", true)
 		record := &recordData {
 			Content : content,
 			Disabled : false,
 		}
-		nsRrset.TTL = nameServer.TTL
-		nsRrset.RecordList = append(nsRrset.RecordList, record)
+		latestRrset.RecordList = append(latestRrset.RecordList, record)
 	}
-	rrsets = append(rrsets, nsRrset)
 	// name server
+	latestRrset = nil
 	for _, nameServer := range zoneWatchResultResponse.NameServerList {
-                name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
-                content := helper.FixupRrsetContent(nameServer.Content, domain, nameServer.Type, true)
-		rrset := &rrsetData {
-			Name:        name,
-			Type:        nameServer.Type,
-			TTL:         nameServer.TTL,
-			ChangeType:  "REPLACE",
-			CommentList: make([]*commentData, 0),
-			RecordList:  make([]*recordData, 0, 1),
+		if latestRrset == nil || latestRrset.Name != nameServer.Name || latestRrset.Type != nameServer.Type {
+			name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
+			latestRrset := &rrsetData {
+				Name:        name,
+				Type:        nameServer.Type,
+				TTL:         nameServer.TTL,
+				ChangeType:  "REPLACE",
+				CommentList: make([]*commentData, 0),
+				RecordList:  make([]*recordData, 0, 1),
+			}
+			rrsets = append(rrsets, latestRrset)
 		}
+                content := helper.FixupRrsetContent(nameServer.Content, domain, nameServer.Type, true)
 		record := &recordData {
 			Content : content,
 			Disabled : false,
 		}
-		rrset.RecordList = append(rrset.RecordList, record)
-		rrsets = append(rrsets, rrset)
+		latestRrset.RecordList = append(latestRrset.RecordList, record)
 	}
 	// static record
+	latestRrset = nil
 	for _, staticRecord := range zoneWatchResultResponse.StaticRecordList {
-                name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, true)
-                content := helper.FixupRrsetContent(staticRecord.Content, domain, staticRecord.Type, true)
-		rrset := &rrsetData {
-			Name:        name,
-			Type:        staticRecord.Type,
-			TTL:         staticRecord.TTL,
-			ChangeType:  "REPLACE",
-			CommentList: make([]*commentData, 0),
-			RecordList:  make([]*recordData, 0, 1),
+		if latestRrset == nil || latestRrset.Name != staticRecord.Name || latestRrset.Type != staticRecord.Type {
+			name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, true)
+			latestRrset := &rrsetData {
+				Name:        name,
+				Type:        staticRecord.Type,
+				TTL:         staticRecord.TTL,
+				ChangeType:  "REPLACE",
+				CommentList: make([]*commentData, 0),
+				RecordList:  make([]*recordData, 0, 1),
+			}
+			rrsets = append(rrsets, latestRrset)
 		}
+                content := helper.FixupRrsetContent(staticRecord.Content, domain, staticRecord.Type, true)
 		record := &recordData {
 			Content : content,
 			Disabled : false,
 		}
-		rrset.RecordList = append(rrset.RecordList, record)
-		rrsets = append(rrsets, rrset)
+		latestRrset.RecordList = append(latestRrset.RecordList, record)
 	}
 	// dynamic record
+	latestRrset = nil
 	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecordList {
-                name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, true)
-                content := helper.FixupRrsetContent(dynamicRecord.Content, domain, dynamicRecord.Type, true)
-		rrset := &rrsetData {
-			Name:        name,
-			Type:        dynamicRecord.Type,
-			TTL:         dynamicRecord.TTL,
-			ChangeType:  "REPLACE",
-			CommentList: make([]*commentData, 0),
-			RecordList:  make([]*recordData, 0, 1),
+		if latestRrset == nil || latestRrset.Name != dynamicRecord.Name || latestRrset.Type != dynamicRecord.Type {
+			name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, true)
+			latestRrset := &rrsetData {
+				Name:        name,
+				Type:        dynamicRecord.Type,
+				TTL:         dynamicRecord.TTL,
+				ChangeType:  "REPLACE",
+				CommentList: make([]*commentData, 0),
+				RecordList:  make([]*recordData, 0, 1),
+			}
+			rrsets = append(rrsets, latestRrset)
 		}
+                content := helper.FixupRrsetContent(dynamicRecord.Content, domain, dynamicRecord.Type, true)
 		record := &recordData {
 			Content : content,
 			Disabled : !dynamicRecord.Alive,
 		}
-		rrset.RecordList = append(rrset.RecordList, record)
-		rrsets = append(rrsets, rrset)
+		latestRrset.RecordList = append(latestRrset.RecordList, record)
 	}
 	return rrsets
 }
