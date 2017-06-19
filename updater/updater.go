@@ -90,7 +90,6 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	nsRrset := &rrsetData {
 		Name:        name,
 		Type:        "NS",
-		TTL:         nameServer.TTL,
 		ChangeType:  "REPLACE",
 		CommentList: make([]*commentData, 0),
 		RecordList:  make([]*recordData, 0, len(zoneWatchResultResponse.NameServerList)),
@@ -104,7 +103,8 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 			Content : content,
 			Disabled : false,
 		}
-		nsRrset.RecordList = append(rrset.RecordList, record)
+		nsRrset.TTL = nameServer.TTL
+		nsRrset.RecordList = append(nsRrset.RecordList, record)
 	}
 	rrsets = append(rrsets, nsRrset)
 	// name server
