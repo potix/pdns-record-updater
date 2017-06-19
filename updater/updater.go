@@ -98,9 +98,9 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
 			continue
 		}
-		if latestRrset == nil || latestRrset.Name != nameServer.Name || latestRrset.Type != nameServer.Type {
-			name := helper.DotDomain(domain)
-			latestRrset := &rrsetData {
+		name := helper.DotDomain(domain)
+		if latestRrset == nil || latestRrset.Name != name {
+			latestRrset = &rrsetData {
 				Name:        name,
 				Type:        "NS",
 				TTL:         nameServer.TTL,
@@ -120,15 +120,16 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	// name server
 	latestRrset = nil
 	for _, nameServer := range zoneWatchResultResponse.NameServerList {
-		if latestRrset == nil || latestRrset.Name != nameServer.Name || latestRrset.Type != nameServer.Type {
-			name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
-			latestRrset := &rrsetData {
+		name := helper.FixupRrsetName(nameServer.Name, domain, nameServer.Type, true)
+		rrsetType := strings.ToUpper(nameServer.Type)
+		if latestRrset == nil || latestRrset.Name != name || latestRrset.Type != rrsetType {
+			latestRrset = &rrsetData {
 				Name:        name,
-				Type:        nameServer.Type,
+				Type:        rrsetType,
 				TTL:         nameServer.TTL,
 				ChangeType:  "REPLACE",
 				CommentList: make([]*commentData, 0),
-				RecordList:  make([]*recordData, 0, 1),
+				RecordList:  make([]*recordData, 0, len(zoneWatchResultResponse.NameServerList)),
 			}
 			rrsets = append(rrsets, latestRrset)
 		}
@@ -142,15 +143,16 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	// static record
 	latestRrset = nil
 	for _, staticRecord := range zoneWatchResultResponse.StaticRecordList {
-		if latestRrset == nil || latestRrset.Name != staticRecord.Name || latestRrset.Type != staticRecord.Type {
-			name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, true)
-			latestRrset := &rrsetData {
+		name := helper.FixupRrsetName(staticRecord.Name, domain, staticRecord.Type, true)
+		rrsetType := strings.ToUpper(staticRecord.Type)
+		if latestRrset == nil || latestRrset.Name != name || latestRrset.Type != rrsetType {
+			latestRrset = &rrsetData {
 				Name:        name,
-				Type:        staticRecord.Type,
+				Type:        rrsetType,
 				TTL:         staticRecord.TTL,
 				ChangeType:  "REPLACE",
 				CommentList: make([]*commentData, 0),
-				RecordList:  make([]*recordData, 0, 1),
+				RecordList:  make([]*recordData, 0, len(zoneWatchResultResponse.StaticRecordList)),
 			}
 			rrsets = append(rrsets, latestRrset)
 		}
@@ -164,15 +166,16 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	// dynamic record
 	latestRrset = nil
 	for _, dynamicRecord := range zoneWatchResultResponse.DynamicRecordList {
-		if latestRrset == nil || latestRrset.Name != dynamicRecord.Name || latestRrset.Type != dynamicRecord.Type {
-			name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, true)
-			latestRrset := &rrsetData {
+		name := helper.FixupRrsetName(dynamicRecord.Name, domain, dynamicRecord.Type, true)
+		rrsetType := strings.ToUpper(dynamicRecord.Type)
+		if latestRrset == nil || latestRrset.Name != name || latestRrset.Type != rrsetType {
+			latestRrset = &rrsetData {
 				Name:        name,
-				Type:        dynamicRecord.Type,
+				Type:        rrsetType,
 				TTL:         dynamicRecord.TTL,
 				ChangeType:  "REPLACE",
 				CommentList: make([]*commentData, 0),
-				RecordList:  make([]*recordData, 0, 1),
+				RecordList:  make([]*recordData, 0, len(zoneWatchResultResponse.DynamicRecordList)),
 			}
 			rrsets = append(rrsets, latestRrset)
 		}
