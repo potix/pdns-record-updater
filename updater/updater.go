@@ -260,7 +260,7 @@ func (u *Updater) createZone(domain string, zoneWatchResultResponse *structure.Z
 }
 
 func (u *Updater) getZone(domain string) (bool, error) {
-	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, domain)
+	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, helper.NoDotDomain(domain))
 	statusCode, err := u.get(resource)
 	if err != nil {
 		if statusCode == 0 || statusCode == 401 {
@@ -285,7 +285,6 @@ func (u *Updater) updateLoop() () {
 				belog.Error("can not get watcher result (%v)", err)
 				continue;
 			}
-			time.Sleep(time.Second)
 			break
 		}
 		for domain, zoneWatchResultResponse := range watchResultResponse.ZoneMap {
@@ -306,6 +305,7 @@ func (u *Updater) updateLoop() () {
 				}
 			}
 		}
+		time.Sleep(time.Duration(u.updaterContext.UpdateInterval) * time.Second)
 	}
 }
 

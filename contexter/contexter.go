@@ -995,13 +995,14 @@ func (c *Client) validate() (bool) {
 
 // Updater is updater
 type Updater struct {
-	PdnsServer string `json:"pdnsServer" yaml:"pdnsServer" toml:"pdnsServer"` // power dns server url
-        PdnsAPIKey string `json:"pdnsApiKey" yaml:"pdnsApiKey" toml:"pdnsApiKey"` // power dns api key
+	UpdateInterval uint32 `json:"updateInterval" yaml:"updateInterval" toml:"updateInterval"` // updateInterval
+	PdnsServer     string `json:"pdnsServer"     yaml:"pdnsServer"     toml:"pdnsServer"`     // power dns server url
+        PdnsAPIKey     string `json:"pdnsApiKey"     yaml:"pdnsApiKey"     toml:"pdnsApiKey"`    // power dns api key
 }
 
 func (u *Updater) validate() (bool) {
-	if u.PdnsServer == "" || u.PdnsAPIKey == "" {
-		belog.Error("no pdnsServer or no pdnsApiKey")
+	if u.UpdateInterval == 0 || u.PdnsServer == "" || u.PdnsAPIKey == "" {
+		belog.Error("no updateInterval or no pdnsServer or no pdnsApiKey")
 		return false
 	}
 	return true

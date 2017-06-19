@@ -1,0 +1,12 @@
+support delete zone and record from powerdns database
+  - work around -> force down
+fix duplicate NS record when create new zonw
+fix rrset request to powerdns 
+{
+  "name": "<string>",
+  "type": "<type>",
+  "ttl": <int>,
+  "records": [<Record>, ...], <---- multiple
+  "comments": [<Comment>, ...]
+}
+

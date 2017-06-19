@@ -93,6 +93,7 @@ client:
 initializer:
   pdnsSqlitePath: /tmp/powerdns.db
 updater:
+  updateInterval: 5
   pdnsServer: http://127.0.0.1:38080
   pdnsApiKey: api-key
 logger:

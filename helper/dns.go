@@ -47,7 +47,11 @@ func NoDotHostname(host string, domain string) (string) {
 
 // DotEmail is Dotted email
 func DotEmail(email string) (string) {
-        return strings.Replace(email, "@", ".", -1)
+        e := strings.Replace(email, "@", ".", -1)
+        if e[len(e) - 1] == '.' {
+                return e
+        }
+        return fmt.Sprintf("%v.", e)
 }
 
 // FixupRrsetName is fixup name of rrset
