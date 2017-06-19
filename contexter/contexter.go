@@ -177,7 +177,7 @@ func (d *DynamicRecord) SetForceDown(forceDown bool) {
 func (d *DynamicRecord) GetForceDown() (bool) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	return d.Alive
+	return d.ForceDown
 }
 
 // NegativeRecord is negative record

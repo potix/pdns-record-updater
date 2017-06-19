@@ -117,6 +117,7 @@ func (w Watcher) notify(domain string, groupName string, record *contexter.Dynam
 
 func (w *Watcher) updateAlive(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
 	oldAlive := record.SwapAlive(newAlive);
+	belog.Debug("%v %v %v: new alive = %v, old alive = %v", record.Name, record.Type, record.Content, newAlive, oldAlive)
 	if record.NotifyTriggerList != nil {
 		w.notify(domain, groupName, record, targetResult, newAlive, oldAlive)
 	}
@@ -152,7 +153,9 @@ func (w *Watcher) recordWatch(domain string, groupName string, record *contexter
         replacer := strings.NewReplacer(replaceNameList...)
 
 	// exec eval
-	tv, err := w.eval(replacer.Replace(record.EvalRule))
+	evalString := replacer.Replace(record.EvalRule)
+	belog.Debug("%v %v %v: eval = %v", record.Name, record.Type, record.Content, evalString)
+	tv, err := w.eval(evalString)
 	if err != nil {
 		belog.Error("can not evalute (%v)", replacer.Replace(record.EvalRule))
 		w.updateAlive(domain, groupName, record, targetResult, false)

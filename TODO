@@ -9,4 +9,3 @@ fix rrset request to powerdns
   "records": [<Record>, ...], <---- multiple
   "comments": [<Comment>, ...]
 }
-

@@ -42,9 +42,9 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 		newZoneWatchResultResponse := &structure.ZoneWatchResultResponse {
 				PrimaryNameServer: zone.GetPrimaryNameServer(),
 				Email: zone.GetEmail(),
-				NameServerList : make([]*structure.NameServerRecordWatchResultResponse, 0),
-				StaticRecordList : make([]*structure.StaticRecordWatchResultResponse, 0),
-				DynamicRecordList : make([]*structure.DynamicRecordWatchResultResponse, 0),
+				NameServerList : make([]*structure.NameServerRecordWatchResultResponse, 0, len(zone.NameServerList)),
+				StaticRecordList : make([]*structure.StaticRecordWatchResultResponse, 0, len(zone.StaticRecordList)),
+				DynamicRecordList : make([]*structure.DynamicRecordWatchResultResponse, 0, 10 * len(zone.DynamicGroupMap)),
 		}
 		newWatchResultResponse.ZoneMap[domain] = newZoneWatchResultResponse
 		for _, record := range zone.GetNameServerList() {
@@ -89,11 +89,9 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 				}
 				newZoneWatchResultResponse.DynamicRecordList = append(newZoneWatchResultResponse.DynamicRecordList, newRecordWatchResultResponse)
 			}
-			var negativeRecordAlive bool
+			negativeRecordAlive := false
 			if aliveRecordCount == 0 {
 				negativeRecordAlive = true
-			} else {
-				negativeRecordAlive = false
 			}
 			for _, record := range dynamicGroup.GetNegativeRecordList() {
 				newRecordWatchResultResponse := &structure.DynamicRecordWatchResultResponse {
