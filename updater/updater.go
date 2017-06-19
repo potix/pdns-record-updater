@@ -60,14 +60,7 @@ func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatc
 	zoneRequest := new(zoneRequest)
 	zoneRequest.Name = helper.DotDomain(domain)
 	zoneRequest.Kind = "NATIVE"
-	zoneRequest.NameServerList = make([]string, 0, len(zoneWatchResultResponse.NameServerList))
-	for _, nameServer := range zoneWatchResultResponse.NameServerList {
-		t := strings.ToUpper(nameServer.Type)
-		if t != "A" || t != "AAA" {
-			continue
-		}
-		zoneRequest.NameServerList = append(zoneRequest.NameServerList, helper.DotHostname(nameServer.Name, domain))
-	}
+	zoneRequest.NameServerList = make([]string, 0) // NSレコードはrrsetsに含めるからここは空にする
 	if len(zoneWatchResultResponse.NameServerList) == 0 {
 		return nil, errors.Errorf("can not create soa, because no nameserver")
 	}
@@ -94,11 +87,11 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	rrsets = append(rrsets, soa)
 	// ns record 
 	for _, nameServer := range zoneWatchResultResponse.NameServerList {
-                if nameServer.Type != "A" && nameServer.Type != "AAAA" {
-                        continue
-                }
-                name := helper.DotDomain(domain)
-                content := helper.FixupRrsetContent(nameServer.Name, domain, "NS", true)
+		if nameServer.Type != "A" && nameServer.Type != "AAAA" {
+			continue
+		}
+		name := helper.DotDomain(domain)
+		content := helper.FixupRrsetContent(nameServer.Name, domain, "NS", true)
 		rrset := &rrsetData {
 			Name:        name,
 			Type:        "NS",
