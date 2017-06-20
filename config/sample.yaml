@@ -98,28 +98,29 @@ updater:
   pdnsApiKey: api-key
 logger:
   loggers:
-    "default":
+    default:
       filter:
-        structname: LogLevelFilter
-        structsetters:
-        - settername: SetLogLevel
-          setterparams:
+        structName: LogLevelFilter
+        structSetters:
+        - setterName: SetLogLevel
+          setterParams:
           - "8"
       formatter:
-        structname: StandardFormatter
-        structsetters:
-        - settername: SetAppendNewLine
-          setterparams:
+        structName: StandardFormatter
+        structSetters:
+        - setterName: SetAppendNewLine
+          setterParams:
           - "true"
-        - settername: SetDateTimeLayout
-          setterparams:
+        - setterName: SetDateTimeLayout
+          setterParams:
           - 2006-01-02 15:04:05 -0700 mst
-        - settername: SetLayout
-          setterparams:
-          - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName) %(lineNum) %(message)'
+        - setterName: SetLayout
+          setterParams:
+          - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName)
+            %(lineNum) %(message)'
       handlers:
-      - structname: ConsoleHandler
-        structsetters:
-        - settername: SetOutputType
-          setterparams:
+      - structName: ConsoleHandler
+        structSetters:
+        - setterName: SetOutputType
+          setterParams:
           - "1"
