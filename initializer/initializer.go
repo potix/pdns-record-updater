@@ -57,7 +57,11 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	}
 	defer stmt.Close()
 	// soa record
-	content := fmt.Sprintf("%v %v 1 10800 3600 604800 60", helper.DotHostname(zoneWatchResultResponse.PrimaryNameServer, domain), helper.DotEmail(zoneWatchResultResponse.Email))
+	soaMinimumTtls := i.initialerContent.SoaMinimumTtls
+	if soaMinimumTtls == 0 {
+		soaMinimumTtls = 60
+	}
+	content := fmt.Sprintf("%v %v 1 10800 3600 604800 %v", helper.DotHostname(zoneWatchResultResponse.PrimaryNameServer, domain), helper.DotEmail(zoneWatchResultResponse.Email), soaMinimumTtls)
 	_, err = stmt.Exec(domainID, helper.NoDotDomain(domain), "SOA", content, 3600, 0, 0, 1);
 	if err != nil {
 		return errors.Wrap(err, "can not execute statement of soa record")

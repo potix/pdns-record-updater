@@ -998,7 +998,8 @@ func (a *ApiClient) validate() (bool) {
 type Updater struct {
 	UpdateInterval uint32 `json:"updateInterval" yaml:"updateInterval" toml:"updateInterval"` // updateInterval
 	PdnsServer     string `json:"pdnsServer"     yaml:"pdnsServer"     toml:"pdnsServer"`     // power dns server url
-        PdnsAPIKey     string `json:"pdnsApiKey"     yaml:"pdnsApiKey"     toml:"pdnsApiKey"`    // power dns api key
+        PdnsAPIKey     string `json:"pdnsApiKey"     yaml:"pdnsApiKey"     toml:"pdnsApiKey"`     // power dns api key
+        SoaMinimumTTL  string `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa mininum ttl
 }
 
 func (u *Updater) validate() (bool) {
@@ -1012,6 +1013,7 @@ func (u *Updater) validate() (bool) {
 // Initializer is initializer
 type Initializer struct {
 	PdnsSqlitePath string `json:"pdnsSqlitePath" yaml:"pdnsSqlitePath" toml:"pdnsSqlitePath"` // power dns sqlite path
+	SoaMinimumTTL  string `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa mininum ttl
 }
 
 func (i *Initializer) validate() (bool) {
