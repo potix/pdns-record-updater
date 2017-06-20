@@ -14,11 +14,14 @@ trap finish INT QUIT TERM
 
 echo "start $0"
 
-echo "start pdns_server"
-/usr/sbin/pdns_server
 
 echo "start pdns-record-updater"
 /root/gopath/src/github.com/potix/pdns-record-updater/pdns-record-updater $@
+
+sleep 10 # WORKAROUND: can not detect initialize finished
+
+echo "start pdns_server"
+/usr/sbin/pdns_server
 
 while true
 do

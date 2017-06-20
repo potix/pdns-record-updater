@@ -1,10 +1,3 @@
 support delete zone and record from powerdns database
   - work around -> force down
-fix rrset request to powerdns 
-{
-  "name": "<string>",
-  "type": "<type>",
-  "ttl": <int>,
-  "records": [<Record>, ...], <---- multiple
-  "comments": [<Comment>, ...]
-}
+detectable initialize finished
