@@ -932,8 +932,8 @@ func (l *Listen) validate() (bool) {
 	return true
 }
 
-// Server is server
-type Server struct {
+// ApiServer is server
+type ApiServer struct {
 	Debug        bool      `json:"debug"       yaml:"debug"      toml:"debug"`      // デバッグモードにする
 	ListenList   []*Listen `json:"listenList"  yaml:"listenList" toml:"listenList"` // リッスンリスト
 	Username     string    `json:"username"    yaml:"username"   toml:"username"`   // ユーザー名
@@ -941,12 +941,12 @@ type Server struct {
 	StaticPath   string    `json:"staticPath"  yaml:"staticPath" toml:"staticPath"` // Staticリソースのパス
 }
 
-func (s *Server) validate() (bool) {
-	if s.ListenList == nil || len(s.ListenList) == 0 {
+func (a *ApiServer) validate() (bool) {
+	if a.ListenList == nil || len(a.ListenList) == 0 {
 		belog.Error("no listenList")
 		return false
 	}
-	for _, listen := range s.ListenList {
+	for _, listen := range a.ListenList {
 		if !listen.validate() {
 			return false
 		}
@@ -954,39 +954,40 @@ func (s *Server) validate() (bool) {
 	return true
 }
 
-type ServerURL string
+// ApiServerURL is watcher url
+type ApiServerURL string
 
-func (s ServerURL) validate() (bool) {
-	if s == "" {
-		belog.Error("invalid server url")
+func (a ApiServerURL) validate() (bool) {
+	if a == "" {
+		belog.Error("invalid api server url")
 		return false
 	}
 	return true
 }
 
 // String is string
-func (s ServerURL) String() (string) {
-	return string(s)
+func (a ApiServerURL) String() (string) {
+	return string(a)
 }
 
-// Client is server
-type Client struct {
-	ServerURLList []ServerURL `json:"serverUrlList" yaml:"serverUrlList" toml:"serverUrlList"` // server url list
-	Username      string      `json:"username"      yaml:"username"      toml:"username"`      // ユーザー名
-	Password      string      `json:"password"      yaml:"password"      toml:"password"`      // パスワード
-	TLSSkipVerify bool        `json:"tlsSkipVerify" yaml:"tlsSkipVerify" toml:"tlsSkipVerify"` // TLSのverifyをスキップルするかどうか
-	Retry         uint32      `json:"retry"         yaml:"retry"         toml:"retry"`         // retry回数
-	RetryWait     uint32      `json:"retryWait"     yaml:"retryWait"     toml:"retryWait"`     // retry時のwait時間
-	Timeout       uint32      `json:"timeout"       yaml:"timeout"       toml:"timeout"`       // タイムアウト
+// ApiClient is server
+type ApiClient struct {
+	ApiServerURLList []ApiServerURL `json:"apiServerUrlList" yaml:"apiServerUrlList" toml:"apiServerUrlList"` // api server url list
+	Username         string         `json:"username"         yaml:"username"         toml:"username"`         // ユーザー名
+	Password         string         `json:"password"         yaml:"password"         toml:"password"`         // パスワード
+	TLSSkipVerify    bool           `json:"tlsSkipVerify"    yaml:"tlsSkipVerify"    toml:"tlsSkipVerify"`    // TLSのverifyをスキップルするかどうか
+	Retry            uint32         `json:"retry"            yaml:"retry"            toml:"retry"`            // retry回数
+	RetryWait        uint32         `json:"retryWait"        yaml:"retryWait"        toml:"retryWait"`        // retry時のwait時間
+	Timeout          uint32         `json:"timeout"          yaml:"timeout"          toml:"timeout"`          // タイムアウト
 }
 
-func (c *Client) validate() (bool) {
-	if c.ServerURLList == nil || len(c.ServerURLList) == 0 {
-		belog.Error("no serverUrlList")
+func (a *ApiClient) validate() (bool) {
+	if a.ApiServerURLList == nil || len(a.ApiServerURLList) == 0 {
+		belog.Error("no apiServerUrlList")
 		return false
 	}
-	for _, serverURL := range c.ServerURLList {
-		if !serverURL.validate() {
+	for _, apiServerURL := range a.ApiServerURLList {
+		if !apiServerURL.validate() {
 			return false
 		}
 	}
@@ -1025,8 +1026,8 @@ func (i *Initializer) validate() (bool) {
 type Context struct {
 	Watcher     *Watcher             `json:"watcher"     yaml:"watcher"     toml:"watcher"`     // 監視設定
 	Notifier    *Notifier            `json:"notifier"    yaml:"notifier"    toml:"notifier"`    // 通知設定
-	Server      *Server              `json:"server"      yaml:"server"      toml:"server"`      // サーバー設定
-	Client      *Client              `json:"client"      yaml:"client"      toml:"client"`      // クライアント設定
+	ApiServer   *ApiServer           `json:"apiServer"   yaml:"apiServer"   toml:"apiServer"`   // サーバー設定
+	ApiClient   *ApiClient           `json:"apiClient"   yaml:"apiClient"   toml:"apiClient"`   // クライアント設定
 	Initializer *Initializer         `json:"initializer" yaml:"initializer" toml:"initializer"` // Initializer設定
 	Updater     *Updater             `json:"updater"     yaml:"updater"     toml:"updater"`     // Updater設定
 	Logger      *belog.ConfigLoggers `json:"logger"      yaml:"logger"      toml:"logger"`      // ログ設定

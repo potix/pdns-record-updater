@@ -1,3 +1,4 @@
 support delete zone and record from powerdns database
   - work around -> force down
 detectable initialize finished
+watcher manager
