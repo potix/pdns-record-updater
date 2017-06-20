@@ -80,12 +80,12 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 		CommentList: make([]*commentData, 0),
 		RecordList:  make([]*recordData, 0, 1),
 	}
-        soaMinimumTtl := u.updaterContext.SoaMinimumTTL
-        if soaMinimumTtl == 0 {
-                soaMinimumTtl = 60
+        soaMinimumTTL := u.updaterContext.SoaMinimumTTL
+        if soaMinimumTTL == 0 {
+                soaMinimumTTL = 60
         }
 	record := &recordData {
-		Content : fmt.Sprintf("%v %v 1 10800 3600 604800 %v", helper.DotHostname(zoneWatchResultResponse.PrimaryNameServer, domain), helper.DotEmail(zoneWatchResultResponse.Email), soaMinimumTtl),
+		Content : fmt.Sprintf("%v %v 1 10800 3600 604800 %v", helper.DotHostname(zoneWatchResultResponse.PrimaryNameServer, domain), helper.DotEmail(zoneWatchResultResponse.Email), soaMinimumTTL),
 		Disabled : false,
 	}
 	soa.RecordList = append(soa.RecordList, record)

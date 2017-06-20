@@ -19,8 +19,8 @@ func (c ConfigRequest) Validate() (bool) {
 
 // ZoneRequest is zone 
 type ZoneRequest struct {
-	PrimaryNameServer  string  `json: primaryNameServer`
-	Email              string  `json: email`
+	PrimaryNameServer  string  `json:"primaryNameServer"`
+	Email              string  `json:"email"`
 	Domain             string  `json:"domain"`
 }
 
@@ -34,8 +34,8 @@ func (z ZoneRequest) Validate() (bool) {
 
 // ZoneDomainRequest is zone 
 type ZoneDomainRequest struct {
-	PrimaryNameServer  string  `json: primaryNameServer`
-	Email              string  `json: email`
+	PrimaryNameServer  string  `json:"primaryNameServer"`
+	Email              string  `json:"email"`
 }
 
 // Validate is validate zone domain request

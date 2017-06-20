@@ -20,7 +20,9 @@ type Notifier struct {
 }
 
 func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Replacer, subject string, body string) {
-	from := mail.Address{"", mailContext.From}
+	from := mail.Address{
+		Address: mailContext.From,
+	}
 	toList, err := mail.ParseAddressList(mailContext.To)
 	if err != nil {
 		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not parse mail address list (%v)", mailContext.To)))
