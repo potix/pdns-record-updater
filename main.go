@@ -88,6 +88,7 @@ Loop:
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	syscall.Setsid()
 	var err error
 	mode := flag.String("mode", "", "run mode (updater|watcher)")
 	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")

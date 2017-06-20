@@ -6,7 +6,7 @@ finish() {
 	echo "stop pdns_server"
 	kill $(echo $(ps ax | grep pdns_server | grep -v pdns_server-instance | grep -v grep) | awk '{ print $1 }') 
 	echo "stop pdns-record-updater"
-	kill $(echo $(ps ax | grep pdns-record-updater | grep -v grep) | awk '{ print $1 }') 
+	kill $(echo $(ps ax | grep pdns-record-updater | grep -v watcher | grep -v grep) | awk '{ print $1 }') 
 	running="false"
 }
 
@@ -16,9 +16,9 @@ echo "start $0"
 
 
 echo "start pdns-record-updater"
-/root/gopath/src/github.com/potix/pdns-record-updater/pdns-record-updater $@
+/root/gopath/src/github.com/potix/pdns-record-updater/pdns-record-updater $@ &
 
-sleep 10 # WORKAROUND: can not detect initialize finished
+sleep 5 # WORKAROUND: can not detect initialize finished
 
 echo "start pdns_server"
 /usr/sbin/pdns_server
