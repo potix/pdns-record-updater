@@ -28,7 +28,7 @@ type startEnd struct {
 // Client is client
 type Client struct {
 	urlBaseIndex  int
-        clientContext *contexter.Client
+        clientContext *contexter.ApiClient
 }
 
 func (c *Client) get(reqInfo *reqInfo) ([]byte, error) {
@@ -76,12 +76,12 @@ func (c *Client) retryRequest(methodFunc func(reqInfo *reqInfo) (response []byte
 
 func (c *Client) doRequest(methodFunc func(reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error) {
 	startEnd := [...]*startEnd{
-		&startEnd{ start: c.urlBaseIndex, end: len(c.clientContext.ServerURLList) },
+		&startEnd{ start: c.urlBaseIndex, end: len(c.clientContext.ApiServerURLList) },
 		&startEnd{ start: 0, end: c.urlBaseIndex },
 	}
 	for _, startEnd := range startEnd  {
 		for i := startEnd.start; i < startEnd.end; i++ {
-			reqInfo.urlBase = c.clientContext.ServerURLList[i].String()
+			reqInfo.urlBase = c.clientContext.ApiServerURLList[i].String()
 			reqInfo.url = reqInfo.urlBase + reqInfo.resource
 			response, err = c.retryRequest(methodFunc, reqInfo)
 			if err != nil {
@@ -113,7 +113,7 @@ func (c *Client) GetWatchResult() (watchResultResponse *structure.WatchResultRes
 }
 
 // New is create client
-func New(clientContext *contexter.Client) (*Client) {
+func New(clientContext *contexter.ApiClient) (*Client) {
         return &Client {
                 urlBaseIndex:  0,
 		clientContext: clientContext,

@@ -22,7 +22,7 @@ type GracefulServer struct {
 // Server is Server
 type Server struct {
 	gracefulServers []*GracefulServer
-	serverContext   *contexter.Server
+	serverContext   *contexter.ApiServer
 	contexter       *contexter.Contexter
 }
 
@@ -160,7 +160,7 @@ func (s *Server) Stop() {
 }
 
 // New is create Server
-func New(serverContext *contexter.Server, contexter *contexter.Contexter) (s *Server) {
+func New(serverContext *contexter.ApiServer, contexter *contexter.Contexter) (s *Server) {
 	s = &Server{
 		serverContext: serverContext,
 		contexter: contexter,

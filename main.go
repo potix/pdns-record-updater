@@ -21,7 +21,7 @@ import (
 )
 
 func runUpdater(contexter *contexter.Contexter) (error) {
-	client := client.New(contexter.Context.Client)
+	client := client.New(contexter.Context.ApiClient)
 	initializer := initializer.New(contexter.Context.Initializer, client)
 	err := initializer.Initialize()
 	if err != nil {
@@ -56,7 +56,7 @@ func runWatcher(contexter *contexter.Contexter) (error) {
 	notifier := notifier.New(contexter.Context.Notifier)
 	watcher := watcher.New(contexter.Context.Watcher, notifier)
 	watcher.Init()
-	server := server.New(contexter.Context.Server, contexter)
+	server := server.New(contexter.Context.ApiServer, contexter)
 	err := server.Start()
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	syscall.Setsid()
 	var err error
-	mode := flag.String("mode", "", "run mode (updater|watcher)")
+	mode := flag.String("mode", "", "run mode (updater|watcher|manager)")
 	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")
 	flag.Parse()
 	if *mode == "" || *configPath == "" {
@@ -125,7 +125,7 @@ func main() {
 		err = runUpdater(contexter)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
 		err = runWatcher(contexter)
-	} else if (strings.ToUpper(*mode) == "CLIENT") {
+	} else if (strings.ToUpper(*mode) == "MANAGER") {
 		// TODO
 	} else {
 		err = errors.New("unexpected run mode")

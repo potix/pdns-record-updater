@@ -73,7 +73,7 @@ notifier:
     useStartTls: true
     useTls: true
     tlsSkipVerify: true
-server:
+apiServer:
   debug: true
   listenList:
   - addrPort: "0.0.0.0:28080"
@@ -81,8 +81,8 @@ server:
   username: "hoge"
   password: "hoge"
   staticPath: "/var/tmp"
-client:
-  serverUrlList:
+apiClient:
+  apiServerUrlList:
   - http://127.0.0.1:28080
   retry: 3
   retryWait: 1

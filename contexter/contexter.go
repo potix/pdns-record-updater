@@ -1036,24 +1036,24 @@ type Context struct {
 func (c *Context) validate(mode string) (bool) {
 	switch strings.ToUpper(mode) {
 	case "WATCHER":
-		if c.Watcher == nil || c.Server == nil  {
+		if c.Watcher == nil || c.ApiServer == nil  {
 			return false
 		}
-		if !c.Watcher.validate() || !c.Server.validate() {
+		if !c.Watcher.validate() || !c.ApiServer.validate() {
 			return false
 		}
 	case "UPDATER":
-		if c.Client  == nil || c.Initializer == nil || c.Updater == nil {
+		if c.ApiClient  == nil || c.Initializer == nil || c.Updater == nil {
 			return false
 		}
-		if !c.Client.validate() || !c.Initializer.validate() || !c.Updater.validate() {
+		if !c.ApiClient.validate() || !c.Initializer.validate() || !c.Updater.validate() {
                         return false
                 }
-	case "CLIENT":
-		if c.Client  == nil {
+	case "MANAGER":
+		if c.ApiClient  == nil {
 			return false
 		}
-		if !c.Client.validate() {
+		if !c.ApiClient.validate() {
                         return false
                 }
 	default:
