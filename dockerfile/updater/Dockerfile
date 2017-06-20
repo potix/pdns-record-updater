@@ -19,5 +19,6 @@ RUN cd /root && curl https://glide.sh/get | sh && rm -rf glide*
 RUN mkdir -p /root/gopath/src/github.com/potix
 RUN cd /root/gopath/src/github.com/potix && git clone https://github.com/potix/pdns-record-updater 
 RUN cd /root/gopath/src/github.com/potix/pdns-record-updater && glide update && go build
-ENTRYPOINT ["/root/gopath/src/github.com/potix/pdns-record-updater/pdns-record-updater"]
-CMD ["-mode", "updater", "-config", "-config", "/etc/powerdns/pdns-record-updater.yaml"]
+RUN chmod 755 /root/gopath/src/github.com/potix/pdns-record-updater/dockerfile/updater/run.sh
+ENTRYPOINT ["/root/gopath/src/github.com/potix/pdns-record-updater/dockerfile/updater/run.sh"]
+CMD ["-mode", "updater", "-config", "/etc/powerdns/pdns-record-updater.yaml"]
