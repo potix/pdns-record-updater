@@ -87,9 +87,8 @@ Loop:
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	syscall.Setsid()
 	var err error
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	mode := flag.String("mode", "", "run mode (updater|watcher|manager)")
 	configPath := flag.String("config", "/etc/pdns-record-updater.yml", "config file path")
 	flag.Parse()
@@ -121,6 +120,10 @@ func main() {
                 os.Exit(1);
 	}
 	belog.Debug("%v", string(dump))
+	_, err = syscall.Setsid()
+	if err != nil {
+		belog.Notice("%v", err)
+	}
 	if (strings.ToUpper(*mode) == "UPDATER") {
 		err = runUpdater(contexter)
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
