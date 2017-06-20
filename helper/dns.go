@@ -38,7 +38,7 @@ func NoDotHostname(host string, domain string) (string) {
         if host[len(host) - 1] == '.' {
 		return host[0:len(host)-1]
         }
-	if !strings.Contains(host, NoDotDomain(domain)) == -1 {
+	if !strings.Contains(host, NoDotDomain(domain)) {
 		// not include domain
 		return fmt.Sprintf("%v.%v", host, NoDotDomain(domain))
 	}
