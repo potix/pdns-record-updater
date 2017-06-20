@@ -59,6 +59,7 @@ func (t *Target) GetAlive() (bool) {
 	return t.alive
 }
 
+// NotifyTrigger is notify trigger
 type NotifyTrigger string
 
 func (n NotifyTrigger) validate() (bool) {
@@ -252,7 +253,7 @@ func (d *DynamicGroup) validate() (bool) {
 	return true
 }
 
-// GetDynamicRecord is get name server
+// GetDynamicRecordList is get name server
 func (d *DynamicGroup) GetDynamicRecordList() ([]*DynamicRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
@@ -349,7 +350,7 @@ func (d *DynamicGroup) ReplaceDynamicRecord(n string, t string, c string, dynami
 	return nil
 }
 
-// GetNegativeRecord is get name server
+// GetNegativeRecordList is get name server
 func (d *DynamicGroup) GetNegativeRecordList() ([]*NegativeRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
@@ -516,7 +517,7 @@ func  (z *Zone) SetEmail(email string) {
 	z.Email = email
 }
 
-// GetNameServer is get name server
+// GetNameServerList is get name server
 func (z *Zone) GetNameServerList() ([]*NameServerRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
@@ -613,7 +614,7 @@ func (z *Zone) ReplaceNameServer(n string, t string, c string, nameServer *NameS
 	return nil
 }
 
-// GetStaticRecord is get name server
+// GetStaticRecordList is get name server
 func (z *Zone) GetStaticRecordList() ([]*StaticRecord) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
@@ -710,7 +711,7 @@ func (z *Zone) ReplaceStaticRecord(n string, t string, c string, staticRecord *S
 	return nil
 }
 
-// GetDynamicGroupName is get dynamic group name
+// GetDynamicGroupNameList is get dynamic group name
 func (z *Zone) GetDynamicGroupNameList() ([]string) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
@@ -786,9 +787,9 @@ type Watcher struct {
 	NotifyBody    string           `json:"notifyBody"    yaml:"notifyBody"    toml:"notifyBody"`    // Notifyの本文テンプレート
 }
 
-func (z *Watcher) validate() (bool) {
-	if z.ZoneMap != nil {
-		for domain, zone := range z.ZoneMap {
+func (w *Watcher) validate() (bool) {
+	if w.ZoneMap != nil {
+		for domain, zone := range w.ZoneMap {
 			if domain == "" {
 				belog.Error("invalid domain")
 				return false
@@ -932,8 +933,8 @@ func (l *Listen) validate() (bool) {
 	return true
 }
 
-// ApiServer is server
-type ApiServer struct {
+// APIServer is api server
+type APIServer struct {
 	Debug        bool      `json:"debug"       yaml:"debug"      toml:"debug"`      // デバッグモードにする
 	ListenList   []*Listen `json:"listenList"  yaml:"listenList" toml:"listenList"` // リッスンリスト
 	Username     string    `json:"username"    yaml:"username"   toml:"username"`   // ユーザー名
@@ -941,7 +942,7 @@ type ApiServer struct {
 	StaticPath   string    `json:"staticPath"  yaml:"staticPath" toml:"staticPath"` // Staticリソースのパス
 }
 
-func (a *ApiServer) validate() (bool) {
+func (a *APIServer) validate() (bool) {
 	if a.ListenList == nil || len(a.ListenList) == 0 {
 		belog.Error("no listenList")
 		return false
@@ -954,10 +955,10 @@ func (a *ApiServer) validate() (bool) {
 	return true
 }
 
-// ApiServerURL is watcher url
-type ApiServerURL string
+// APIServerURL is watcher url
+type APIServerURL string
 
-func (a ApiServerURL) validate() (bool) {
+func (a APIServerURL) validate() (bool) {
 	if a == "" {
 		belog.Error("invalid api server url")
 		return false
@@ -966,13 +967,13 @@ func (a ApiServerURL) validate() (bool) {
 }
 
 // String is string
-func (a ApiServerURL) String() (string) {
+func (a APIServerURL) String() (string) {
 	return string(a)
 }
 
-// ApiClient is server
-type ApiClient struct {
-	ApiServerURLList []ApiServerURL `json:"apiServerUrlList" yaml:"apiServerUrlList" toml:"apiServerUrlList"` // api server url list
+// APIClient is server
+type APIClient struct {
+	APIServerURLList []APIServerURL `json:"apiServerUrlList" yaml:"apiServerUrlList" toml:"apiServerUrlList"` // api server url list
 	Username         string         `json:"username"         yaml:"username"         toml:"username"`         // ユーザー名
 	Password         string         `json:"password"         yaml:"password"         toml:"password"`         // パスワード
 	TLSSkipVerify    bool           `json:"tlsSkipVerify"    yaml:"tlsSkipVerify"    toml:"tlsSkipVerify"`    // TLSのverifyをスキップルするかどうか
@@ -981,12 +982,12 @@ type ApiClient struct {
 	Timeout          uint32         `json:"timeout"          yaml:"timeout"          toml:"timeout"`          // タイムアウト
 }
 
-func (a *ApiClient) validate() (bool) {
-	if a.ApiServerURLList == nil || len(a.ApiServerURLList) == 0 {
+func (a *APIClient) validate() (bool) {
+	if a.APIServerURLList == nil || len(a.APIServerURLList) == 0 {
 		belog.Error("no apiServerUrlList")
 		return false
 	}
-	for _, apiServerURL := range a.ApiServerURLList {
+	for _, apiServerURL := range a.APIServerURLList {
 		if !apiServerURL.validate() {
 			return false
 		}
@@ -1036,8 +1037,8 @@ func (i *Initializer) validate() (bool) {
 type Context struct {
 	Watcher     *Watcher             `json:"watcher"     yaml:"watcher"     toml:"watcher"`     // 監視設定
 	Notifier    *Notifier            `json:"notifier"    yaml:"notifier"    toml:"notifier"`    // 通知設定
-	ApiServer   *ApiServer           `json:"apiServer"   yaml:"apiServer"   toml:"apiServer"`   // サーバー設定
-	ApiClient   *ApiClient           `json:"apiClient"   yaml:"apiClient"   toml:"apiClient"`   // クライアント設定
+	APIServer   *APIServer           `json:"apiServer"   yaml:"apiServer"   toml:"apiServer"`   // サーバー設定
+	APIClient   *APIClient           `json:"apiClient"   yaml:"apiClient"   toml:"apiClient"`   // クライアント設定
 	Initializer *Initializer         `json:"initializer" yaml:"initializer" toml:"initializer"` // Initializer設定
 	Updater     *Updater             `json:"updater"     yaml:"updater"     toml:"updater"`     // Updater設定
 	Logger      *belog.ConfigLoggers `json:"logger"      yaml:"logger"      toml:"logger"`      // ログ設定
@@ -1046,24 +1047,24 @@ type Context struct {
 func (c *Context) validate(mode string) (bool) {
 	switch strings.ToUpper(mode) {
 	case "WATCHER":
-		if c.Watcher == nil || c.ApiServer == nil  {
+		if c.Watcher == nil || c.APIServer == nil  {
 			return false
 		}
-		if !c.Watcher.validate() || !c.ApiServer.validate() {
+		if !c.Watcher.validate() || !c.APIServer.validate() {
 			return false
 		}
 	case "UPDATER":
-		if c.ApiClient  == nil || c.Initializer == nil || c.Updater == nil {
+		if c.APIClient  == nil || c.Initializer == nil || c.Updater == nil {
 			return false
 		}
-		if !c.ApiClient.validate() || !c.Initializer.validate() || !c.Updater.validate() {
+		if !c.APIClient.validate() || !c.Initializer.validate() || !c.Updater.validate() {
                         return false
                 }
 	case "MANAGER":
-		if c.ApiClient  == nil {
+		if c.APIClient  == nil {
 			return false
 		}
-		if !c.ApiClient.validate() {
+		if !c.APIClient.validate() {
                         return false
                 }
 	default:

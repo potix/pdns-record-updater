@@ -21,7 +21,7 @@ import (
 )
 
 func runUpdater(contexter *contexter.Contexter) (error) {
-	client := client.New(contexter.Context.ApiClient)
+	client := client.New(contexter.Context.APIClient)
 	initializer := initializer.New(contexter.Context.Initializer, client)
 	err := initializer.Initialize()
 	if err != nil {
@@ -56,7 +56,7 @@ func runWatcher(contexter *contexter.Contexter) (error) {
 	notifier := notifier.New(contexter.Context.Notifier)
 	watcher := watcher.New(contexter.Context.Watcher, notifier)
 	watcher.Init()
-	server := server.New(contexter.Context.ApiServer, contexter)
+	server := server.New(contexter.Context.APIServer, contexter)
 	err := server.Start()
 	if err != nil {
 		return err
