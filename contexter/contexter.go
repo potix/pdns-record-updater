@@ -999,7 +999,7 @@ type Updater struct {
 	UpdateInterval uint32 `json:"updateInterval" yaml:"updateInterval" toml:"updateInterval"` // updateInterval
 	PdnsServer     string `json:"pdnsServer"     yaml:"pdnsServer"     toml:"pdnsServer"`     // power dns server url
         PdnsAPIKey     string `json:"pdnsApiKey"     yaml:"pdnsApiKey"     toml:"pdnsApiKey"`     // power dns api key
-        SoaMinimumTTL  string `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa mininum ttl
+        SoaMinimumTTL  int32  `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa minimum ttl
 }
 
 func (u *Updater) validate() (bool) {
@@ -1007,19 +1007,27 @@ func (u *Updater) validate() (bool) {
 		belog.Error("no updateInterval or no pdnsServer or no pdnsApiKey")
 		return false
 	}
+	if u.SoaMinimumTTL < 0 {
+                belog.Error("invali soaMinimumTTL")
+                return false
+	}
 	return true
 }
 
 // Initializer is initializer
 type Initializer struct {
 	PdnsSqlitePath string `json:"pdnsSqlitePath" yaml:"pdnsSqlitePath" toml:"pdnsSqlitePath"` // power dns sqlite path
-	SoaMinimumTTL  string `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa mininum ttl
+	SoaMinimumTTL  int32  `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa mininum ttl
 }
 
 func (i *Initializer) validate() (bool) {
-	if i.PdnsSqlitePath == "" {
+	if i.PdnsSqlitePath == ""  {
 		belog.Error("no pdnsSqlitePath")
 		return false
+	}
+	if i.SoaMinimumTTL < 0 {
+                belog.Error("invali soaMinimumTTL")
+                return false
 	}
 	return true
 }

@@ -32,7 +32,7 @@ func (z ZoneRequest) Validate() (bool) {
 	return true
 }
 
-// ZonedomainRequest is zone 
+// ZoneDomainRequest is zone 
 type ZoneDomainRequest struct {
 	PrimaryNameServer  string  `json: primaryNameServer`
 	Email              string  `json: email`

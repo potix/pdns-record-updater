@@ -29,6 +29,7 @@ type DynamicRecordWatchResultResponse struct {
         Alive   bool   `json:"alive"`
 }
 
+// NameServerListWatchResultResponse is name server list
 type NameServerListWatchResultResponse  []*NameServerRecordWatchResultResponse
 
 func (n NameServerListWatchResultResponse) Len() int {
@@ -43,6 +44,7 @@ func (n NameServerListWatchResultResponse) Less(i, j int) bool {
     return fmt.Sprintf("%v %v", n[i].Name, n[i].Type) < fmt.Sprintf("%v %v", n[j].Name, n[j].Type)
 }
 
+// StaticRecordListWatchResultResponse is static record list
 type StaticRecordListWatchResultResponse  []*StaticRecordWatchResultResponse
 
 func (s StaticRecordListWatchResultResponse) Len() int {
@@ -57,8 +59,8 @@ func (s StaticRecordListWatchResultResponse) Less(i, j int) bool {
     return fmt.Sprintf("%v %v", s[i].Name, s[i].Type) < fmt.Sprintf("%v %v", s[j].Name, s[j].Type)
 }
 
+// DynamicRecordListWatchResultResponse is dynamic record list
 type DynamicRecordListWatchResultResponse []*DynamicRecordWatchResultResponse
-
 
 func (d DynamicRecordListWatchResultResponse) Len() int {
         return len(d)

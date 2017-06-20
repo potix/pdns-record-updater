@@ -29,7 +29,7 @@ func (i *icmpWatcher) getSeqNumber() (uint32) {
 }
 
 func (i *icmpWatcher) sendIcmp(ip net.IP) (bool, bool, error) {
-	ipv := 0
+	var ipv int
 	var conn *icmp.PacketConn
 	var err error
 	if (ip.To4() != nil) {
