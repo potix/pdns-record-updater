@@ -106,10 +106,10 @@ func (w Watcher) notify(domain string, groupName string, record *contexter.Dynam
 	if (triggerFlags & tfChanged) != 0 && oldAlive != newAlive {
 		belog.Debug("notify changed")
 		w.notifier.Notify(replacer, subject, body)
-	} else if (triggerFlags & tfLatestDown) != 0 && newAlive == false {
+	} else if (triggerFlags & tfLatestDown) != 0 && !newAlive {
 		belog.Debug("notify latestdown")
 		w.notifier.Notify(replacer, subject, body)
-	} else if (triggerFlags & tfLatestUp) != 0 && newAlive == true  {
+	} else if (triggerFlags & tfLatestUp) != 0 && newAlive {
 		belog.Debug("notify latestup")
 		w.notifier.Notify(replacer, subject, body)
 	}
