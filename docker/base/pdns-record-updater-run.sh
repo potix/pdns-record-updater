@@ -3,15 +3,15 @@
 running="true"
 
 finish() {
-	if [ "${PDNS_RECORD_UPDATER_MODE}" == "updater" ]; then
+	if [ "${PDNS_RECORD_UPDATER_MODE}" = "updater" ]; then
 		echo "stop pdns_server"
 		kill $(echo $(ps ax | grep pdns_server | grep -v pdns_server-instance | grep -v grep) | awk '{ print $1 }') 
 		echo "stop pdns-record-updater"
 		kill $(echo $(ps ax | grep pdns-record-updater | grep "-mode updater" | grep -v grep) | awk '{ print $1 }') 
-	elif [ "${PDNS_RECORD_UPDATER_MODE}" == "watcher" ]; then
+	elif [ "${PDNS_RECORD_UPDATER_MODE}" = "watcher" ]; then
 		echo "stop pdns-record-updater"
 		kill $(echo $(ps ax | grep pdns-record-updater | grep "-mode watcher" | grep -v grep) | awk '{ print $1 }') 
-	elif [ "${PDNS_RECORD_UPDATER_MODE}" == "manager" ]; then
+	elif [ "${PDNS_RECORD_UPDATER_MODE}" = "manager" ]; then
 		echo "stop pdns-record-updater"
 		kill $(echo $(ps ax | grep pdns-record-updater | grep "-mode manager" | grep -v grep) | awk '{ print $1 }') 
 	fi
@@ -64,11 +64,11 @@ trap finish INT QUIT TERM
 
 echo "start $0"
 
-if [ "${PDNS_RECORD_UPDATER_MODE}" == "updater" ]; then
+if [ "${PDNS_RECORD_UPDATER_MODE}" = "updater" ]; then
 	start_updater
-elif [ "${PDNS_RECORD_UPDATER_MODE}" == "watcher" ]; then
+elif [ "${PDNS_RECORD_UPDATER_MODE}" = "watcher" ]; then
 	start_watcher
-elif [ "${PDNS_RECORD_UPDATER_MODE}" == "manager" ]; then
+elif [ "${PDNS_RECORD_UPDATER_MODE}" = "manager" ]; then
 	start_manager
 fi
 
