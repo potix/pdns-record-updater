@@ -32,12 +32,12 @@ start_updater() {
 	echo "wait initialize"
 	while true 
 	do
+		sleep 1
 		if [ "${running}" = "false" ]; then
 			sleep 1
 			echo "stop $0"
 			exit
 		fi
-		sleep 1
 		if [ -f /var/spool/powerdns/powerdns.db.initialized ]; then
 			break
 		fi

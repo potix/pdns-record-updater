@@ -22,8 +22,8 @@ RUN apt-get clean && apt-get update && apt-get install -y && \
 COPY pdns.conf.template /etc/powerdns/pdns.conf.template
 COPY pdns-record-updater-updater.yaml.template /etc/powerdns/pdns-record-updater-updater.yaml.template
 COPY pdns-record-updater-watcher.yaml.template /etc/powerdns/pdns-record-updater-watcher.yaml.template
-COPY run_updater.sh /usr/sbin/run.sh
-RUN chmod 755 /usr/sbin/run.sh
+COPY pdns-record-updater-run.sh /usr/sbin/pdns-record-updater-run.sh
+RUN chmod 755 /usr/sbin/pdns-record-updater-run.sh
 #
 # pdns.conf.template environment
 # ${PDNS_API_KEY:-pdns_api_key}
@@ -60,4 +60,4 @@ RUN chmod 755 /usr/sbin/run.sh
 # WATCHER_API_SERVER_CERT
 # WATCHER_API_SERVER_PRIVATE_KEY
 #
-ENTRYPOINT ["/usr/sbin/run.sh"]
+ENTRYPOINT ["/usr/sbin/pdns-record-updater-run.sh"]
