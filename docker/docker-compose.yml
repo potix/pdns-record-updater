@@ -1,46 +1,50 @@
-# watcher
-wathcer:
-  image: potix/pdns-record-updater-base:0.2
-  environment:
-    WATCHER_NOTIFY_SUBJECT:
-    WATCHER_NOTIFY_BODY:
-    WATCHER_NOTIFY_SMTP_SERVER_PORT:
-    WATCHER_NOTIFY_SMTP_TO:
-    WATCHER_NOTIFY_SMTP_FROM:
-    WATCHER_NOTIFY_SMTP_USERNAME:
-    WATCHER_NOTIFY_SMTP_PASSWORD:
-    WATCHER_NOTIFY_SMTP_AUTH_TYPE: plain
-    WATCHER_NOTIFY_SMTP_USE_STARTTLS: false
-    WATCHER_NOTIFY_SMTP_USE_TLS: false
-    WATCHER_NOTIFY_SMTP_TLS_SKIP_VERIFY: false
-    WATCHER_API_SERVER_USE_TLS: false
-    WATCHER_API_SERVER_USERNAME:
-    WATCHER_API_SERVER_PASSWORD:
-  volumes:
-    - /dev/log:/dev/log
-  ports:
-    - "28001:28001/tcp"
-  log_driver: "syslog"
-# updater
-updater:
-  image: potix/pdns-record-updater-base:0.2
-  environment:
-    PDNS_API_KEY: pdns_api_key
-    PDNS_PACKET_CACHE_TTL: 5
-    PDNS_NEGATIVE_QUERY_CACHE_TTL: 60
-    PDNS_QUERY_CACHE_TTL: 5
-    PDNS_SOA_MINIMUM_TTL: 60
-    WATCHER_API_SERVER_URL_LIST: http://watcher
-    WATCHER_TLS_SKIP_VERIFY: false
-    WATCHER_API_SERVER_USERNAME:
-    WATCHER_API_SERVER_PASSWORD:
-  volumes:
-    - /dev/log:/dev/log
-  ports:
-    - "53:53/udp"
-    - "53:53/tcp"
-  links:
-    - watcher
-  depends_on:
-    - watcher
-  log_driver: "syslog"
+version: '3'
+services:
+  watcher:
+    image: potix/pdns-record-updater-base:0.2
+    environment:
+      PDNS_RECORD_UPDATER_MODE: watcher
+      WATCHER_NOTIFY_SUBJECT:
+      WATCHER_NOTIFY_BODY:
+      WATCHER_NOTIFY_SMTP_SERVER_PORT:
+      WATCHER_NOTIFY_SMTP_TO:
+      WATCHER_NOTIFY_SMTP_FROM:
+      WATCHER_NOTIFY_SMTP_USERNAME:
+      WATCHER_NOTIFY_SMTP_PASSWORD:
+      WATCHER_NOTIFY_SMTP_AUTH_TYPE:
+      WATCHER_NOTIFY_SMTP_USE_STARTTLS: "false"
+      WATCHER_NOTIFY_SMTP_USE_TLS: "false"
+      WATCHER_NOTIFY_SMTP_TLS_SKIP_VERIFY: "false"
+      WATCHER_API_SERVER_USE_TLS: "false"
+      WATCHER_API_SERVER_USERNAME:
+      WATCHER_API_SERVER_PASSWORD:
+    volumes:
+      - /dev/log:/dev/log
+    ports:
+      - "28001:28001/tcp"
+    logging:
+      driver: "syslog"
+  updater:
+    image: potix/pdns-record-updater-base:0.2
+    environment:
+      PDNS_RECORD_UPDATER_MODE: updater
+      PDNS_API_KEY: pdns_api_key
+      PDNS_PACKET_CACHE_TTL: 5
+      PDNS_NEGATIVE_QUERY_CACHE_TTL: 60
+      PDNS_QUERY_CACHE_TTL: 5
+      PDNS_SOA_MINIMUM_TTL: 60
+      WATCHER_API_SERVER_URL_LIST: http://watcher
+      WATCHER_API_SERVER_TLS_SKIP_VERIFY: "false"
+      WATCHER_API_SERVER_USERNAME:
+      WATCHER_API_SERVER_PASSWORD:
+    volumes:
+      - /dev/log:/dev/log
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    links:
+      - watcher
+    depends_on:
+      - watcher
+    logging:
+      driver: "syslog"

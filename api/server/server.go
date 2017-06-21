@@ -117,7 +117,7 @@ func (s *Server) Start() (err error) {
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC) // ネガティブレコードの削除
 
 	if s.serverContext.StaticPath != "" {
-		newGroup.Static("/static", s.serverContext.StaticPath)
+		engine.Static("/", s.serverContext.StaticPath)
 	}
 
 	// create server

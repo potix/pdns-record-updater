@@ -49,6 +49,11 @@ start_updater() {
 start_watcher() {
 	echo "create config"
 	sigil -p -f /etc/powerdns/pdns-record-updater-watcher.yaml.template > /etc/powerdns/pdns-record-updater.yaml
+	echo "update cert file"
+	if [ "${WATCHER_API_SERVER_CERT}" != ""] && [ "${WATCHER_API_SERVER_PRIVATE_KEY}" != "" ]; then
+            echo ${WATCHER_API_SERVER_CERT} > /etc/powerdns/pdns-record-updater-api-server.cert 
+            echo ${WATCHER_API_SERVER_PRIVATE_KEY} > /etc/powerdns/pdns-record-updater-api-server.key
+	fi 
 	echo "start pdns-record-updater"
 	/root/gopath/src/github.com/potix/pdns-record-updater/pdns-record-updater -mode ${PDNS_RECORD_UPDATER_MODE} -config /etc/powerdns/pdns-record-updater.yaml &
 }
