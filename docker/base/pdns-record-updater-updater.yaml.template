@@ -1,0 +1,43 @@
+apiClient:
+  apiServerUrlList: {{ range split "," "${WATCHER_API_SERVER_URL_LIST:?}" }}
+  - {{ printf "%v:28001" (trim .) }}{{ end }}
+  retry: 3
+  retryWait: 1
+  timeout: 30
+  tlsSkipVerify: ${WATCHER_TLS_SKIP_VERIFY:-false}
+  username: {{ if ne "${WATCHER_API_SERVER_USERNAME:-}" "" }} ${WATCHER_API_SERVER_USERNAME}{{ end }}
+  password: {{ if ne "${WATCHER_API_SERVER_PASSWORD:-}" "" }} ${WATCHER_API_SERVER_PASSWORD}{{ end }}
+initializer:
+  pdnsSqlitePath: /var/cache/powerdns/powerdns.db
+updater:
+  updateInterval: 5
+  pdnsServer: http://127.0.0.1:28002
+  pdnsApiKey: ${PDNS_API_KEY:-pdns_api_key}
+logger:
+  loggers:
+    default:
+      filter:
+        structName: LogLevelFilter
+        structSetters:
+        - setterName: SetLogLevel
+          setterParams:
+          - "4"
+      formatter:
+        structName: StandardFormatter
+        structSetters:
+        - setterName: SetAppendNewLine
+          setterParams:
+          - "true"
+        - setterName: SetDateTimeLayout
+          setterParams:
+          - 2006-01-02 15:04:05 -0700 mst
+        - setterName: SetLayout
+          setterParams:
+          - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName)
+            %(lineNum) %(message)'
+      handlers:
+      - structName: ConsoleHandler
+        structSetters:
+        - setterName: SetOutputType
+          setterParams:
+          - "1"

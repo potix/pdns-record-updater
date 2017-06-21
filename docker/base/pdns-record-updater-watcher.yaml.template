@@ -1,0 +1,52 @@
+watcher:
+  notifySubject: ${WATCHER_NOTIFY_SUBJECT:-}
+  notifyBody: ${WATCHER_NOTIFY_BODY:-}
+notifier:
+  mail: {{ if and (ne "${WATCHER_NOTIFY_SMTP_SERVER_PORT:-}" "") (ne "${WATCHER_NOTIFY_SMTP_TO:-}" "") (ne "${WATCHER_NOTIFY_SMTP_FROM:-}" "") }}
+  - hostPort: ${WATCHER_NOTIFY_SMTP_SERVER_PORT}
+    username: {{ if ne "${WATCHER_NOTIFY_SMTP_USERNAME:-}" "" }} ${WATCHER_NOTIFY_SMTP_USERNAME}{{ end }}
+    password: {{ if ne "${WATCHER_NOTIFY_SMTP_PASSWORD:-}" "" }} ${WATCHER_NOTIFY_SMTP_PASSWORD}{{ end }}
+    to: ${WATCHER_NOTIFY_SMTP_TO}
+    from: ${WATCHER_NOTIFY_SMTP_FROM}
+    authType: ${WATCHER_NOTIFY_SMTP_AUTH_TYPE:-plain}
+    useStartTls: ${WATCHER_NOTIFY_SMTP_USE_STARTTLS:-false}
+    useTls: ${WATCHER_NOTIFY_SMTP_USE_TLS:-false}
+    tlsSkipVerify: ${WATCHER_NOTIFY_SMTP_TLS_SKIP_VERIFY:-false} {{ end }}
+apiServer:
+  debug: true
+  listenList:
+  - addrPort: 0.0.0.0:28080
+    useTls: ${WATCHER_API_SERVER_USE_TLS:-false}{{ if eq ${WATCHER_API_SERVER_USE_TLS:-false} true }}
+    certfile: /etc/powerdns/pdns-record-updater-api-server.cert 
+    keyfile: /etc/powerdns/pdns-record-updater-api-server.key{{ end }}
+  username: {{ if ne "${WATCHER_API_SERVER_USERNAME:-}" "" }} ${WATCHER_API_SERVER_USERNAME}{{ end }}
+  password: {{ if ne "${WATCHER_API_SERVER_PASSWORD:-}" "" }} ${WATCHER_API_SERVER_PASSWORD}{{ end }}
+  staticPath: /etc/powerdns/static
+logger:
+  loggers:
+    default:
+      filter:
+        structName: LogLevelFilter
+        structSetters:
+        - setterName: SetLogLevel
+          setterParams:
+          - "6"
+      formatter:
+        structName: StandardFormatter
+        structSetters:
+        - setterName: SetAppendNewLine
+          setterParams:
+          - "true"
+        - setterName: SetDateTimeLayout
+          setterParams:
+          - 2006-01-02 15:04:05 -0700 mst
+        - setterName: SetLayout
+          setterParams:
+          - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName)
+            %(lineNum) %(message)'
+      handlers:
+      - structName: ConsoleHandler
+        structSetters:
+        - setterName: SetOutputType
+          setterParams:
+          - "1"
