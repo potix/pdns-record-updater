@@ -935,11 +935,11 @@ func (l *Listen) validate() (bool) {
 
 // APIServer is api server
 type APIServer struct {
-	Debug        bool      `json:"debug"       yaml:"debug"      toml:"debug"`      // デバッグモードにする
-	ListenList   []*Listen `json:"listenList"  yaml:"listenList" toml:"listenList"` // リッスンリスト
-	Username     string    `json:"username"    yaml:"username"   toml:"username"`   // ユーザー名
-	Password     string    `json:"password"    yaml:"password"   toml:"password"`   // パスワード
-	StaticPath   string    `json:"staticPath"  yaml:"staticPath" toml:"staticPath"` // Staticリソースのパス
+	Debug           bool      `json:"debug"           yaml:"debug"           toml:"debug"`           // デバッグモードにする
+	ListenList      []*Listen `json:"listenList"      yaml:"listenList"      toml:"listenList"`      // リッスンリスト
+	Username        string    `json:"username"        yaml:"username"        toml:"username"`        // ユーザー名
+	Password        string    `json:"password"        yaml:"password"        toml:"password"`        // パスワード
+	LetsEncryptPath string    `json:"letsEncryptPath" yaml:"letsEncryptPath" toml:"letsEncryptPath"` // Staticリソースのパス
 }
 
 func (a *APIServer) validate() (bool) {

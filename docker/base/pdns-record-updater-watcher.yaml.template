@@ -21,7 +21,7 @@ apiServer:
     keyfile: ${WATCHER_API_SERVER_PRIVATE_KEY_FILE:-/etc/powerdns/pdns-record-updater-api-server.key}{{ end }}
   username: {{ if ne "${WATCHER_API_SERVER_USERNAME:-}" "" }} ${WATCHER_API_SERVER_USERNAME}{{ end }}
   password: {{ if ne "${WATCHER_API_SERVER_PASSWORD:-}" "" }} ${WATCHER_API_SERVER_PASSWORD}{{ end }}
-  staticPath: /var/www
+  letsEncryptPath: /var/www
 logger:
   loggers:
     default:

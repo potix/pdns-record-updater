@@ -6,6 +6,7 @@ import (
         "github.com/gin-gonic/gin"
 	"github.com/potix/pdns-record-updater/contexter"
         "net/http"
+        "path/filepath"
         "time"
         "fmt"
 )
@@ -116,8 +117,8 @@ func (s *Server) Start() (err error) {
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC)   // ネガティブレコードの変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC) // ネガティブレコードの削除
 
-	if s.serverContext.StaticPath != "" {
-		engine.Static("/", s.serverContext.StaticPath)
+	if s.serverContext.LetsEncryptPath != "" {
+		engine.Static("/.well-known", filepath.Join(s.serverContext.LetsEncryptPath, ".well-known"))
 	}
 
 	// create server
