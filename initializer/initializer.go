@@ -11,6 +11,7 @@ import (
         "github.com/potix/pdns-record-updater/api/structure"
         "github.com/potix/pdns-record-updater/helper"
 	"time"
+	"os"
 	"fmt"
 )
 
@@ -137,9 +138,18 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 
 // Initialize is initialize power dns record
 func (i *Initializer) Initialize() (err error) {
+	initializedFile := i.initializerContext.PdnsSqlitePath + ".initialized"
+	_, err = os.Stat(initializedFile)
+	if err == nil {
+		err = os.Remove(initializedFile)
+		if  err != nil {
+			return errors.Wrap(err, fmt.Sprintf("can not remove initialized file (%v)", initializedFile))
+		}
+	}
 	var watchResultResponse *structure.WatchResultResponse
 	for {
-		if watchResultResponse, err = i.client.GetWatchResult(); err != nil {
+		watchResultResponse, err = i.client.GetWatchResult()
+		if err != nil {
 			belog.Error("can not get watcher result (%v)", err)
 			time.Sleep(time.Second)
 			continue;
@@ -147,9 +157,16 @@ func (i *Initializer) Initialize() (err error) {
 		time.Sleep(time.Second)
 		break
 	}
-	if err = i.insert(watchResultResponse); err != nil {
+	err = i.insert(watchResultResponse);
+	if  err != nil {
 		return errors.Wrap(err, "can not initialize");
 	}
+	initFile, err := os.Create(initializedFile)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("can not create initialized file (%v)", initializedFile))
+	}
+	initFile.Close()
+	belog.Debug("initialized file created")
 
 	return nil
 }
