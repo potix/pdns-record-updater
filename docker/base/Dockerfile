@@ -19,14 +19,20 @@ RUN apt-get clean && apt-get update && apt-get install -y && \
     curl -L https://github.com/gliderlabs/sigil/releases/download/v0.4.0/sigil_0.4.0_Linux_x86_64.tgz | tar -zxvC /usr/local/bin && \
     openssl req -x509 -sha256 -nodes -days 3650 -newkey rsa:2048 -subj /CN=localhost -keyout /etc/powerdns/pdns-record-updater-api-server.key -out /etc/powerdns/pdns-record-updater-api-server.cert && \
     mkdir -p /etc/powerdns/static
-# environment
+COPY pdns.conf.template /etc/powerdns/pdns.conf.template
+COPY pdns-record-updater-updater.yaml.template /etc/powerdns/pdns-record-updater-updater.yaml.template
+COPY pdns-record-updater-watcher.yaml.template /etc/powerdns/pdns-record-updater-watcher.yaml.template
+COPY run_updater.sh /usr/sbin/run.sh
+RUN chmod 755 /usr/sbin/run.sh
+#
+# pdns.conf.template environment
 # ${PDNS_API_KEY:-pdns_api_key}
 # ${PDNS_PACKET_CACHE_TTL:-5}
 # ${PDNS_NEGATIVE_QUERY_CACHE_TTL:-60}
 # ${PDNS_QUERY_CACHE_TTL:-5}
 # ${PDNS_SOA_MINIMUM_TTL:-60}
-COPY pdns.conf.template /etc/powerdns/pdns.conf.template
-# environment
+#
+# pdns-record-updater-updater.yaml.template environment
 # ${WATCHER_NOTIFY_SUBJECT:-}
 # ${WATCHER_NOTIFY_BODY:-}
 # ${WATCHER_NOTIFY_SMTP_SERVER_PORT:-}
@@ -41,16 +47,17 @@ COPY pdns.conf.template /etc/powerdns/pdns.conf.template
 # ${WATCHER_API_SERVER_USE_TLS:-false}
 # ${WATCHER_API_SERVER_USERNAME:-}
 # ${WATCHER_API_SERVER_PASSWORD:-}
-COPY pdns-record-updater-updater.yaml.template /etc/powerdns/pdns-record-updater-updater.yaml.template
-# environment
+#
+# pdns-record-updater-watcher.yaml.template environment
 # ${WATCHER_API_SERVER_URL_LIST:?}
 # ${WATCHER_TLS_SKIP_VERIFY:-false}
 # ${WATCHER_API_SERVER_USERNAME:-}
 # ${WATCHER_API_SERVER_PASSWORD:-}
 # ${PDNS_API_KEY:-pdns_api_key}
-COPY pdns-record-updater-watcher.yaml.template /etc/powerdns/pdns-record-updater-watcher.yaml.template
-COPY run_updater.sh /usr/sbin/run_updater.sh
-RUN chmod 755 /usr/sbin/run_updater.sh
+#
 # other environment
+# PDNS_RECORD_UPDATER_MODE
 # WATCHER_API_SERVER_CERT
 # WATCHER_API_SERVER_PRIVATE_KEY
+#
+ENTRYPOINT ["/usr/sbin/run.sh"]
