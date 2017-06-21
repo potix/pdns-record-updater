@@ -1,7 +1,7 @@
 version: '3'
 services:
   watcher:
-    image: potix/pdns-record-updater-base:0.2
+    image: potix/pdns-record-updater:0.1
     environment:
       PDNS_RECORD_UPDATER_MODE: watcher
       WATCHER_NOTIFY_SUBJECT:
