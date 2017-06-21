@@ -33,6 +33,13 @@ RUN chmod 755 /usr/sbin/pdns-record-updater-run.sh
 # ${PDNS_SOA_MINIMUM_TTL:-60}
 #
 # pdns-record-updater-updater.yaml.template environment
+# ${WATCHER_API_SERVER_URL_LIST:?}
+# ${WATCHER_TLS_SKIP_VERIFY:-false}
+# ${WATCHER_API_SERVER_USERNAME:-}
+# ${WATCHER_API_SERVER_PASSWORD:-}
+# ${PDNS_API_KEY:-pdns_api_key}
+#
+# pdns-record-updater-watcher.yaml.template environment
 # ${WATCHER_NOTIFY_SUBJECT:-}
 # ${WATCHER_NOTIFY_BODY:-}
 # ${WATCHER_NOTIFY_SMTP_SERVER_PORT:-}
@@ -47,13 +54,6 @@ RUN chmod 755 /usr/sbin/pdns-record-updater-run.sh
 # ${WATCHER_API_SERVER_USE_TLS:-false}
 # ${WATCHER_API_SERVER_USERNAME:-}
 # ${WATCHER_API_SERVER_PASSWORD:-}
-#
-# pdns-record-updater-watcher.yaml.template environment
-# ${WATCHER_API_SERVER_URL_LIST:?}
-# ${WATCHER_TLS_SKIP_VERIFY:-false}
-# ${WATCHER_API_SERVER_USERNAME:-}
-# ${WATCHER_API_SERVER_PASSWORD:-}
-# ${PDNS_API_KEY:-pdns_api_key}
 #
 # other environment
 # PDNS_RECORD_UPDATER_MODE
