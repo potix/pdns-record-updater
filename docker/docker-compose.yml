@@ -19,7 +19,8 @@ wathcer:
   volumes:
     - /dev/log:/dev/log
   ports:
-    - "28001:28001"
+    - "28001:28001/tcp"
+  log_driver: "syslog"
 # updater
 updater:
   image: potix/pdns-record-updater-base:0.2
@@ -42,3 +43,4 @@ updater:
     - watcher
   depends_on:
     - watcher
+  log_driver: "syslog"

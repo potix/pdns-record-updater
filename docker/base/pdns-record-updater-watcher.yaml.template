@@ -45,8 +45,15 @@ logger:
           - '%(dateTime) [%(logLevel)] (%(pid)) %(programCounter) %(loggerName) %(shortFileName)
             %(lineNum) %(message)'
       handlers:
-      - structName: ConsoleHandler
+      - structName: SyslogHandler
         structSetters:
-        - setterName: SetOutputType
+        - setterName: SetNetworkAndAddr
           setterParams:
-          - "1"
+          - ""
+          - ""
+        - setterName: SetTag
+          setterParams:
+          - "updater"
+        - setterName: SetFacility
+          setterParams:
+          - "LOCAL7"
