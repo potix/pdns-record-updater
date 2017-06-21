@@ -10,7 +10,7 @@ apiClient:
   username: ${WATCHER_USERNAME:?}
   password: ${WATCHER_PASSWORD:?}
 initializer:
-  pdnsSqlitePath: /var/cache/powerdns/powerdns.db
+  pdnsSqlitePath: /var/spool/powerdns/powerdns.db
 updater:
   updateInterval: 5
   pdnsServer: http://127.0.0.1:28002

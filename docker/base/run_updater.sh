@@ -15,10 +15,10 @@ trap finish INT QUIT TERM
 echo "start $0"
 
 echo "init database"
-rm -f /var/cache/powerdns/powerdns.db.initialized
-rm -f /var/cache/powerdns/powerdns.db
-sqlite3 /var/cache/powerdns/powerdns.db < /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql
-chown pdns:pdns /var/cache/powerdns/powerdns.db
+rm -f /var/spool/powerdns/powerdns.db.initialized
+rm -f /var/spool/powerdns/powerdns.db
+sqlite3 /var/spool/powerdns/powerdns.db < /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql
+chown pdns:pdns /var/spool/powerdns/powerdns.db
 
 echo "start pdns-record-updater"
 /root/gopath/src/github.com/potix/pdns-record-updater/pdns-record-updater $@ &
@@ -31,7 +31,7 @@ do
 		exit
 	fi
 	sleep 1
-	if [ -f /var/cache/powerdns/powerdns.db.initialized ]; then
+	if [ -f /var/spool/powerdns/powerdns.db.initialized ]; then
 		break
 	fi
 done

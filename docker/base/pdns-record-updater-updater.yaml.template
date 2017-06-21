@@ -8,7 +8,7 @@ apiClient:
   username: {{ if ne "${WATCHER_API_SERVER_USERNAME:-}" "" }} ${WATCHER_API_SERVER_USERNAME}{{ end }}
   password: {{ if ne "${WATCHER_API_SERVER_PASSWORD:-}" "" }} ${WATCHER_API_SERVER_PASSWORD}{{ end }}
 initializer:
-  pdnsSqlitePath: /var/cache/powerdns/powerdns.db
+  pdnsSqlitePath: /var/spool/powerdns/powerdns.db
 updater:
   updateInterval: 5
   pdnsServer: http://127.0.0.1:28002

@@ -9,8 +9,8 @@ RUN printf "Package: pdns-*\nPin: origin repo.powerdns.com\nPin-Priority: 600\n"
 RUN apt-get update 
 RUN apt-get install -y pdns-server pdns-backend-sqlite3 pdns-tools
 RUN mkdir -p /etc/powerdns/static
-RUN sqlite3 /var/cache/powerdns/powerdns.db < /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql
-RUN chown pdns:pdns /var/cache/powerdns/powerdns.db
+RUN sqlite3 /var/spool/powerdns/powerdns.db < /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql
+RUN chown pdns:pdns /var/spool/powerdns/powerdns.db
 RUN mkdir /root/gopath
 ENV GOPATH /root/gopath
 RUN go get -u github.com/alecthomas/gometalinter
