@@ -20,15 +20,7 @@ import (
 	"fmt"
 )
 
-func runUpdater(contexter *contexter.Contexter) (error) {
-	client := client.New(contexter.Context.APIClient)
-	initializer := initializer.New(contexter.Context.Initializer, client)
-	err := initializer.Initialize()
-	if err != nil {
-		return err
-	}
-	updater := updater.New(contexter.Context.Updater, client)
-	updater.Start()
+func signalWait() {
         sigChan := make(chan os.Signal, 1)
         signal.Notify(sigChan,
                 syscall.SIGINT,
@@ -45,9 +37,21 @@ Loop:
                 case syscall.SIGTERM:
                         break Loop
                 default:
-                        belog.Warn("unexpected signal (%v)", sig)
+                        belog.Notice("unexpected signal (%v)", sig)
                 }
         }
+}
+
+func runUpdater(contexter *contexter.Contexter) (error) {
+	client := client.New(contexter.Context.APIClient)
+	initializer := initializer.New(contexter.Context.Initializer, client)
+	err := initializer.Initialize()
+	if err != nil {
+		return err
+	}
+	updater := updater.New(contexter.Context.Updater, client)
+	updater.Start()
+	signalWait()
 	updater.Stop()
 	return nil
 }
@@ -62,27 +66,18 @@ func runWatcher(contexter *contexter.Contexter) (error) {
 		return err
 	}
 	watcher.Start()
-        sigChan := make(chan os.Signal, 1)
-        signal.Notify(sigChan,
-                syscall.SIGINT,
-                syscall.SIGTERM,
-                syscall.SIGQUIT)
-Loop:
-        for {
-                sig := <-sigChan
-                switch sig {
-                case syscall.SIGINT:
-			fallthrough
-                case syscall.SIGQUIT:
-			fallthrough
-                case syscall.SIGTERM:
-                        break Loop
-                default:
-                        belog.Warn("unexpected signal (%v)", sig)
-                }
-        }
+	signalWait()
 	server.Stop()
 	watcher.Stop()
+	return nil
+}
+
+func runManager(contexter *contexter.Contexter) (error) {
+	client := client.New(contexter.Context.APIClient)
+	manager := manager.New(contexter.Context.Watcher, client)
+	manager.Start()
+	signalWait()
+	manager.Stop()
 	return nil
 }
 
@@ -129,7 +124,7 @@ func main() {
 	} else if (strings.ToUpper(*mode) == "WATCHER") {
 		err = runWatcher(contexter)
 	} else if (strings.ToUpper(*mode) == "MANAGER") {
-		// TODO
+		err = runManager(contexter)
 	} else {
 		err = errors.New("unexpected run mode")
 	}

@@ -1113,8 +1113,8 @@ func (c *Contexter) SaveConfig() (error) {
 	return c.configurator.Save(c.Context)
 }
 
-// DumpContext is dump context
-func (c *Contexter) DumpContext(format string) ([]byte, error) {
+// GetContext is get context
+func (c *Contexter) GetContext(format string) ([]byte, error) {
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
         switch format {
@@ -1141,6 +1141,16 @@ func (c *Contexter) DumpContext(format string) ([]byte, error) {
         default:
                 return nil, errors.Errorf("unexpected format (%v)", format)
         }
+}
+
+// PutContext is put context
+func (c *Contexter) PutContext(newContext *c.Context) (error) {
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	if !newContext.validate(c.mode) {
+		return errors.Errorf("invalid config")
+	}
+	c.Context = newContext
 }
 
 // New is create new contexter

@@ -166,6 +166,18 @@ func (s *Server) config(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"unexpected action\"}")
 			return
 		}
+	case http.MethodPut:
+		newContext := new(contexter.Context)
+		if err := context.BindJSON(newContext); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		err := s.contexter.PutConfig(newContext)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusOK)
 	}
 }
 

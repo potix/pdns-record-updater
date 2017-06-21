@@ -4,7 +4,7 @@ apiClient:
   retry: 3
   retryWait: 1
   timeout: 30
-  tlsSkipVerify: ${WATCHER_API_SERVER_TLS_SKIP_VERIFY:-false}
+  tlsSkipVerify: ${WATCHER_API_SERVER_TLS_SKIP_VERIFY:-true}
   username: {{ if ne "${WATCHER_API_SERVER_USERNAME:-}" "" }} ${WATCHER_API_SERVER_USERNAME}{{ end }}
   password: {{ if ne "${WATCHER_API_SERVER_PASSWORD:-}" "" }} ${WATCHER_API_SERVER_PASSWORD}{{ end }}
 initializer:

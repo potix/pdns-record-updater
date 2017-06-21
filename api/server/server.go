@@ -65,6 +65,8 @@ func (s *Server) Start() (err error) {
         }
 	engine := gin.Default()
 	var newGroup *gin.RouterGroup
+
+	// set up resource
 	if s.serverContext.Username != "" {
 		authHandler := gin.BasicAuth(gin.Accounts{s.serverContext.Username : s.serverContext.Password})
 		newGroup = engine.Group("/v1", authHandler, s.commonHandler)
@@ -72,51 +74,37 @@ func (s *Server) Start() (err error) {
 		newGroup = engine.Group("/v1", s.commonHandler)
 	}
 	s.addGetHandler(newGroup, "/watch/result", s.watchResult) // 監視結果取得
-
 	s.addGetHandler(newGroup, "/config", s.config) // 設定取得
 	s.addPostHandler(newGroup, "/config", s.config) // 設定読み込み、保存
-
+	s.addPutHandler(newGroup, "/config", s.config) // replace config
 	s.addGetHandler(newGroup, "/zone", s.zone)  // ゾーン一覧取得
 	s.addPostHandler(newGroup, "/zone", s.zone)  // ゾーン作成
-
 	s.addGetHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
 	s.addPutHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
 	s.addDeleteHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
-
 	s.addGetHandler(newGroup, "/zone/:domain/nameserver", s.zoneNameServer)  // ネームサーバ一覧取得
 	s.addPostHandler(newGroup, "/zone/:domain/nameserver", s.zoneNameServer) // ネームサーバ作成
-
 	s.addGetHandler(newGroup, "/zone/:domain/nameserver/:name/:type/:Content", s.zoneNameServerNTC)        // ネームサーバ取得
 	s.addPostHandler(newGroup, "/zone/:domain/nameserver/:name/:type/:Content", s.zoneNameServerNTC)       // ネームサーバ変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/nameserver/:name/:type/:Content", s.zoneNameServerNTC)     // ネームサーバ削除
-
 	s.addGetHandler(newGroup, "/zone/:domain/staticrecord", s.zoneStaticRecord)  // 静的コード一覧取得
 	s.addPostHandler(newGroup, "/zone/:domain/staticrecord", s.zoneStaticRecord) // 静的レコード作成 
-
 	s.addGetHandler(newGroup, "/zone/:domain/staticrecord/:name/:type/:Content", s.zoneStaticRecordNTC)    // 静的レコード取得
 	s.addPostHandler(newGroup, "/zone/:domain/staticrecord/:name/:type/:Content", s.zoneStaticRecordNTC)   // 静的レコード変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/staticrecord/:name/:type/:Content", s.zoneStaticRecordNTC) // 静的レコード削除
-
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup", s.zoneDynamicGroup)  // 動的グループ一覧取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup", s.zoneDynamicGroup) // 動的グループ作成
-
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname", s.zoneDynamicGroupName) // 動的グループ削除
-
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord", s.zoneDynamicGroupDynamicRecord)  // 動的レコードの一覧を取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord", s.zoneDynamicGroupDynamicRecord) // 動的レコードの作成 
-
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                    // 動的レコードの取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                   // 動的レコードの変更
 	s.addPutHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content/forcedown", s.zoneDynamicGroupDynamicRecordNTCForceDown) // 動的レコードの変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/dynamicrecord/:name/:type/:Content", s.zoneDynamicGroupDynamicRecordNTC)                 // 動的レコードの削除
-
 	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord", s.zoneDynamicGroupNegativeRecord)  // ネガティブレコードの一覧取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord", s.zoneDynamicGroupNegativeRecord) // ネガティブレコードの作成
-
-	s.addGetHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC)    // ネガティブレコードの取得
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC)   // ネガティブレコードの変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC) // ネガティブレコードの削除
-
 	if s.serverContext.LetsEncryptPath != "" {
 		engine.Static("/.well-known", filepath.Join(s.serverContext.LetsEncryptPath, ".well-known"))
 	}

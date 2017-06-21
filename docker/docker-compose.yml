@@ -18,7 +18,7 @@ services:
       WATCHER_API_SERVER_USE_TLS: "false"
       WATCHER_API_SERVER_USERNAME:
       WATCHER_API_SERVER_PASSWORD:
-    volumes:
+    devices::
       - /dev/log:/dev/log
     ports:
       - "28001:28001/tcp"
@@ -37,7 +37,7 @@ services:
       WATCHER_API_SERVER_TLS_SKIP_VERIFY: "false"
       WATCHER_API_SERVER_USERNAME:
       WATCHER_API_SERVER_PASSWORD:
-    volumes:
+    devices:
       - /dev/log:/dev/log
     ports:
       - "53:53/udp"
