@@ -7,13 +7,48 @@ import (
 	"github.com/potix/pdns-record-updater/contexter"
 	"github.com/potix/pdns-record-updater/api/structure"
 	"encoding/json"
+	"crypto/sha256"
 	"net/http"
+	"time"
 	"strings"
+	"strconv"
+	"fmt"
 )
+
+func (s *Server) authHandler(context *gin.Context) {
+	// command example
+	// TIME=$(date +%s) && curl -v -H "x-pdru-unixtime: ${TIME}" -H "Authroiztion: PDRU $(echo -n ${TIME}+API_KEY+GET+/v1/watch/result/  | sha256sum | awk '{print $1}')" http://127.0.0.1:28001/v1/watch/result
+	authValue := context.Request.Header.Get("Authorization")
+	unixTimeString := context.Request.Header.Get("x-pdru-unixtime")
+	if authValue == "" {
+		context.AbortWithStatus(401)
+		return
+	}
+	if unixTimeString == "" {
+		context.AbortWithStatus(403)
+		return
+	}
+	unixTime, err := strconv.ParseInt(unixTimeString, 10, 64)
+	if err != nil {
+		context.AbortWithStatus(403)
+		return
+	}
+	nowUnixTime := time.Now().Unix()
+	diffTime := nowUnixTime - unixTime
+	if diffTime < -600 || 600 < diffTime {
+		context.AbortWithStatus(403)
+		return
+	}
+	seedString := fmt.Sprintf("%v+%v+%v+%v", unixTimeString, s.context.GetAPIServer().APIKey, context.Request.Method, context.Request.URL.Path)
+	if authValue != "PDRU " + fmt.Sprintf("%x", sha256.Sum256([]byte(seedString))) {
+		context.AbortWithStatus(403)
+		return
+	}
+        context.Next()
+}
 
 func (s *Server) commonHandler(context *gin.Context) {
         context.Header("Content-Type", gin.MIMEJSON)
-        context.Status(http.StatusMethodNotAllowed)
         context.Next()
 }
 

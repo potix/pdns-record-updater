@@ -44,13 +44,13 @@ Loop:
 }
 
 func runUpdater(contexter *contexter.Contexter) (error) {
-	client := client.New(contexter.Context.APIClient)
-	initializer := initializer.New(contexter.Context.Initializer, client)
+	client := client.New(contexter.Context)
+	initializer := initializer.New(contexter.Context, client)
 	err := initializer.Initialize()
 	if err != nil {
 		return err
 	}
-	updater := updater.New(contexter.Context.Updater, client)
+	updater := updater.New(contexter.Context, client)
 	updater.Start()
 	signalWait()
 	updater.Stop()
@@ -58,10 +58,10 @@ func runUpdater(contexter *contexter.Contexter) (error) {
 }
 
 func runWatcher(contexter *contexter.Contexter) (error) {
-	notifier := notifier.New(contexter.Context.Notifier)
-	watcher := watcher.New(contexter.Context.Watcher, notifier)
+	notifier := notifier.New(contexter.Context)
+	watcher := watcher.New(contexter.Context, notifier)
 	watcher.Init()
-	server := server.New(contexter.Context.APIServer, contexter)
+	server := server.New(contexter.Context, contexter)
 	err := server.Start()
 	if err != nil {
 		return err
@@ -74,8 +74,8 @@ func runWatcher(contexter *contexter.Contexter) (error) {
 }
 
 func runManager(contexter *contexter.Contexter) (error) {
-	client := client.New(contexter.Context.APIClient)
-	manager, err := manager.New(contexter.Context.Watcher, client)
+	client := client.New(contexter.Context)
+	manager, err := manager.New(contexter.Context, client)
 	if err != nil {
 		return err
 	}

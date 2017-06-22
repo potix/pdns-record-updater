@@ -22,7 +22,7 @@ import (
 // Updater is updater
 type Updater struct {
 	client         *client.Client
-	updaterContext *contexter.Updater
+	context        *contexter.Context
 	running        uint32
 }
 
@@ -57,7 +57,7 @@ type zoneRequest struct {
 	RrsetList      []*rrsetData `json:"rrsets"`
 }
 
-func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (*zoneRequest, error) {
+func (u *Updater) zoneWatcherResultResponseToZoneRequest(updaterContext *contexter.Updater, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (*zoneRequest, error) {
 	zoneRequest := new(zoneRequest)
 	zoneRequest.Name = helper.DotDomain(domain)
 	zoneRequest.Kind = "NATIVE"
@@ -65,11 +65,11 @@ func (u *Updater) zoneWatcherResultResponseToZoneRequest(domain string, zoneWatc
 	if len(zoneWatchResultResponse.NameServerList) == 0 {
 		return nil, errors.Errorf("can not create soa, because no nameserver")
 	}
-	zoneRequest.RrsetList = u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse)
+	zoneRequest.RrsetList = u.zoneWatcherResultResponseToRrset(updaterContext, domain, zoneWatchResultResponse)
 	return zoneRequest, nil
 }
 
-func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) ([]*rrsetData) {
+func (u *Updater) zoneWatcherResultResponseToRrset(updaterContext *contexter.Updater, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) ([]*rrsetData) {
 	rrsets := make([]*rrsetData, 0, 1 + len(zoneWatchResultResponse.NameServerList) + len(zoneWatchResultResponse.StaticRecordList) + len(zoneWatchResultResponse.DynamicRecordList))
 	// soa
 	soa := &rrsetData {
@@ -80,7 +80,7 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 		CommentList: make([]*commentData, 0),
 		RecordList:  make([]*recordData, 0, 1),
 	}
-        soaMinimumTTL := u.updaterContext.SoaMinimumTTL
+        soaMinimumTTL := updaterContext.SoaMinimumTTL
         if soaMinimumTTL == 0 {
                 soaMinimumTTL = 60
         }
@@ -193,7 +193,7 @@ func (u *Updater) zoneWatcherResultResponseToRrset(domain string, zoneWatchResul
 	return rrsets
 }
 
-func (u *Updater) get(resource string) (int, error) {
+func (u *Updater) get(updaterContext *contexter.Updater, resource string) (int, error) {
         parsedURL, err := url.Parse(resource)
         if err != nil {
                 return 0, errors.Errorf("can not parse url (%v)", resource)
@@ -204,7 +204,7 @@ func (u *Updater) get(resource string) (int, error) {
                 return 0, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", resource))
         }
 	request.Header.Set("Accept", "*/*")
-	request.Header.Set("X-API-Key", u.updaterContext.PdnsAPIKey)
+	request.Header.Set("X-API-Key", updaterContext.PdnsAPIKey)
         res, err := httpClient.Do(request)
         if err != nil {
                 return 0, errors.Wrap(err, fmt.Sprintf("can not request (%v)", resource))
@@ -224,7 +224,7 @@ func (u *Updater) get(resource string) (int, error) {
         return res.StatusCode, nil
 }
 
-func (u *Updater) postPutPatch(resource string, method string, data interface{}) (error) {
+func (u *Updater) postPutPatch(updaterContext *contexter.Updater, resource string, method string, data interface{}) (error) {
         parsedURL, err := url.Parse(resource)
         if err != nil {
                 return errors.Errorf("can not parse url (%v)", resource)
@@ -241,7 +241,7 @@ func (u *Updater) postPutPatch(resource string, method string, data interface{})
         }
 	request.Header.Set("Accept", "*/*")
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-API-Key", u.updaterContext.PdnsAPIKey)
+	request.Header.Set("X-API-Key", updaterContext.PdnsAPIKey)
         res, err := httpClient.Do(request)
         if err != nil {
                 return errors.Wrap(err, fmt.Sprintf("can not request (%v)", resource))
@@ -261,26 +261,26 @@ func (u *Updater) postPutPatch(resource string, method string, data interface{})
         return nil
 }
 
-func (u *Updater) updateZone(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
+func (u *Updater) updateZone(updaterContext *contexter.Updater, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
 	rrsetRequest := &rrsetRequest {
-		Rrsets : u.zoneWatcherResultResponseToRrset(domain, zoneWatchResultResponse),
+		Rrsets : u.zoneWatcherResultResponseToRrset(updaterContext, domain, zoneWatchResultResponse),
 	}
-	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, domain)
-	return u.postPutPatch(resource, "PATCH", rrsetRequest)
+	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", updaterContext.PdnsServer, domain)
+	return u.postPutPatch(updaterContext, resource, "PATCH", rrsetRequest)
 }
 
-func (u *Updater) createZone(domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
-	zoneRequest, err := u.zoneWatcherResultResponseToZoneRequest(domain, zoneWatchResultResponse)
+func (u *Updater) createZone(updaterContext *contexter.Updater, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
+	zoneRequest, err := u.zoneWatcherResultResponseToZoneRequest(updaterContext, domain, zoneWatchResultResponse)
 	if err != nil {
 		return err
 	}
-	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones", u.updaterContext.PdnsServer)
-	return u.postPutPatch(resource, "POST", zoneRequest)
+	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones", updaterContext.PdnsServer)
+	return u.postPutPatch(updaterContext, resource, "POST", zoneRequest)
 }
 
-func (u *Updater) getZone(domain string) (bool, error) {
-	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", u.updaterContext.PdnsServer, helper.NoDotDomain(domain))
-	statusCode, err := u.get(resource)
+func (u *Updater) getZone(updaterContext *contexter.Updater, domain string) (bool, error) {
+	resource := fmt.Sprintf("%v/api/v1/servers/localhost/zones/%v", updaterContext.PdnsServer, helper.NoDotDomain(domain))
+	statusCode, err := u.get(updaterContext, resource)
 	if err != nil {
 		if statusCode == 0 || statusCode == 401 {
 			return false, errors.Wrap(err, fmt.Sprintf("can not get zone (%v)", resource))
@@ -306,25 +306,26 @@ func (u *Updater) updateLoop() () {
 			}
 			break
 		}
+		updaterContext := u.context.GetUpdater()
 		for domain, zoneWatchResultResponse := range watchResultResponse.ZoneMap {
-			exist, err :=  u.getZone(domain)
+			exist, err :=  u.getZone(updaterContext, domain)
 			if err != nil {
 				belog.Error("can not get zone (%v)", err)
 				continue
 			}
 			if exist {
-				err = u.updateZone(domain, zoneWatchResultResponse)
+				err = u.updateZone(updaterContext, domain, zoneWatchResultResponse)
 				if err != nil {
 					belog.Error("can not call api (%v)", err)
 				}
 			} else {
-				err = u.createZone(domain, zoneWatchResultResponse)
+				err = u.createZone(updaterContext, domain, zoneWatchResultResponse)
 				if err != nil {
 					belog.Error("can not call api (%v)", err)
 				}
 			}
 		}
-		time.Sleep(time.Duration(u.updaterContext.UpdateInterval) * time.Second)
+		time.Sleep(time.Duration(updaterContext.UpdateInterval) * time.Second)
 	}
 }
 
@@ -340,9 +341,9 @@ func (u Updater) Stop() {
 }
 
 // New is create updater
-func New(updaterContext *contexter.Updater, client *client.Client) (*Updater) {
+func New(context *contexter.Context, client *client.Client) (*Updater) {
         return &Updater {
-                client:    client,
-                updaterContext: updaterContext,
+                client:  client,
+                context: context,
         }
 }

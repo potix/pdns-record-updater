@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"net/url"
 	"io/ioutil"
+        "crypto/sha256"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -28,44 +30,52 @@ type startEnd struct {
 // Client is client
 type Client struct {
 	urlBaseIndex  int
-        clientContext *contexter.APIClient
+        context *contexter.Context
 }
 
-func (c *Client) get(reqInfo *reqInfo) ([]byte, error) {
+func (c *Client) addAuthHeader(apiClientContext *contexter.APIClient, request *http.Request, u *url.URL) {
+        unixTime := time.Now().Unix()
+        seedString := fmt.Sprintf("%v+%v+%v+%v", unixTime, apiClientContext.APIKey, request.Method, u.Path)
+        authValue := "PDRU " + fmt.Sprintf("%x", sha256.Sum256([]byte(seedString)))
+        request.Header.Set("Authorization", authValue)
+        request.Header.Set("x-pdru-unixtime", strconv.FormatInt(unixTime, 10))
+}
+
+func (c *Client) get(apiClientContext *contexter.APIClient, reqInfo *reqInfo) ([]byte, error) {
         u, err := url.Parse(reqInfo.url)
 	if err != nil {
 		return  nil, errors.Errorf("can not parse url (%v)", reqInfo.url)
 	}
-	httpClient := helper.NewHTTPClient(u.Scheme, u.Host, c.clientContext.TLSSkipVerify, c.clientContext.Timeout)
+	httpClient := helper.NewHTTPClient(u.Scheme, u.Host, apiClientContext.TLSSkipVerify, apiClientContext.Timeout)
 	request, err := http.NewRequest("GET", reqInfo.url, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can not create request (%v)", reqInfo.url))
 	}
-	request.SetBasicAuth(c.clientContext.Username, c.clientContext.Password)
+	c.addAuthHeader(apiClientContext, request, u)
 	res, err := httpClient.Do(request)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can not get url (%v)", reqInfo.url))
 	}
 	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return nil, errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v)", reqInfo.url, res.StatusCode))
-	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf(" (%v)", reqInfo.url))
+	}
+	if res.StatusCode != 200 {
+		return nil, errors.Wrap(err, fmt.Sprintf("unexpected status code (%v) (%v) (%v)", reqInfo.url, res.StatusCode, string(body)))
 	}
 	belog.Debug("http ok (%v)", reqInfo.url)
 	return body, nil
 }
 
-func (c *Client) retryRequest(methodFunc func(reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error)  {
+func (c *Client) retryRequest(apiClientContext *contexter.APIClient, methodFunc func(apiClientContext *contexter.APIClient, reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error)  {
 	var i uint32
-	for i = 0; i <= c.clientContext.Retry; i++ {
-		response, err = methodFunc(reqInfo)
+	for i = 0; i <= apiClientContext.Retry; i++ {
+		response, err = methodFunc(apiClientContext, reqInfo)
 		if err != nil {
 			belog.Error("retry request (%v)", err)
-			if c.clientContext.RetryWait > 0 {
-				time.Sleep(time.Duration(c.clientContext.RetryWait) * time.Second)
+			if apiClientContext.RetryWait > 0 {
+				time.Sleep(time.Duration(apiClientContext.RetryWait) * time.Second)
 			}
 			continue
 		}
@@ -74,16 +84,17 @@ func (c *Client) retryRequest(methodFunc func(reqInfo *reqInfo) (response []byte
 	return nil, errors.Errorf("give up retry (%v)", reqInfo.url)
 }
 
-func (c *Client) doRequest(methodFunc func(reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error) {
+func (c *Client) doRequest(methodFunc func(apiClientContext *contexter.APIClient, reqInfo *reqInfo) (response []byte, err error), reqInfo *reqInfo) (response []byte, err error) {
+	apiClientContext := c.context.GetAPIClient()
 	startEnd := [...]*startEnd{
-		&startEnd{ start: c.urlBaseIndex, end: len(c.clientContext.APIServerURLList) },
+		&startEnd{ start: c.urlBaseIndex, end: len(apiClientContext.APIServerURLList) },
 		&startEnd{ start: 0, end: c.urlBaseIndex },
 	}
 	for _, startEnd := range startEnd  {
 		for i := startEnd.start; i < startEnd.end; i++ {
-			reqInfo.urlBase = c.clientContext.APIServerURLList[i].String()
+			reqInfo.urlBase = apiClientContext.APIServerURLList[i].String()
 			reqInfo.url = reqInfo.urlBase + reqInfo.resource
-			response, err = c.retryRequest(methodFunc, reqInfo)
+			response, err = c.retryRequest(apiClientContext, methodFunc, reqInfo)
 			if err != nil {
 				belog.Error("switch url base (%v)", err)
 				continue
@@ -113,9 +124,9 @@ func (c *Client) GetWatchResult() (watchResultResponse *structure.WatchResultRes
 }
 
 // New is create client
-func New(clientContext *contexter.APIClient) (*Client) {
+func New(context *contexter.Context) (*Client) {
         return &Client {
                 urlBaseIndex:  0,
-		clientContext: clientContext,
+		context: context,
         }
 }

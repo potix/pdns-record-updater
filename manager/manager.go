@@ -65,15 +65,11 @@ func (s *Server) Start() (err error) {
 	engine.Use(sessions.Sessions("pdns-record-updater-session", store))
 
 	// setup resource
-	m.addGetHandler(engine, "/index.html", m.index)
-	m.addGetHandler(engine, "/img", m.asset)
-	m.addGetHandler(engine, "/js", m.asset)
-	m.addGetHandler(engine, "/css", m.asset)
-	m.addPostHandler(engine, "/login", m.login)
-	m.addGetHandler(engine, "/config", m.config)
-	m.addPostHandler(engine, "/config", m.config)
-	m.addPostHandler(engine, "/zone", m.zone)
-	m.addPostHandler(engine, "/record", m.record)
+	m.addGetHandler(engine, "/index.html", m.index) // index
+	m.addGetHandler(engine, "/asset", m.asset)      // asset
+	m.addPostHandler(engine, "/login", m.login)     // login
+	m.addGetHandler(engine, "/config", m.config)    // get config on memory
+	m.addPostHandler(engine, "/config", m.config)   // update config on memory / save config to disk / load config from disk
 	if m.managerContext.LetsEncryptPath != "" {
 		engine.Static("/.well-known", filepath.Join(m.managerContext.LetsEncryptPath, ".well-known"))
 	}
@@ -118,15 +114,15 @@ func (m *Manager) Stop() {
 }
 
 // New is create manager
-func New(managerContext *contexter.Manager, client *client.Client) (*Server, error) {
+func New(context *contexter.Context, client *client.Client) (*Server, error) {
 	exec, err := os.Executable()
 	if err != nil {
 		errors.Wrap(err, "can not get executable path")
 	}
 	execDir := path.Dir(exec)
         s = &Manager{
-                managerContext: managerContext,
-                client: client,
+                context: context,
+                client:  client,
 		execDir: execDir,
         }
         if !managerContext.Debug {

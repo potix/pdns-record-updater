@@ -18,7 +18,7 @@ import (
 // Initializer is initializer
 type Initializer struct {
 	client *client.Client
-	initializerContext *contexter.Initializer
+	context *contexter.Context
 }
 
 func (i *Initializer) selectDomain(db *sql.DB, domain string) (bool, error) {
@@ -51,14 +51,14 @@ func (i *Initializer) insertDomain(db *sql.DB, domain string) (int64, error) {
 	return domainID, nil
 }
 
-func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
+func (i *Initializer) insertRecord(initializerContext *contexter.Initializer, db *sql.DB, domainID int64, domain string, zoneWatchResultResponse *structure.ZoneWatchResultResponse) (error) {
 	stmt, err := db.Prepare(`INSERT INTO "records" ("domain_id", "name", "type", "content", "ttl", "prio", "disabled", "auth") VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return errors.Wrap(err, "can not prepare of domain")
 	}
 	defer stmt.Close()
 	// soa record
-	soaMinimumTTL := i.initializerContext.SoaMinimumTTL
+	soaMinimumTTL := initializerContext.SoaMinimumTTL
 	if soaMinimumTTL == 0 {
 		soaMinimumTTL = 60
 	}
@@ -108,10 +108,10 @@ func (i *Initializer) insertRecord(db *sql.DB, domainID int64, domain string, zo
 	return nil
 }
 
-func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse) (error) {
-	db, err := sql.Open("sqlite3", i.initializerContext.PdnsSqlitePath);
+func (i *Initializer) insert(initializerContext *contexter.Initializer, watchResultResponse *structure.WatchResultResponse) (error) {
+	db, err := sql.Open("sqlite3", initializerContext.PdnsSqlitePath);
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("can not open powedns sqlite (%v)", i.initializerContext.PdnsSqlitePath))
+		return errors.Wrap(err, fmt.Sprintf("can not open powedns sqlite (%v)", initializerContext.PdnsSqlitePath))
 	}
 	defer db.Close();
 	for domain, zoneWatchResultResponse := range watchResultResponse.ZoneMap {
@@ -127,7 +127,7 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 		if err != nil {
 			return errors.Wrap(err, "can not insert domain");
 		}
-		err = i.insertRecord(db, domainID, domain, zoneWatchResultResponse)
+		err = i.insertRecord(initializerContext, db, domainID, domain, zoneWatchResultResponse)
 		if err != nil {
 			return errors.Wrap(err, "can not insert record");
 		}
@@ -138,7 +138,8 @@ func (i *Initializer) insert(watchResultResponse *structure.WatchResultResponse)
 
 // Initialize is initialize power dns record
 func (i *Initializer) Initialize() (err error) {
-	initializedFile := i.initializerContext.PdnsSqlitePath + ".initialized"
+	initializerContext := i.context.GetInitializer()
+	initializedFile := initializerContext.PdnsSqlitePath + ".initialized"
 	_, err = os.Stat(initializedFile)
 	if err == nil {
 		err = os.Remove(initializedFile)
@@ -157,7 +158,7 @@ func (i *Initializer) Initialize() (err error) {
 		time.Sleep(time.Second)
 		break
 	}
-	err = i.insert(watchResultResponse);
+	err = i.insert(initializerContext, watchResultResponse);
 	if  err != nil {
 		return errors.Wrap(err, "can not initialize");
 	}
@@ -172,10 +173,10 @@ func (i *Initializer) Initialize() (err error) {
 }
 
 // New is create initializer
-func New(initializerContext *contexter.Initializer, client *client.Client) (*Initializer) {
+func New(context *contexter.Context, client *client.Client) (*Initializer) {
         return &Initializer {
-                client:     client,
-		initializerContext: initializerContext,
+                client:  client,
+		context: context,
         }
 }
 

@@ -22,27 +22,7 @@ func (m *Manager) index(context *gin.Context) {
 	}
 }
 
-func (m *Manager) javascript(context *gin.Context) {
-        switch context.Request.Method {
-        case http.MethodHead:
-                context.Status(http.StatusOK)
-        case http.MethodGet:
-	default:
-		context.Status(http.StatusMethodNotAllowed)
-	}
-}
-
-func (m *Manager) css(context *gin.Context) {
-        switch context.Request.Method {
-        case http.MethodHead:
-                context.Status(http.StatusOK)
-        case http.MethodGet:
-	default:
-		context.Status(http.StatusMethodNotAllowed)
-	}
-}
-
-func (m *Manager) image(context *gin.Context) {
+func (m *Manager) asset(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
                 context.Status(http.StatusOK)
@@ -65,22 +45,6 @@ func (m *Manager) config(context *gin.Context) {
         case http.MethodHead:
                 context.Status(http.StatusOK)
         case http.MethodGet:
-        case http.MethodPost:
-	default:
-		context.Status(http.StatusMethodNotAllowed)
-	}
-}
-
-func (m *Manager) zone(context *gin.Context) {
-        switch context.Request.Method {
-        case http.MethodPost:
-	default:
-		context.Status(http.StatusMethodNotAllowed)
-	}
-}
-
-func (m *Manager) record(context *gin.Context) {
-        switch context.Request.Method {
         case http.MethodPost:
 	default:
 		context.Status(http.StatusMethodNotAllowed)

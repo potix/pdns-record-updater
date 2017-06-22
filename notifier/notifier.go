@@ -16,7 +16,7 @@ import (
 // Notifier is notifier
 type Notifier struct {
 	hostname string
-	notifierContext *contexter.Notifier
+	context *contexter.Context
 }
 
 func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Replacer, subject string, body string) {
@@ -130,22 +130,23 @@ func (n *Notifier) sendMail(mailContext *contexter.Mail, replacer *strings.Repla
 
 // Notify is Notify
 func (n *Notifier) Notify(replacer *strings.Replacer, subject string, body string) {
-	if n.notifierContext == nil || n.notifierContext.MailList == nil {
+	notifierContext := n.context.GetNotifier()
+	if notifierContext == nil || notifierContext.MailList == nil {
 		return
 	}
-	for _, mailContext := range n.notifierContext.MailList {
+	for _, mailContext := range notifierContext.MailList {
 		go n.sendMail(mailContext, replacer, subject, body)
 	}
 }
 
 // New is create notifier
-func New(notifierContext *contexter.Notifier) (n *Notifier) {
+func New(context *contexter.Context) (n *Notifier) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
 	}
 	return &Notifier{
 		hostname : hostname,
-		notifierContext: notifierContext,
+		context: context,
 	}
 }

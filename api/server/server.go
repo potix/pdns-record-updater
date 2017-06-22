@@ -23,7 +23,7 @@ type GracefulServer struct {
 // Server is Server
 type Server struct {
 	gracefulServers []*GracefulServer
-	serverContext   *contexter.APIServer
+	context         *contexter.Context
 	contexter       *contexter.Contexter
 }
 
@@ -60,16 +60,16 @@ func (s *Server) startServer(gracefulServer *GracefulServer) {
 
 // Start is Start
 func (s *Server) Start() (err error) {
-        if s.serverContext.ListenList == nil || len(s.serverContext.ListenList) == 0 {
+	apiServerContext := s.context.GetAPIServer()
+        if apiServerContext.ListenList == nil || len(apiServerContext.ListenList) == 0 {
                 errors.Errorf("not found linten port")
         }
 	engine := gin.Default()
 	var newGroup *gin.RouterGroup
 
 	// set up resource
-	if s.serverContext.Username != "" {
-		authHandler := gin.BasicAuth(gin.Accounts{s.serverContext.Username : s.serverContext.Password})
-		newGroup = engine.Group("/v1", authHandler, s.commonHandler)
+	if apiServerContext.APIKey != "" {
+		newGroup = engine.Group("/v1", s.authHandler, s.commonHandler)
 	} else {
 		newGroup = engine.Group("/v1", s.commonHandler)
 	}
@@ -79,8 +79,8 @@ func (s *Server) Start() (err error) {
 	s.addPutHandler(newGroup, "/config", s.config) // replace config
 	s.addGetHandler(newGroup, "/zone", s.zone)  // ゾーン一覧取得
 	s.addPostHandler(newGroup, "/zone", s.zone)  // ゾーン作成
-	s.addGetHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
-	s.addPutHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
+	s.addGetHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン情報取得
+	s.addPutHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン情報変更
 	s.addDeleteHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン削除
 	s.addGetHandler(newGroup, "/zone/:domain/nameserver", s.zoneNameServer)  // ネームサーバ一覧取得
 	s.addPostHandler(newGroup, "/zone/:domain/nameserver", s.zoneNameServer) // ネームサーバ作成
@@ -105,12 +105,12 @@ func (s *Server) Start() (err error) {
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord", s.zoneDynamicGroupNegativeRecord) // ネガティブレコードの作成
 	s.addPostHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC)   // ネガティブレコードの変更
 	s.addDeleteHandler(newGroup, "/zone/:domain/dynamicgroup/:dgname/negativerecord/:name/:type/:Content", s.zoneDynamicGroupNegativeRecordNTC) // ネガティブレコードの削除
-	if s.serverContext.LetsEncryptPath != "" {
-		engine.Static("/.well-known", filepath.Join(s.serverContext.LetsEncryptPath, ".well-known"))
+	if apiServerContext.LetsEncryptPath != "" {
+		engine.Static("/.well-known", filepath.Join(apiServerContext.LetsEncryptPath, ".well-known"))
 	}
 
 	// create server
-        for _, listen := range s.serverContext.ListenList {
+        for _, listen := range apiServerContext.ListenList {
                 server := manners.NewWithServer(&http.Server{
                         Addr:    listen.AddrPort,
                         Handler: engine,
@@ -149,12 +149,12 @@ func (s *Server) Stop() {
 }
 
 // New is create Server
-func New(serverContext *contexter.APIServer, contexter *contexter.Contexter) (s *Server) {
+func New(context *contexter.Context, contexter *contexter.Contexter) (s *Server) {
 	s = &Server{
-		serverContext: serverContext,
+		context: context,
 		contexter: contexter,
         }
-	if !serverContext.Debug {
+	if !context.GetAPIServer().Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	return s

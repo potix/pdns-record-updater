@@ -24,9 +24,9 @@ const (
 // Watcher is struct of Watcher
 type Watcher struct {
 	hostname        string
-	watcherContext *contexter.Watcher
+	context         *contexter.Context
 	running         uint32
-	notifier        *notifier.Notifier
+	notifier	*notifier.Notifier
 }
 
 type targetTask struct {
@@ -72,7 +72,7 @@ func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
 
-func (w Watcher) notify(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool, oldAlive bool) {
+func (w Watcher) notify(watcherContext *contexter.Watcher, domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool, oldAlive bool) {
 	var triggerFlags uint32
 	for _, trigger := range record.NotifyTriggerList {
 		if strings.ToUpper(trigger.String()) == "CHANGED" {
@@ -95,11 +95,11 @@ func (w Watcher) notify(domain string, groupName string, record *contexter.Dynam
                 "%(oldAlive)", fmt.Sprintf("%v", oldAlive),
                 "%(newAlive)", fmt.Sprintf("%v", newAlive),
                 "%(detail)", targetResult)
-	subject := w.watcherContext.NotifySubject
+	subject := watcherContext.NotifySubject
 	if subject == "" {
 		subject = "%(hostname) %(domain) %(groupName) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)"
 	}
-	body := w.watcherContext.NotifyBody
+	body := watcherContext.NotifyBody
 	if body == "" {
 		body = "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n"
 	}
@@ -115,15 +115,15 @@ func (w Watcher) notify(domain string, groupName string, record *contexter.Dynam
 	}
 }
 
-func (w *Watcher) updateAlive(domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
+func (w *Watcher) updateAlive(watcherContext *contexter.Watcher, domain string, groupName string, record *contexter.DynamicRecord, targetResult string, newAlive bool){
 	oldAlive := record.SwapAlive(newAlive);
 	belog.Debug("%v %v %v: new alive = %v, old alive = %v", record.Name, record.Type, record.Content, newAlive, oldAlive)
 	if record.NotifyTriggerList != nil {
-		w.notify(domain, groupName, record, targetResult, newAlive, oldAlive)
+		w.notify(watcherContext, domain, groupName, record, targetResult, newAlive, oldAlive)
 	}
 }
 
-func (w *Watcher) recordWatch(domain string, groupName string, record *contexter.DynamicRecord) {
+func (w *Watcher) recordWatch(watcherContext *contexter.Watcher ,domain string, groupName string, record *contexter.DynamicRecord) {
 	var firstTask *targetTask
 	// run target watch task
 	for _, target := range record.TargetList {
@@ -158,14 +158,14 @@ func (w *Watcher) recordWatch(domain string, groupName string, record *contexter
 	tv, err := w.eval(evalString)
 	if err != nil {
 		belog.Error("can not evalute (%v)", replacer.Replace(record.EvalRule))
-		w.updateAlive(domain, groupName, record, targetResult, false)
+		w.updateAlive(watcherContext, domain, groupName, record, targetResult, false)
 	} else {
-		w.updateAlive(domain, groupName, record, targetResult, constant.BoolVal(tv.Value))
+		w.updateAlive(watcherContext, domain, groupName, record, targetResult, constant.BoolVal(tv.Value))
 	}
 	record.SetProgress(false)
 }
 
-func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
+func (w *Watcher) zoneWatch(watcherContext *contexter.Watcher, domain string, zone *contexter.Zone) {
 	dynamicGroupNameList := zone.GetDynamicGroupNameList()
 	for _, dynamicGroupName := range dynamicGroupNameList {
 		dynamicGroup, err := zone.GetDynamicGroup(dynamicGroupName)
@@ -177,7 +177,7 @@ func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
 				if (record.CompareAndSwapProgress(false, true)) {
 					// run record waatch task
-					go w.recordWatch(domain, dynamicGroupName, record)
+					go w.recordWatch(watcherContext, domain, dynamicGroupName, record)
 					record.ClearCurrentIntervalCount()
 				} else {
 					// already progress last record watch task
@@ -190,14 +190,15 @@ func (w *Watcher) zoneWatch(domain string, zone *contexter.Zone) {
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) == 1 {
-		domainList := w.watcherContext.GetDomainList()
+		watcherContext := w.context.GetWatcher()
+		domainList := watcherContext.GetDomainList()
 		for _, domain := range domainList {
-			zone, err := w.watcherContext.GetZone(domain)
+			zone, err := watcherContext.GetZone(domain)
 			if err != nil {
 				belog.Notice("%v", err)
 				continue
 			}
-			go w.zoneWatch(domain, zone)
+			go w.zoneWatch(watcherContext, domain, zone)
 		}
 		time.Sleep(time.Second)
 	}
@@ -205,9 +206,10 @@ func (w *Watcher) watchLoop() {
 
 // Init is Init
 func (w *Watcher) Init() {
-	domainList := w.watcherContext.GetDomainList()
+	watcherContext := w.context.GetWatcher()
+	domainList := watcherContext.GetDomainList()
 	for _, domain := range domainList {
-		zone, err := w.watcherContext.GetZone(domain)
+		zone, err := watcherContext.GetZone(domain)
 		if err != nil {
 			belog.Notice("%v", err)
 			continue
@@ -220,7 +222,7 @@ func (w *Watcher) Init() {
 				continue
 			}
 			for _, record := range dynamicGroup.GetDynamicRecordList() {
-				w.recordWatch(domain, dynamicGroupName, record)
+				w.recordWatch(watcherContext, domain, dynamicGroupName, record)
 			}
 		}
 	}
@@ -238,15 +240,15 @@ func (w *Watcher) Stop() {
 }
 
 // New is create Wathcer
-func New(watcherContext *contexter.Watcher, notifier *notifier.Notifier) (*Watcher) {
+func New(context *contexter.Context, notifier *notifier.Notifier) (*Watcher) {
         hostname, err := os.Hostname()
         if err != nil {
                 hostname = "unknown"
         }
 	return &Watcher{
-		hostname:       hostname,
-		watcherContext: watcherContext,
-		running:	0,
-		notifier:       notifier,
+		hostname: hostname,
+		context:  context,
+		running:  0,
+		notifier: notifier,
 	}
 }

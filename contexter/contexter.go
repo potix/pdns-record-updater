@@ -783,7 +783,7 @@ func (z *Zone) DeleteDynamicGroup(dynamicGroupName string) (error) {
 // Watcher is watcher
 type Watcher struct {
 	ZoneMap       map[string]*Zone `json:"zoneMap"      yaml:"zoneMap"        toml:"zoneMap"`       // ゾーン [mutable]
-	NotifySubject string           `json:"notifySybject" yaml:"notifySybject" toml:"notifySybject"` // Notifyの題名テンプレート
+	NotifySubject string           `json:"notifySybject" yaml:"notifySybject" toml:"notifySybject"` // Notifyの題名テンプレート 
 	NotifyBody    string           `json:"notifyBody"    yaml:"notifyBody"    toml:"notifyBody"`    // Notifyの本文テンプレート
 }
 
@@ -937,14 +937,13 @@ func (l *Listen) validate() (bool) {
 type APIServer struct {
 	Debug           bool      `json:"debug"           yaml:"debug"           toml:"debug"`           // デバッグモードにする
 	ListenList      []*Listen `json:"listenList"      yaml:"listenList"      toml:"listenList"`      // リッスンリスト
-	Username        string    `json:"username"        yaml:"username"        toml:"username"`        // ユーザー名
-	Password        string    `json:"password"        yaml:"password"        toml:"password"`        // パスワード
+	APIKey          string    `json:"apiKey"          yaml:"apiKey"          toml:"apiKey"`          // api key
 	LetsEncryptPath string    `json:"letsEncryptPath" yaml:"letsEncryptPath" toml:"letsEncryptPath"` // Staticリソースのパス
 }
 
 func (a *APIServer) validate() (bool) {
-	if a.ListenList == nil || len(a.ListenList) == 0 {
-		belog.Error("no listenList")
+	if a.ListenList == nil || len(a.ListenList) == 0 || a.APIKey == "" {
+		belog.Error("no listenList or no apiKey")
 		return false
 	}
 	for _, listen := range a.ListenList {
@@ -974,8 +973,7 @@ func (a APIServerURL) String() (string) {
 // APIClient is server
 type APIClient struct {
 	APIServerURLList []APIServerURL `json:"apiServerUrlList" yaml:"apiServerUrlList" toml:"apiServerUrlList"` // api server url list
-	Username         string         `json:"username"         yaml:"username"         toml:"username"`         // ユーザー名
-	Password         string         `json:"password"         yaml:"password"         toml:"password"`         // パスワード
+	APIKey           string         `json:"apiKey"           yaml:"apiKey"           toml:"apiKey"`           // api key
 	TLSSkipVerify    bool           `json:"tlsSkipVerify"    yaml:"tlsSkipVerify"    toml:"tlsSkipVerify"`    // TLSのverifyをスキップルするかどうか
 	Retry            uint32         `json:"retry"            yaml:"retry"            toml:"retry"`            // retry回数
 	RetryWait        uint32         `json:"retryWait"        yaml:"retryWait"        toml:"retryWait"`        // retry時のwait時間
@@ -983,14 +981,32 @@ type APIClient struct {
 }
 
 func (a *APIClient) validate() (bool) {
-	if a.APIServerURLList == nil || len(a.APIServerURLList) == 0 {
-		belog.Error("no apiServerUrlList")
+	if a.APIServerURLList == nil || len(a.APIServerURLList) == 0 || a.APIKey == "" {
+		belog.Error("no apiServerUrlList or no apiKey")
 		return false
 	}
 	for _, apiServerURL := range a.APIServerURLList {
 		if !apiServerURL.validate() {
 			return false
 		}
+	}
+	return true
+}
+
+// Initializer is initializer
+type Initializer struct {
+	PdnsSqlitePath string `json:"pdnsSqlitePath" yaml:"pdnsSqlitePath" toml:"pdnsSqlitePath"` // power dns sqlite path
+	SoaMinimumTTL  int32  `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa mininum ttl
+}
+
+func (i *Initializer) validate() (bool) {
+	if i.PdnsSqlitePath == ""  {
+		belog.Error("no pdnsSqlitePath")
+		return false
+	}
+	if i.SoaMinimumTTL < 0 {
+                belog.Error("invali soaMinimumTTL")
+                return false
 	}
 	return true
 }
@@ -1015,33 +1031,38 @@ func (u *Updater) validate() (bool) {
 	return true
 }
 
-// Initializer is initializer
-type Initializer struct {
-	PdnsSqlitePath string `json:"pdnsSqlitePath" yaml:"pdnsSqlitePath" toml:"pdnsSqlitePath"` // power dns sqlite path
-	SoaMinimumTTL  int32  `json:"soaMinimumTTL"  yaml:"soaMinimumTTL"  toml:"soaMinimumTTL"`  // soa mininum ttl
+// Manager is manager
+type Manager struct {
+	Debug           bool      `json:"debug"           yaml:"debug"           toml:"debug"`           // デバッグモードにする
+	ListenList      []*Listen `json:"listenList"      yaml:"listenList"      toml:"listenList"`      // リッスンリスト
+	Username        string    `json:"username"        yaml:"username"        toml:"username"`        // ユーザー名
+	Password        string    `json:"password"        yaml:"password"        toml:"password"`        // パスワード
+	LetsEncryptPath string    `json:"letsEncryptPath" yaml:"letsEncryptPath" toml:"letsEncryptPath"` // Staticリソースのパス
 }
 
-func (i *Initializer) validate() (bool) {
-	if i.PdnsSqlitePath == ""  {
-		belog.Error("no pdnsSqlitePath")
+func (m *Manager) validate() (bool) {
+	if m.ListenList == nil || len(m.ListenList) == 0 {
+		belog.Error("no listenList")
 		return false
 	}
-	if i.SoaMinimumTTL < 0 {
-                belog.Error("invali soaMinimumTTL")
-                return false
+	for _, listen := range m.ListenList {
+		if !listen.validate() {
+			return false
+		}
 	}
 	return true
 }
 
 // Context is context
 type Context struct {
-	Watcher     *Watcher             `json:"watcher"     yaml:"watcher"     toml:"watcher"`     // 監視設定
-	Notifier    *Notifier            `json:"notifier"    yaml:"notifier"    toml:"notifier"`    // 通知設定
-	APIServer   *APIServer           `json:"apiServer"   yaml:"apiServer"   toml:"apiServer"`   // サーバー設定
-	APIClient   *APIClient           `json:"apiClient"   yaml:"apiClient"   toml:"apiClient"`   // クライアント設定
-	Initializer *Initializer         `json:"initializer" yaml:"initializer" toml:"initializer"` // Initializer設定
-	Updater     *Updater             `json:"updater"     yaml:"updater"     toml:"updater"`     // Updater設定
-	Logger      *belog.ConfigLoggers `json:"logger"      yaml:"logger"      toml:"logger"`      // ログ設定
+	Watcher     *Watcher             `json:"watcher"     yaml:"watcher"     toml:"watcher"`     // 監視設定         [mutable]
+	Notifier    *Notifier            `json:"notifier"    yaml:"notifier"    toml:"notifier"`    // 通知設定         [mutable]
+	APIServer   *APIServer           `json:"apiServer"   yaml:"apiServer"   toml:"apiServer"`   // サーバー設定     [mutable]
+	APIClient   *APIClient           `json:"apiClient"   yaml:"apiClient"   toml:"apiClient"`   // クライアント設定 [mutable]
+	Initializer *Initializer         `json:"initializer" yaml:"initializer" toml:"initializer"` // Initializer設定  [mutable]
+	Updater     *Updater             `json:"updater"     yaml:"updater"     toml:"updater"`     // Updater設定      [mutable]
+	Manager     *Manager             `json:"manager"     yaml:"manager"     toml:"manager"`     // マネージャー     [mutable]
+	Logger      *belog.ConfigLoggers `json:"logger"      yaml:"logger"      toml:"logger"`      // ログ設定         [mutable]
 }
 
 func (c *Context) validate(mode string) (bool) {
@@ -1050,27 +1071,101 @@ func (c *Context) validate(mode string) (bool) {
 		if c.Watcher == nil || c.APIServer == nil  {
 			return false
 		}
-		if !c.Watcher.validate() || !c.APIServer.validate() {
-			return false
-		}
 	case "UPDATER":
 		if c.APIClient  == nil || c.Initializer == nil || c.Updater == nil {
 			return false
 		}
-		if !c.APIClient.validate() || !c.Initializer.validate() || !c.Updater.validate() {
-                        return false
-                }
 	case "MANAGER":
-		if c.APIClient  == nil {
+		if c.APIClient  == nil || c.Manager == nil {
 			return false
 		}
-		if !c.APIClient.validate() {
-                        return false
-                }
 	default:
+		panic("not reached")
+	}
+	if c.Watcher != nil && !c.Watcher.validate() {
 		return false
 	}
+	if c.Notifier != nil && !c.Notifier.validate() {
+		return false
+	}
+	if c.APIClient != nil && !c.APIClient.validate() {
+		return false
+	}
+	if c.APIServer != nil && !c.APIServer.validate() {
+		return false
+	}
+	if c.Initializer != nil && !c.Initializer.validate() {
+		return false
+	}
+	if c.Updater != nil && !c.Updater.validate() {
+		return false
+	}
+	if c.Manager != nil && !c.Manager.validate() {
+		return false
+	}
+	if c.Logger != nil {
+		err :=  belog.ValidateLoggers(c.Logger)
+		if err != nil {
+			return false
+		}
+	}
 	return true
+}
+
+// GetWatcher is get watcher
+func (c *Context) GetWatcher() (*Watcher) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.Watcher
+}
+
+// GetNotifier is get notifier
+func (c *Context) GetNotifier() (*Notifier) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.Notifier
+}
+
+// GetAPIServer is get api server
+func (c *Context) GetAPIServer() (*APIServer) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.APIServer
+}
+
+// GetAPIClient is get api client
+func (c *Context) GetAPIClient() (*APIClient) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.APIClient
+}
+
+// GetInitializer is get initializer
+func (c *Context) GetInitializer() (*Initializer) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.Initializer
+}
+
+// GetUpdater is get updater
+func (c *Context) GetUpdater() (*Updater) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.Updater
+}
+
+// GetManager is get manager
+func (c *Context) GetManager() (*Manager) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.Manager
+}
+
+// GetLogger is get logger
+func (c *Context) GetLogger() (*belog.ConfigLoggers) {
+	mutableMutex.Lock()
+        mutableMutex.Unlock()
+	return c.Logger
 }
 
 // Contexter is contexter
@@ -1080,20 +1175,19 @@ type Contexter struct {
 	configurator *configurator.Configurator
 }
 
-// Lock is lock context
-func (c *Contexter) Lock() {
-	mutableMutex.Lock()
-}
-
-// Unlock is lock context
-func (c *Contexter) Unlock() {
-        mutableMutex.Unlock()
+func (c *Contexter) replaceContext (newContext *Context) {
+	c.Context.Watcher = newContext.Watcher
+	c.Context.Notifier = newContext.Notifier
+	c.Context.APIServer = newContext.APIServer
+	c.Context.APIClient = newContext.APIClient
+	c.Context.Initializer = newContext.Initializer
+	c.Context.Updater = newContext.Updater
+	c.Context.Manager = newContext.Manager
+	c.Context.Logger = newContext.Logger
 }
 
 // LoadConfig is load config
 func (c *Contexter) LoadConfig() (error){
-	mutableMutex.Lock()
-        defer mutableMutex.Unlock()
 	newContext := new(Context)
 	err := c.configurator.Load(newContext)
 	if err != nil {
@@ -1102,7 +1196,9 @@ func (c *Contexter) LoadConfig() (error){
 	if !newContext.validate(c.mode) {
 		return errors.Errorf("invalid config")
 	}
-	c.Context = newContext
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	c.replaceContext(newContext)
 	return nil
 }
 
@@ -1145,12 +1241,12 @@ func (c *Contexter) GetContext(format string) ([]byte, error) {
 
 // PutContext is put context
 func (c *Contexter) PutContext(newContext *Context) (error) {
-	mutableMutex.Lock()
-        defer mutableMutex.Unlock()
 	if !newContext.validate(c.mode) {
 		return errors.Errorf("invalid config")
 	}
-	c.Context = newContext
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	c.replaceContext(newContext)
 	return nil
 }
 
