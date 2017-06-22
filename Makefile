@@ -2,5 +2,5 @@ all:
 	glide update
 	cd manager && go-bindata -pkg manager asset/...
 	go build
-clea:
+clean:
 	rm -f pdns-record-updater
