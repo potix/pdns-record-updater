@@ -125,7 +125,7 @@ func (s *Server) config(context *gin.Context) {
         case http.MethodHead:
 		fallthrough
         case http.MethodGet:
-		dump, err := s.contexter.DumpContext("json")
+		dump, err := s.contexter.GetContext("json")
 		if err != nil {
 			context.String(http.StatusInternalServerError, "{\"reason\":\"%v\"}", err)
 			return
@@ -172,7 +172,7 @@ func (s *Server) config(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
 			return
 		}
-		err := s.contexter.PutConfig(newContext)
+		err := s.contexter.PutContext(newContext)
 		if err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return

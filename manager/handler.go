@@ -1,4 +1,4 @@
-packege manager
+package manager
 
 import (
         "github.com/pkg/errors"
@@ -10,9 +10,39 @@ import (
         "strings"
 )
 
-
-
 func (m *Manager) index(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+                context.Status(http.StatusOK)
+        case http.MethodGet:
+		context.Header("Content-Type", gin.MIMEHTML)
+		context.String(http.StatusOK, index)
+	default:
+		context.Status(http.StatusMethodNotAllowed)
+	}
+}
+
+func (m *Manager) javascript(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+                context.Status(http.StatusOK)
+        case http.MethodGet:
+	default:
+		context.Status(http.StatusMethodNotAllowed)
+	}
+}
+
+func (m *Manager) css(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+                context.Status(http.StatusOK)
+        case http.MethodGet:
+	default:
+		context.Status(http.StatusMethodNotAllowed)
+	}
+}
+
+func (m *Manager) image(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
                 context.Status(http.StatusOK)

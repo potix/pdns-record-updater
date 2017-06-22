@@ -11,6 +11,7 @@ import (
         "github.com/potix/pdns-record-updater/watcher"
         "github.com/potix/pdns-record-updater/notifier"
         "github.com/potix/pdns-record-updater/api/server"
+        "github.com/potix/pdns-record-updater/manager"
 	"flag"
 	"strings"
 	"os"
@@ -74,7 +75,10 @@ func runWatcher(contexter *contexter.Contexter) (error) {
 
 func runManager(contexter *contexter.Contexter) (error) {
 	client := client.New(contexter.Context.APIClient)
-	manager := manager.New(contexter.Context.Watcher, client)
+	manager, err := manager.New(contexter.Context.Watcher, client)
+	if err != nil {
+		return err
+	}
 	manager.Start()
 	signalWait()
 	manager.Stop()
@@ -109,7 +113,7 @@ func main() {
 			os.Exit(1);
 		}
 	}
-	dump, err := contexter.DumpContext("toml")
+	dump, err := contexter.GetContext("toml")
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);

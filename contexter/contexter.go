@@ -1144,13 +1144,14 @@ func (c *Contexter) GetContext(format string) ([]byte, error) {
 }
 
 // PutContext is put context
-func (c *Contexter) PutContext(newContext *c.Context) (error) {
+func (c *Contexter) PutContext(newContext *Context) (error) {
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
 	if !newContext.validate(c.mode) {
 		return errors.Errorf("invalid config")
 	}
 	c.Context = newContext
+	return nil
 }
 
 // New is create new contexter

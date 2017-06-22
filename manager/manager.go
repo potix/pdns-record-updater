@@ -6,9 +6,12 @@ import (
         "github.com/gin-gonic/gin"
 	"github.com/gin-gonic/contrib/sessions"
         "github.com/potix/pdns-record-updater/contexter"
+        "github.com/potix/pdns-record-updater/api/client"
         "net/http"
         "path/filepath"
         "time"
+        "os"
+        "path"
         "fmt"
 )
 
@@ -21,11 +24,12 @@ type GracefulServer struct {
         startChan chan error
 }
 
-// Server is Server
+// Manager is Manager
 type Manager struct {
-        gracefulServers []*GracefulServer
+        gracefulServers  []*GracefulServer
         managerContext   *contexter.Manager
         client           *client.Client
+	execDir          string
 }
 
 func (m *Manager) addGetHandler(engine *gin.Engine, resource string, handler gin.HandlerFunc) {
@@ -62,6 +66,9 @@ func (s *Server) Start() (err error) {
 
 	// setup resource
 	m.addGetHandler(engine, "/index.html", m.index)
+	m.addGetHandler(engine, "/img", m.asset)
+	m.addGetHandler(engine, "/js", m.asset)
+	m.addGetHandler(engine, "/css", m.asset)
 	m.addPostHandler(engine, "/login", m.login)
 	m.addGetHandler(engine, "/config", m.config)
 	m.addPostHandler(engine, "/config", m.config)
@@ -111,10 +118,16 @@ func (m *Manager) Stop() {
 }
 
 // New is create manager
-func New(managerContext *contexter.Manager, client *client.Client) (s *Server) {
+func New(managerContext *contexter.Manager, client *client.Client) (*Server, error) {
+	exec, err := os.Executable()
+	if err != nil {
+		errors.Wrap(err, "can not get executable path")
+	}
+	execDir := path.Dir(exec)
         s = &Manager{
                 managerContext: managerContext,
                 client: client,
+		execDir: execDir,
         }
         if !managerContext.Debug {
                 gin.SetMode(gin.ReleaseMode)
