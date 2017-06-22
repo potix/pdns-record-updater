@@ -75,10 +75,7 @@ func runWatcher(contexter *contexter.Contexter) (error) {
 
 func runManager(contexter *contexter.Contexter) (error) {
 	client := client.New(contexter.Context)
-	manager, err := manager.New(contexter.Context, client)
-	if err != nil {
-		return err
-	}
+	manager := manager.New(contexter.Context, client)
 	manager.Start()
 	signalWait()
 	manager.Stop()

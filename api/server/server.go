@@ -149,8 +149,8 @@ func (s *Server) Stop() {
 }
 
 // New is create Server
-func New(context *contexter.Context, contexter *contexter.Contexter) (s *Server) {
-	s = &Server{
+func New(context *contexter.Context, contexter *contexter.Contexter) (*Server) {
+	s := &Server{
 		context: context,
 		contexter: contexter,
         }

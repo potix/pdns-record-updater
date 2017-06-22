@@ -10,8 +10,6 @@ import (
         "net/http"
         "path/filepath"
         "time"
-        "os"
-        "path"
         "fmt"
 )
 
@@ -27,9 +25,8 @@ type GracefulServer struct {
 // Manager is Manager
 type Manager struct {
         gracefulServers  []*GracefulServer
-        managerContext   *contexter.Manager
+        context          *contexter.Context
         client           *client.Client
-	execDir          string
 }
 
 func (m *Manager) addGetHandler(engine *gin.Engine, resource string, handler gin.HandlerFunc) {
@@ -56,12 +53,14 @@ func (m *Manager) startServer(gracefulServer *GracefulServer) {
 }
 
 // Start is Start
-func (s *Server) Start() (err error) {
-        if m.managerContext.ListenList == nil || len(m.managerContext.ListenList) == 0 {
+func (m *Manager) Start() (err error) {
+	managerContext := m.context.GetManager()
+        if managerContext.ListenList == nil || len(managerContext.ListenList) == 0 {
                 errors.Errorf("not found linten port")
         }
 	engine := gin.Default()
 	store := sessions.NewCookieStore([]byte("secret"))
+	engine.Use(sessions.Sessions("pdns-record-updater-session", store))
 	engine.Use(sessions.Sessions("pdns-record-updater-session", store))
 
 	// setup resource
@@ -70,12 +69,12 @@ func (s *Server) Start() (err error) {
 	m.addPostHandler(engine, "/login", m.login)     // login
 	m.addGetHandler(engine, "/config", m.config)    // get config on memory
 	m.addPostHandler(engine, "/config", m.config)   // update config on memory / save config to disk / load config from disk
-	if m.managerContext.LetsEncryptPath != "" {
-		engine.Static("/.well-known", filepath.Join(m.managerContext.LetsEncryptPath, ".well-known"))
+	if managerContext.LetsEncryptPath != "" {
+		engine.Static("/.well-known", filepath.Join(managerContext.LetsEncryptPath, ".well-known"))
 	}
 
 	// create server
-        for _, listen := range m.managerContext.ListenList {
+        for _, listen := range managerContext.ListenList {
                 server := manners.NewWithServer(&http.Server{
                         Addr:    listen.AddrPort,
                         Handler: engine,
@@ -90,12 +89,12 @@ func (s *Server) Start() (err error) {
 			keyfile: listen.KeyFile,
 			startChan: make(chan error),
 		}
-                s.gracefulServers = append(s.gracefulServers, newGracefulServer)
+                m.gracefulServers = append(m.gracefulServers, newGracefulServer)
         }
 
 	// start server
-        for _, gracefulServer := range s.gracefulServers {
-                go s.startServer(gracefulServer)
+        for _, gracefulServer := range m.gracefulServers {
+                go m.startServer(gracefulServer)
                 select {
                 case err = <-gracefulServer.startChan:
 			return errors.Wrap(err, fmt.Sprintf("can not start server (%s)", gracefulServer.server.Addr))
@@ -114,19 +113,13 @@ func (m *Manager) Stop() {
 }
 
 // New is create manager
-func New(context *contexter.Context, client *client.Client) (*Server, error) {
-	exec, err := os.Executable()
-	if err != nil {
-		errors.Wrap(err, "can not get executable path")
-	}
-	execDir := path.Dir(exec)
-        s = &Manager{
+func New(context *contexter.Context, client *client.Client) (*Manager) {
+	m := &Manager{
                 context: context,
                 client:  client,
-		execDir: execDir,
         }
-        if !managerContext.Debug {
+        if !context.GetManager().Debug {
                 gin.SetMode(gin.ReleaseMode)
         }
-        return s
+        return m
 }
