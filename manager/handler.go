@@ -2,20 +2,22 @@ package manager
 
 import (
         //"github.com/pkg/errors"
-        //"github.com/potix/belog"
+        "github.com/potix/belog"
         "github.com/gin-gonic/gin"
 	"github.com/gin-gonic/contrib/sessions"
         //"github.com/potix/pdns-record-updater/api/structure"
         //"encoding/json"
 	"html/template"
         "net/http"
+	"path"
 	"path/filepath"
+	"mime"
 	"bytes"
         //"strings"
 )
 
 type message struct {
-	message string
+	Message string
 }
 
 func (m Manager) saveSession(context *gin.Context, username string) {
@@ -44,7 +46,7 @@ func (m Manager) checkSession(context *gin.Context) {
 	username := m.loadSession(context)
 	if username == "" || managerContext.Username != username {
 		m.clearSession(context)
-		m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ message : "" } )
+		m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ Message : "" } )
 		context.Abort()
                 return
 	}
@@ -52,7 +54,11 @@ func (m Manager) checkSession(context *gin.Context) {
 }
 
 func (m Manager) replyFromAsset(context *gin.Context, requestPath string, tmplData interface{}) {
-	context.Header("Content-Type", gin.MIMEHTML)
+	ext := path.Ext(requestPath)
+	belog.Info(ext)
+	mimeType := mime.TypeByExtension(ext)
+	belog.Info(mimeType)
+	context.Header("Content-Type", mimeType)
 	binData, err := Asset(requestPath)
 	if err != nil {
 		context.String(http.StatusNotFound, "404 not found " + requestPath)
@@ -68,12 +74,14 @@ func (m Manager) replyFromAsset(context *gin.Context, requestPath string, tmplDa
 	}
 	tmpl, err := template.New("template").Parse(string(binData))
 	if err != nil {
+		belog.Error("can not create new template (%s)", string(binData))
 		context.String(http.StatusInternalServerError, "500 internal server error")
 		return
 	}
 	var page bytes.Buffer
 	err = tmpl.Execute(&page, tmplData)
 	if err != nil {
+		belog.Error("can not create page from template (%v), (%v)", tmplData, string(binData) )
 		context.String(http.StatusInternalServerError, "500 internal server error")
 		return
 	}
@@ -86,7 +94,8 @@ func (m *Manager) index(context *gin.Context) {
         case http.MethodHead:
                 fallthrough
         case http.MethodGet:
-		m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ message : "" } )
+		belog.Info("INDEX")
+		m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ Message : "" } )
 	}
 }
 
@@ -106,7 +115,7 @@ func (m *Manager) login(context *gin.Context) {
 		password := context.PostForm("password")
 		managerContext := m.context.GetManager()
 		if managerContext.Username != username || managerContext.Password != password {
-			m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ message : "<red>login failed</red><br>" } )
+			m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ Message : "login failed" } )
 			return
 		}
 		m.saveSession(context, username)
@@ -123,7 +132,7 @@ func (m *Manager) mngmnt(context *gin.Context) {
 	}
 }
 
-func (m *Manager) config(context *gin.Context) {
+func (m *Manager) mngmntConfig(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
                 context.Status(http.StatusOK)

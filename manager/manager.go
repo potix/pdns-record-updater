@@ -72,13 +72,13 @@ func (m *Manager) Start() (err error) {
 	engine.Use(sessions.Sessions("pdns-record-updater-session", store))
 
 	// setup resource
-	m.addEngineGetHandler(engine, "/index.html", m.index) // index
-	m.addEngineGetHandler(engine, "/asset", m.asset)      // asset
+	m.addEngineGetHandler(engine, "/", m.index) // index
+	m.addEngineGetHandler(engine, "/bower_components", m.asset)      // asset
 	m.addEnginePostHandler(engine, "/login", m.login)     // login
 	newGroup := engine.Group("/mngmnt", m.checkSession)
-	m.addGroupGetHandler(newGroup, "/index.html", m.mngmnt) // get config on memory
-	m.addGroupGetHandler(newGroup, "/config", m.config)     // get config on memory
-	m.addGroupPostHandler(newGroup, "/config", m.config)    // update config on memory / save config to disk / load config from disk
+	m.addGroupGetHandler(newGroup, "/", m.mngmnt) // get config on memory
+	m.addGroupGetHandler(newGroup, "/config", m.mngmntConfig)     // get config on memory
+	m.addGroupPostHandler(newGroup, "/config", m.mngmntConfig)    // update config on memory / save config to disk / load config from disk
 	if managerContext.LetsEncryptPath != "" {
 		engine.Static("/.well-known", filepath.Join(managerContext.LetsEncryptPath, ".well-known"))
 	}

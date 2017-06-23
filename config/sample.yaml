@@ -78,8 +78,7 @@ apiServer:
   listenList:
   - addrPort: "0.0.0.0:28080"
     useTls: false
-  username: "hoge"
-  password: "hoge"
+  apiKey: "api-key"
   staticPath: "/var/tmp"
 apiClient:
   apiServerUrlList:
@@ -88,8 +87,15 @@ apiClient:
   retryWait: 1
   timeout: 30
   tlsSkipVerify: false
-  username: admin
-  password: pass
+  apiKey: "api-key"
+manager:
+  debug: true
+  listenList:
+  - addrPort: "0.0.0.0:29000"
+    useTls: false
+  username: "admin"
+  password: "pass"
+  staticPath: "/var/tmp"
 initializer:
   pdnsSqlitePath: /tmp/powerdns.db
 updater:

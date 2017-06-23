@@ -10,6 +10,7 @@ import (
 	"sync"
 	"bytes"
 	"strings"
+	"fmt"
 )
 
 var mutableMutex *sync.Mutex
@@ -1176,6 +1177,10 @@ type Contexter struct {
 }
 
 func (c *Contexter) replaceContext (newContext *Context) {
+	if (c.Context == nil ) {
+		c.Context = newContext
+		return
+	}
 	c.Context.Watcher = newContext.Watcher
 	c.Context.Notifier = newContext.Notifier
 	c.Context.APIServer = newContext.APIServer
@@ -1198,6 +1203,7 @@ func (c *Contexter) LoadConfig() (error){
 	}
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
+	fmt.Printf("XXX %v %v ", c,  newContext)
 	c.replaceContext(newContext)
 	return nil
 }
