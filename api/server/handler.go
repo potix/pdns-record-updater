@@ -74,9 +74,10 @@ func (s *Server) contextToWatchResultResponse() (*structure.WatchResultResponse)
 			belog.Notice("%v", err)
 			continue
 		}
+		primaryNameServer, email := zone.GetPrimaryNameServerAndEmail()
 		newZoneWatchResultResponse := &structure.ZoneWatchResultResponse {
-				PrimaryNameServer: zone.GetPrimaryNameServer(),
-				Email: zone.GetEmail(),
+				PrimaryNameServer: primaryNameServer,
+				Email: email,
 				NameServerList : make([]*structure.NameServerRecordWatchResultResponse, 0, len(zone.NameServerList)),
 				StaticRecordList : make([]*structure.StaticRecordWatchResultResponse, 0, len(zone.StaticRecordList)),
 				DynamicRecordList : make([]*structure.DynamicRecordWatchResultResponse, 0, 10 * len(zone.DynamicGroupMap)),
@@ -216,6 +217,122 @@ func (s *Server) config(context *gin.Context) {
 	}
 }
 
+func (s Server) getTarget(context *gin.Context) (*contexter.Target, error) {
+	targetName := context.Param("tgname")
+	if targetName == "" {
+		return nil, errors.Errorf("lack of target name")
+	}
+	target, err := s.contexter.Context.Watcher.GetTarget(targetName)
+	if err != nil {
+		return nil, err
+	}
+	return target, nil
+}
+
+func (s *Server) target(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+		context.Status(http.StatusOK)
+		return
+        case http.MethodGet:
+		targetNameList := s.contexter.Context.Watcher.GetTargetNameList()
+		s.jsonResponse(context, targetNameList)
+		return
+        case http.MethodPost:
+		var targetRequest structure.TargetRequest
+		if err := context.BindJSON(&targetRequest); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		if !targetRequest.Validate() {
+			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
+			return
+		}
+		if targetRequest.TargetName == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"no domain\"}")
+			return
+		}
+		newTarget := &contexter.Target {
+			Protocol:           targetRequest.Protocol,
+			Dest:               targetRequest.Dest,
+			TCPTLS:             targetRequest.TCPTLS,
+			HTTPMethod:         targetRequest.HTTPMethod,
+			HTTPStatusList:     targetRequest.HTTPStatusList,
+			Regexp:             targetRequest.Regexp,
+			ResSize:            targetRequest.ResSize,
+			Retry:              targetRequest.Retry,
+			RetryWait:          targetRequest.RetryWait,
+			Timeout:            targetRequest.Timeout,
+			TLSSkipVerify:      targetRequest.TLSSkipVerify,
+		}
+		if err := s.contexter.Context.Watcher.AddTarget(targetRequest.TargetName, newTarget); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusCreated)
+		return
+	}
+}
+
+func (s *Server) targetTargetName(context *gin.Context) {
+        switch context.Request.Method {
+	case http.MethodHead:
+		fallthrough
+	case http.MethodGet:
+		target, err := s.getTarget(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		if context.Request.Method == http.MethodHead {
+			context.Status(http.StatusOK)
+		} else {
+			s.jsonResponse(context, target)
+		}
+		return
+        case http.MethodPut:
+		target, err := s.getTarget(context)
+		if err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		newTarget :=  new(contexter.Target)
+		if err := context.BindJSON(target); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"can not unmarshal\"}")
+			return
+		}
+		target.Update(newTarget)
+		context.Status(http.StatusOK)
+		return
+        case http.MethodDelete:
+		targetName := context.Param("tgname")
+		if targetName == "" {
+			context.String(http.StatusBadRequest, "{\"reason\":\"no domain\"}")
+			return
+		}
+		if err := s.contexter.Context.Watcher.DeleteTarget(targetName); err != nil {
+			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
+			return
+		}
+		context.Status(http.StatusOK)
+		return
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 func (s Server) getZone(context *gin.Context) (*contexter.Zone, error) {
 	domain := context.Param("domain")
 	if domain == "" {
@@ -267,7 +384,14 @@ func (s *Server) zone(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"no domain\"}")
 			return
 		}
-		if err := s.contexter.Context.Watcher.AddZone(zoneRequest.Domain, zoneRequest.PrimaryNameServer, zoneRequest.Email); err != nil {
+		newZone := &contexter.Zone {
+			Email:              zoneRequest.Email,
+			PrimaryNameServer:  zoneRequest.PrimaryNameServer,
+			NameServerList:     make([]*contexter.NameServerRecord, 0),
+			StaticRecordList:   make([]*contexter.StaticRecord, 0),
+			DynamicGroupMap:    make(map[string]*contexter.DynamicGroup),
+		}
+		if err := s.contexter.Context.Watcher.AddZone(zoneRequest.Domain, newZone); err != nil {
 			context.String(http.StatusBadRequest, "{\"reason\":\"%v\"}", err)
 			return
 		}
@@ -289,9 +413,10 @@ func (s *Server) zoneDomain(context *gin.Context) {
 		if context.Request.Method == http.MethodHead {
 			context.Status(http.StatusOK)
 		} else {
+			primaryNameServer, email := zone.GetPrimaryNameServerAndEmail()
 			zoneDomainResponse := &structure.ZoneDomainResponse {
-				PrimaryNameServer : zone.GetPrimaryNameServer(),
-				Email : zone.GetEmail(),
+				PrimaryNameServer : primaryNameServer,
+				Email : email,
 			}
 			s.jsonResponse(context, zoneDomainResponse)
 		}
@@ -311,8 +436,7 @@ func (s *Server) zoneDomain(context *gin.Context) {
 			context.String(http.StatusBadRequest, "{\"reason\":\"lack of parameter\"}")
 			return
 		}
-		zone.SetPrimaryNameServer(zoneDomainRequest.PrimaryNameServer)
-		zone.SetEmail(zoneDomainRequest.Email)
+		zone.SetPrimaryNameServerAndEmail(zoneDomainRequest.PrimaryNameServer, zoneDomainRequest.Email)
 		context.Status(http.StatusOK)
 		return
         case http.MethodDelete:

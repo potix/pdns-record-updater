@@ -73,6 +73,15 @@ func (s *Server) Start() (err error) {
 	s.addGetHandler(newGroup, "/config", s.config) // 設定取得
 	s.addPostHandler(newGroup, "/config", s.config) // 設定読み込み、保存
 	s.addPutHandler(newGroup, "/config", s.config) // replace config
+
+
+	s.addGetHandler(newGroup, "/target", s.target)  // ターゲット一覧取得
+	s.addPostHandler(newGroup, "/target", s.target)  // ターゲット作成
+	s.addGetHandler(newGroup, "/target/:tgname", s.targetTargetName)  // ターゲット情報取得
+	s.addPutHandler(newGroup, "/target/:tgname", s.targetTargetName)  // ターゲット情報変更
+	s.addDeleteHandler(newGroup, "/target/:tgname", s.targetTargetName)  // ターゲット削除
+
+
 	s.addGetHandler(newGroup, "/zone", s.zone)  // ゾーン一覧取得
 	s.addPostHandler(newGroup, "/zone", s.zone)  // ゾーン作成
 	s.addGetHandler(newGroup, "/zone/:domain", s.zoneDomain)  // ゾーン情報取得

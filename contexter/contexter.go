@@ -15,51 +15,6 @@ import (
 
 var mutableMutex *sync.Mutex
 
-// Target is config of target
-type Target struct {
-	Name           string   `json:"name"           yaml:"name"           toml:"name"`           // target名
-	Protocol       string   `json:"protocol"       yaml:"protocol"       toml:"protocol"`       // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
-	Dest           string   `json:"dest"           yaml:"dest"           toml:"dest"`           // 宛先
-	TCPTLS         bool     `json:"tcpTls"         yaml:"tcpTls"         toml:"tcpTls"`         // TCPにTLSを使う
-	HTTPMethod     string   `json:"httpMethod"     yaml:"httpMethod"     toml:"httpMethod"`     // HTTPメソッド
-	HTTPStatusList []string `json:"httpStatusList" yaml:"httpStatusList" toml:"httpStatusList"` // OKとみなすHTTPステータスコード
-	Regexp         string   `json:"regexp"         yaml:"regexp"         toml:"regexp"`         // OKとみなす正規表現  
-	ResSize        uint32   `json:"resSize"        yaml:"resSize"        toml:"resSize"`        // 受信する最大レスポンスサイズ   
-	Retry          uint32   `json:"retry"          yaml:"retry"          toml:"retry"`          // リトライ回数 
-	RetryWait      uint32   `json:"retryWait"      yaml:"retryWait"      toml:"retryWait"`      // 次のリトライまでの待ち時間   
-	Timeout        uint32   `json:"timeout"        yaml:"timeout"        toml:"timeout"`        // タイムアウトしたとみなす時間  
-	TLSSkipVerify  bool     `json:"tlsSkipVerify"  yaml:"tlsSkipVerify"  toml:"tlsSkipVerify"`  // TLSの検証をスキップする 
-	alive          bool                                                                         // 生存フラグ 
-}
-
-func (t *Target) validate() (bool) {
-	if t.Name == "" || t.Protocol == "" || t.Dest == "" {
-		belog.Error("no name or no protocol or no dest")
-		return false
-	}
-	if t.Protocol == "http" || t.Protocol == "httpRegexp" {
-		if t.HTTPMethod == "" || t.HTTPStatusList == nil || len(t.HTTPStatusList) == 0 {
-			belog.Error("no httpMethod or no httpStatusList")
-			return false
-		}
-	}
-	return true
-}
-
-// SetAlive is set alive
-func (t *Target) SetAlive(alive bool) {
-	mutableMutex.Lock()
-        defer mutableMutex.Unlock()
-	t.alive = alive
-}
-
-// GetAlive is get alive
-func (t *Target) GetAlive() (bool) {
-	mutableMutex.Lock()
-        defer mutableMutex.Unlock()
-	return t.alive
-}
-
 // NotifyTrigger is notify trigger
 type NotifyTrigger string
 
@@ -70,6 +25,7 @@ func (n NotifyTrigger) validate() (bool) {
 	}
 	return true
 }
+
 
 // String is string
 func (n NotifyTrigger) String() (string) {
@@ -82,11 +38,11 @@ type DynamicRecord struct {
 	Type                 string          `json:"type"              yaml:"type"              toml:"type"`              // DNSレコードタイプ
 	TTL                  int32           `json:"ttl"               yaml:"ttl"               toml:"ttl"`               // DNSレコードTTL 
 	Content              string          `json:"content"           yaml:"content"           toml:"content"`           // DNSレコード内容                  
-	TargetList           []*Target       `json:"targetList"        yaml:"targetList"        toml:"targetList"`        // ターゲットリスト
+	TargetNameList       []*TargetName   `json:"targetNameList"    yaml:"targetNameList"    toml:"targetNameList"`    // ターゲットリスト
 	EvalRule             string          `json:"evalRule"          yaml:"evalRule"          toml:"evalRule"`          // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
 	WatchInterval        uint32          `json:"watchInterval"     yaml:"watchInterval"     toml:"watchInterval"`     // 監視する間隔
-	currentIntervalCount uint32                                                                                 // 現在の時間                       [mutable]
-	progress             bool                                                                                   // 監視中を示すフラグ               [mutable]
+	currentIntervalCount uint32                                                                                       // 現在の時間                       [mutable]
+	progress             bool                                                                                         // 監視中を示すフラグ               [mutable]
 	Alive                bool            `json:"alive"             yaml:"alive"             toml:"alive"`             // 生存フラグ                       [mutable]
 	ForceDown            bool            `json:"forceDown"         yaml:"forceDown"         toml:"forceDown"`         // 強制的にダウンしたとみなすフラグ [mutable]
 	NotifyTriggerList    []NotifyTrigger `json:"notifyTriggerList" yaml:"notifyTriggerList" toml:"notifyTriggerList"` // notifierを送信するトリガー changed, latestDown, latestUp
@@ -94,12 +50,12 @@ type DynamicRecord struct {
 
 func (d *DynamicRecord) validate() (bool) {
 	if d.Name == "" || d.Type == "" || d.TTL == 0 || d.Content == "" ||
-            d.WatchInterval == 0 || d.EvalRule == "" || d.TargetList == nil {
+            d.WatchInterval == 0 || d.EvalRule == "" || d.TargetNameList == nil {
 		belog.Error("no name or no type or no ttl or no content or no watchInterval or no evalRule or no targetList")
 		return false
 	}
-	for _, target := range d.TargetList {
-		if !target.validate() {
+	for _, targetName := range d.TargetNameList {
+		if !targetName.validate() {
 			return false
 		}
 	}
@@ -232,7 +188,7 @@ func (s *StaticRecord) validate() (bool) {
 
 // DynamicGroup is dynamicGroup
 type DynamicGroup struct {
-	DynamicRecordList  []*DynamicRecord  `json:"dynamicRecordList"  yaml:"dynamicRecordList"  toml:"dynamicRecordList"` // 動的レコード                                     [mutable]
+	DynamicRecordList  []*DynamicRecord  `json:"dynamicRecordList"  yaml:"dynamicRecordList"  toml:"dynamicRecordList"`  // 動的レコード                                     [mutable]
 	NegativeRecordList []*NegativeRecord `json:"negativeRecordList" yaml:"negativeRecordList" toml:"negativeRecordList"` // 動的レコードが全て死んだ場合に有効になるレコード [mutable]
 }
 
@@ -251,6 +207,14 @@ func (d *DynamicGroup) validate() (bool) {
 			}
 		}
 	}
+	return true
+}
+
+func (d *DynamicGroup) isEmpty() (bool) {
+	if (d.DynamicRecordList != nil && len(d.DynamicRecordList) != 0) ||
+           (d.NegativeRecordList != nil && len(d.NegativeRecordList) != 0) {
+                return false
+        }
 	return true
 }
 
@@ -490,31 +454,28 @@ func (z *Zone) validate() (bool) {
 	return true
 }
 
-// GetPrimaryNameServer is get primary name server
-func  (z *Zone) GetPrimaryNameServer() (string) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	return z.PrimaryNameServer
+func (z *Zone) isEmpty() (bool) {
+        if (z.NameServerList != nil && len(z.NameServerList) != 0)  ||
+           (z.StaticRecordList != nil && len(z.StaticRecordList) != 0) ||
+           (z.DynamicGroupMap != nil && len(z.DynamicGroupMap) != 0) {
+		return false
+        }
+	return true
+
 }
 
-// SetPrimaryNameServer is set primary name server
-func  (z *Zone) SetPrimaryNameServer(primaryNameServer string) {
+// GetPrimaryNameServerAndEmail is get primary name server and email
+func  (z *Zone) GetPrimaryNameServerAndEmail() (string, string) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	return z.PrimaryNameServer, z.Email
+}
+
+// SetPrimaryNameServerAndEmail is set primary name server and email
+func  (z *Zone) SetPrimaryNameServerAndEmail(primaryNameServer string, email string) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	z.PrimaryNameServer = primaryNameServer
-}
-
-// GetEmail is get email
-func  (z *Zone) GetEmail() (string) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	return z.Email
-}
-
-// SetEmail is set email
-func  (z *Zone) SetEmail(email string) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
 	z.Email = email
 }
 
@@ -773,19 +734,96 @@ func (z *Zone) DeleteDynamicGroup(dynamicGroupName string) (error) {
 	if !ok {
 		return errors.Errorf("not exist dynamic group name")
 	}
-	if (dynamicGroup.DynamicRecordList == nil || len(dynamicGroup.DynamicRecordList) == 0) &&
-	   (dynamicGroup.NegativeRecordList == nil || len(dynamicGroup.NegativeRecordList) == 0) {
-		delete(z.DynamicGroupMap, dynamicGroupName)
-		return nil
+	if !dynamicGroup.isEmpty() {
+		return errors.Errorf("not empty dynamic group")
 	}
-	return errors.Errorf("not empty dynamic group")
+	delete(z.DynamicGroupMap, dynamicGroupName)
+	return nil
+}
+
+// Target is config of target
+type Target struct {
+	Protocol       string   `json:"protocol"       yaml:"protocol"       toml:"protocol"`       // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
+	Dest           string   `json:"dest"           yaml:"dest"           toml:"dest"`           // 宛先
+	TCPTLS         bool     `json:"tcpTls"         yaml:"tcpTls"         toml:"tcpTls"`         // TCPにTLSを使う
+	HTTPMethod     string   `json:"httpMethod"     yaml:"httpMethod"     toml:"httpMethod"`     // HTTPメソッド
+	HTTPStatusList []string `json:"httpStatusList" yaml:"httpStatusList" toml:"httpStatusList"` // OKとみなすHTTPステータスコード
+	Regexp         string   `json:"regexp"         yaml:"regexp"         toml:"regexp"`         // OKとみなす正規表現  
+	ResSize        uint32   `json:"resSize"        yaml:"resSize"        toml:"resSize"`        // 受信する最大レスポンスサイズ   
+	Retry          uint32   `json:"retry"          yaml:"retry"          toml:"retry"`          // リトライ回数 
+	RetryWait      uint32   `json:"retryWait"      yaml:"retryWait"      toml:"retryWait"`      // 次のリトライまでの待ち時間   
+	Timeout        uint32   `json:"timeout"        yaml:"timeout"        toml:"timeout"`        // タイムアウトしたとみなす時間  
+	TLSSkipVerify  bool     `json:"tlsSkipVerify"  yaml:"tlsSkipVerify"  toml:"tlsSkipVerify"`  // TLSの検証をスキップする 
+	alive          bool                                                                         // 生存フラグ                    [mutable]
+}
+
+func (t *Target) validate() (bool) {
+	if t.Protocol == "" || t.Dest == "" {
+		belog.Error("no name or no protocol or no dest")
+		return false
+	}
+	if t.Protocol == "http" || t.Protocol == "httpRegexp" {
+		if t.HTTPMethod == "" || t.HTTPStatusList == nil || len(t.HTTPStatusList) == 0 {
+			belog.Error("no httpMethod or no httpStatusList")
+			return false
+		}
+	}
+	return true
+}
+
+// SetAlive is set alive
+func (t *Target) SetAlive(alive bool) {
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	t.alive = alive
+}
+
+// GetAlive is get alive
+func (t *Target) GetAlive() (bool) {
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	return t.alive
+}
+
+// Update is update target 
+func (t *Target) Update(newTarget *Target)  {
+	mutableMutex.Lock()
+        defer mutableMutex.Unlock()
+	t.Protocol = newTarget.Protocol
+	t.Dest = newTarget.Dest
+	t.TCPTLS = newTarget.TCPTLS
+	t.HTTPMethod = newTarget.HTTPMethod
+	t.HTTPStatusList = newTarget.HTTPStatusList
+	t.Regexp = newTarget.Regexp
+	t.ResSize = newTarget.ResSize
+	t.Retry = newTarget.Retry
+	t.RetryWait = newTarget.RetryWait
+	t.Timeout = newTarget.Timeout
+	t.TLSSkipVerify = newTarget.TLSSkipVerify
+}
+
+// TargetName is target name
+type TargetName string
+
+func (t TargetName) validate() (bool) {
+        if t == "" {
+                belog.Error("invalid target name")
+                return false
+        }
+        return true
+}
+
+// String is string
+func (t TargetName) String() (string) {
+        return string(t)
 }
 
 // Watcher is watcher
 type Watcher struct {
-	ZoneMap       map[string]*Zone `json:"zoneMap"      yaml:"zoneMap"        toml:"zoneMap"`       // ゾーン [mutable]
-	NotifySubject string           `json:"notifySybject" yaml:"notifySybject" toml:"notifySybject"` // Notifyの題名テンプレート 
-	NotifyBody    string           `json:"notifyBody"    yaml:"notifyBody"    toml:"notifyBody"`    // Notifyの本文テンプレート
+	ZoneMap       map[string]*Zone       `json:"zoneMap"      yaml:"zoneMap"        toml:"zoneMap"`       // ゾーン [mutable]
+	TargetMap     map[TargetName]*Target `json:"targetMap"    yaml:"targetMap"      toml:"targetMap"`     // ゾーン [mutable]
+	NotifySubject string                 `json:"notifySybject" yaml:"notifySybject" toml:"notifySybject"` // Notifyの題名テンプレート 
+	NotifyBody    string                 `json:"notifyBody"    yaml:"notifyBody"    toml:"notifyBody"`    // Notifyの本文テンプレート
 }
 
 func (w *Watcher) validate() (bool) {
@@ -796,6 +834,16 @@ func (w *Watcher) validate() (bool) {
 				return false
 			}
 			if !zone.validate() {
+				return false
+			}
+		}
+	}
+	if w.TargetMap != nil {
+		for targetName, target := range w.TargetMap {
+			if !targetName.validate() {
+				return false
+			}
+			if !target.validate() {
 				return false
 			}
 		}
@@ -832,10 +880,10 @@ func (w *Watcher) GetZone(domain string) (*Zone, error) {
 }
 
 // AddZone is get force down
-func (w *Watcher) AddZone(domain string, email string, primaryNameServer string) (error) {
+func (w *Watcher) AddZone(domain string, newZone *Zone) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
-	if domain == "" || email == "" || primaryNameServer == "" {
+	if domain == "" || !newZone.validate() {
 		return errors.Errorf("invalid zone")
 	}
 	if w.ZoneMap == nil {
@@ -844,13 +892,6 @@ func (w *Watcher) AddZone(domain string, email string, primaryNameServer string)
 	_, ok := w.ZoneMap[domain]
 	if ok {
 		return errors.Errorf("already exist domain")
-	}
-	newZone := &Zone {
-		Email:              email,
-		PrimaryNameServer:  primaryNameServer,
-		NameServerList:     make([]*NameServerRecord, 0),
-		StaticRecordList:   make([]*StaticRecord, 0),
-		DynamicGroupMap:   make(map[string]*DynamicGroup),
 	}
 	w.ZoneMap[domain] = newZone
 	return nil
@@ -867,13 +908,72 @@ func (w *Watcher) DeleteZone(domain string) (error) {
 	if !ok {
 		return errors.Errorf("not exist domain")
 	}
-	if (zone.NameServerList == nil || len(zone.NameServerList) == 0) &&
-           (zone.StaticRecordList == nil || len(zone.StaticRecordList) == 0) &&
-	   (zone.DynamicGroupMap == nil || len(zone.DynamicGroupMap) == 0) {
-		delete(w.ZoneMap, domain)
-		return nil
+	if !zone.isEmpty() {
+		return errors.Errorf("not empty zone")
 	}
-	return errors.Errorf("not empty zone")
+	delete(w.ZoneMap, domain)
+	return nil
+}
+
+// GetTargetNameList is get domain
+func (w *Watcher) GetTargetNameList() ([]string) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if w.TargetMap == nil {
+		w.TargetMap = make(map[TargetName]*Target)
+	}
+	targetNameList := make([]string, 0, len(w.TargetMap))
+	for tn := range w.TargetMap {
+		targetNameList = append(targetNameList, tn.String())
+	}
+	return targetNameList
+}
+
+// GetTarget is get target
+func (w *Watcher) GetTarget(targetName string) (*Target, error) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if w.TargetMap == nil {
+		w.TargetMap = make(map[TargetName]*Target)
+	}
+	target, ok := w.TargetMap[TargetName(targetName)]
+	if !ok {
+		return nil, errors.Errorf("not exist domain")
+	}
+	return target, nil
+}
+
+// AddTarget is get force down
+func (w *Watcher) AddTarget(targetName string, target *Target) (error) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if targetName == "" || !target.validate() {
+		return errors.Errorf("invalid zone")
+	}
+	if w.TargetMap == nil {
+		w.TargetMap = make(map[TargetName]*Target)
+	}
+	_, ok := w.TargetMap[TargetName(targetName)]
+	if ok {
+		return errors.Errorf("already exist domain")
+	}
+	w.TargetMap[TargetName(targetName)] = target
+	return nil
+}
+
+// DeleteTarget is delete target
+func (w *Watcher) DeleteTarget(targetName string) (error) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if w.TargetMap == nil {
+		w.TargetMap = make(map[TargetName]*Target)
+	}
+	_, ok := w.TargetMap[TargetName(targetName)]
+	if !ok {
+		return errors.Errorf("not exist domain")
+	}
+	delete(w.TargetMap, TargetName(targetName))
+	return nil
 }
 
 // Mail is Mail

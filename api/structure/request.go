@@ -19,6 +19,38 @@ func (c ConfigRequest) Validate() (bool) {
 	return true
 }
 
+// TargetRequest is config of target
+type TargetRequest struct {
+	TargetName     string   `json:"targetName"     yaml:"targetName"     toml:"targetName"`
+        Protocol       string   `json:"protocol"       yaml:"protocol"       toml:"protocol"`       // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
+        Dest           string   `json:"dest"           yaml:"dest"           toml:"dest"`           // 宛先
+        TCPTLS         bool     `json:"tcpTls"         yaml:"tcpTls"         toml:"tcpTls"`         // TCPにTLSを使う
+        HTTPMethod     string   `json:"httpMethod"     yaml:"httpMethod"     toml:"httpMethod"`     // HTTPメソッド
+        HTTPStatusList []string `json:"httpStatusList" yaml:"httpStatusList" toml:"httpStatusList"` // OKとみなすHTTPステータスコード
+        Regexp         string   `json:"regexp"         yaml:"regexp"         toml:"regexp"`         // OKとみなす正規表現
+        ResSize        uint32   `json:"resSize"        yaml:"resSize"        toml:"resSize"`        // 受信する最大レスポンスサイズ
+        Retry          uint32   `json:"retry"          yaml:"retry"          toml:"retry"`          // リトライ回数
+        RetryWait      uint32   `json:"retryWait"      yaml:"retryWait"      toml:"retryWait"`      // 次のリトライまでの待ち時間
+        Timeout        uint32   `json:"timeout"        yaml:"timeout"        toml:"timeout"`        // タイムアウトしたとみなす時間
+        TLSSkipVerify  bool     `json:"tlsSkipVerify"  yaml:"tlsSkipVerify"  toml:"tlsSkipVerify"`  // TLSの検証をスキップする
+}
+
+// Validate is validate target request
+func (t *TargetRequest) Validate() (bool) {
+        if t.TargetName == "" ||  t.Protocol == "" || t.Dest == "" {
+                belog.Error("no name or no protocol or no dest")
+                return false
+        }
+        if t.Protocol == "http" || t.Protocol == "httpRegexp" {
+                if t.HTTPMethod == "" || t.HTTPStatusList == nil || len(t.HTTPStatusList) == 0 {
+                        belog.Error("no httpMethod or no httpStatusList")
+                        return false
+                }
+        }
+        return true
+}
+
+
 // ZoneRequest is zone 
 type ZoneRequest struct {
 	PrimaryNameServer  string  `json:"primaryNameServer"`
