@@ -73,7 +73,7 @@ func (m *Manager) Start() (err error) {
 
 	// setup resource
 	m.addEngineGetHandler(engine, "/", m.index) // index
-	m.addEngineGetHandler(engine, "/bower_components", m.asset)      // asset
+	m.addEngineGetHandler(engine, "/bower_components/*wildcard", m.asset)      // asset
 	m.addEnginePostHandler(engine, "/login", m.login)     // login
 	newGroup := engine.Group("/mngmnt", m.checkSession)
 	m.addGroupGetHandler(newGroup, "/", m.mngmnt) // get config on memory

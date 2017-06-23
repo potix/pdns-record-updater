@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"mime"
 	"bytes"
-        //"strings"
+        "strings"
 )
 
 type message struct {
@@ -46,7 +46,7 @@ func (m Manager) checkSession(context *gin.Context) {
 	username := m.loadSession(context)
 	if username == "" || managerContext.Username != username {
 		m.clearSession(context)
-		m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ Message : "" } )
+		context.Redirect(http.StatusSeeOther, "../")
 		context.Abort()
                 return
 	}
@@ -55,12 +55,11 @@ func (m Manager) checkSession(context *gin.Context) {
 
 func (m Manager) replyFromAsset(context *gin.Context, requestPath string, tmplData interface{}) {
 	ext := path.Ext(requestPath)
-	belog.Info(ext)
 	mimeType := mime.TypeByExtension(ext)
-	belog.Info(mimeType)
 	context.Header("Content-Type", mimeType)
 	binData, err := Asset(requestPath)
 	if err != nil {
+		belog.Error("not found (%v)", requestPath)
 		context.String(http.StatusNotFound, "404 not found " + requestPath)
 		return
 	}
@@ -94,8 +93,7 @@ func (m *Manager) index(context *gin.Context) {
         case http.MethodHead:
                 fallthrough
         case http.MethodGet:
-		belog.Info("INDEX")
-		m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ Message : "" } )
+		m.replyFromAsset(context, filepath.Join("asset", "template", "index.html"), nil )
 	}
 }
 
@@ -104,7 +102,14 @@ func (m *Manager) asset(context *gin.Context) {
         case http.MethodHead:
                 fallthrough
         case http.MethodGet:
-		m.replyFromAsset(context, filepath.Join("asset", context.Request.URL.Path[1:]), nil)
+		elems := strings.Split(context.Request.URL.Path, "/")
+		if len(elems) == 0 {
+			context.String(http.StatusNotFound, "400 bad request")
+		}
+		newElems := make([]string, 0, len(elems))
+		newElems = append(newElems, "asset")
+		newElems = append(newElems, elems[1:]...)
+		m.replyFromAsset(context, filepath.Join(newElems...), nil)
 	}
 }
 
@@ -115,11 +120,11 @@ func (m *Manager) login(context *gin.Context) {
 		password := context.PostForm("password")
 		managerContext := m.context.GetManager()
 		if managerContext.Username != username || managerContext.Password != password {
-			m.replyFromAsset(context, filepath.Join("asset", "index.html"), &message{ Message : "login failed" } )
+			m.replyFromAsset(context, filepath.Join("asset", "template", "login.html"), &message{ Message : "login failed" } )
 			return
 		}
 		m.saveSession(context, username)
-		m.replyFromAsset(context, filepath.Join("asset", "mngmnt", "index.html"), nil)
+		context.Redirect(http.StatusSeeOther, "./mngmnt/")
 	}
 }
 
@@ -128,7 +133,7 @@ func (m *Manager) mngmnt(context *gin.Context) {
         case http.MethodHead:
                 fallthrough
         case http.MethodGet:
-		m.replyFromAsset(context, filepath.Join("asset", "mngmnt", "index.html"), nil)
+		m.replyFromAsset(context, filepath.Join("asset", "template", "mngmnt", "index.html"), nil)
 	}
 }
 
