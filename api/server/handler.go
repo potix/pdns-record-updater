@@ -21,27 +21,27 @@ func (s *Server) authHandler(context *gin.Context) {
 	authValue := context.Request.Header.Get("Authorization")
 	unixTimeString := context.Request.Header.Get("x-pdru-unixtime")
 	if authValue == "" {
-		context.AbortWithStatus(401)
+		context.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 	if unixTimeString == "" {
-		context.AbortWithStatus(403)
+		context.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 	unixTime, err := strconv.ParseInt(unixTimeString, 10, 64)
 	if err != nil {
-		context.AbortWithStatus(403)
+		context.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 	nowUnixTime := time.Now().Unix()
 	diffTime := nowUnixTime - unixTime
 	if diffTime < -600 || 600 < diffTime {
-		context.AbortWithStatus(403)
+		context.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 	seedString := fmt.Sprintf("%v+%v+%v+%v", unixTimeString, s.context.GetAPIServer().APIKey, context.Request.Method, context.Request.URL.Path)
 	if authValue != "PDRU " + fmt.Sprintf("%x", sha256.Sum256([]byte(seedString))) {
-		context.AbortWithStatus(403)
+		context.AbortWithStatus(http.StatusForbidden)
 		return
 	}
         context.Next()

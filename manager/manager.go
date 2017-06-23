@@ -29,13 +29,22 @@ type Manager struct {
         client           *client.Client
 }
 
-func (m *Manager) addGetHandler(engine *gin.Engine, resource string, handler gin.HandlerFunc) {
+func (m *Manager) addEngineGetHandler(engine *gin.Engine, resource string, handler gin.HandlerFunc) {
         engine.HEAD(resource, handler)
         engine.GET(resource, handler)
 }
 
-func (m *Manager) addPostHandler(engine *gin.Engine, resource string, handler gin.HandlerFunc) {
+func (m *Manager) addEnginePostHandler(engine *gin.Engine, resource string, handler gin.HandlerFunc) {
         engine.POST(resource, handler)
+}
+
+func (m *Manager) addGroupGetHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
+	        group.HEAD(resource, handler)
+		group.GET(resource, handler)
+}
+
+func (m *Manager) addGroupPostHandler(group *gin.RouterGroup, resource string, handler gin.HandlerFunc) {
+		group.POST(resource, handler)
 }
 
 func (m *Manager) startServer(gracefulServer *GracefulServer) {
@@ -61,14 +70,15 @@ func (m *Manager) Start() (err error) {
 	engine := gin.Default()
 	store := sessions.NewCookieStore([]byte("secret"))
 	engine.Use(sessions.Sessions("pdns-record-updater-session", store))
-	engine.Use(sessions.Sessions("pdns-record-updater-session", store))
 
 	// setup resource
-	m.addGetHandler(engine, "/index.html", m.index) // index
-	m.addGetHandler(engine, "/asset", m.asset)      // asset
-	m.addPostHandler(engine, "/login", m.login)     // login
-	m.addGetHandler(engine, "/config", m.config)    // get config on memory
-	m.addPostHandler(engine, "/config", m.config)   // update config on memory / save config to disk / load config from disk
+	m.addEngineGetHandler(engine, "/index.html", m.index) // index
+	m.addEngineGetHandler(engine, "/asset", m.asset)      // asset
+	m.addEnginePostHandler(engine, "/login", m.login)     // login
+	newGroup := engine.Group("/mngmnt", m.checkSession)
+	m.addGroupGetHandler(newGroup, "/index.html", m.mngmnt) // get config on memory
+	m.addGroupGetHandler(newGroup, "/config", m.config)     // get config on memory
+	m.addGroupPostHandler(newGroup, "/config", m.config)    // update config on memory / save config to disk / load config from disk
 	if managerContext.LetsEncryptPath != "" {
 		engine.Static("/.well-known", filepath.Join(managerContext.LetsEncryptPath, ".well-known"))
 	}

@@ -68,11 +68,7 @@ func (s *Server) Start() (err error) {
 	var newGroup *gin.RouterGroup
 
 	// set up resource
-	if apiServerContext.APIKey != "" {
-		newGroup = engine.Group("/v1", s.authHandler, s.commonHandler)
-	} else {
-		newGroup = engine.Group("/v1", s.commonHandler)
-	}
+	newGroup = engine.Group("/v1", s.authHandler, s.commonHandler)
 	s.addGetHandler(newGroup, "/watch/result", s.watchResult) // 監視結果取得
 	s.addGetHandler(newGroup, "/config", s.config) // 設定取得
 	s.addPostHandler(newGroup, "/config", s.config) // 設定読み込み、保存
