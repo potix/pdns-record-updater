@@ -49,25 +49,6 @@ var protoWatcherNewFuncMap = map[string]func(*contexter.Target) (protoWatcherIf,
 	"HTTPREGEXP": httpRegexpWatcherNew,
 }
 
-func (w *Watcher) targetWatch(task *targetTask) {
-	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(task.target.Protocol)]
-	if !ok {
-		belog.Error("unsupported protocol type (%v)", task.target.Protocol)
-		task.target.SetAlive(false)
-		close(task.waitChan)
-		return
-	}
-	protoWatcher, err := protoWatcherNewFunc(task.target)
-	if err != nil {
-		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", task.target.Protocol)))
-		task.target.SetAlive(false)
-		close(task.waitChan)
-		return
-	}
-	task.target.SetAlive(protoWatcher.isAlive())
-	close(task.waitChan)
-}
-
 func (w *Watcher) eval(expr string) (types.TypeAndValue, error) {
 	return types.Eval(token.NewFileSet(), nil, token.NoPos, expr)
 }
@@ -123,35 +104,25 @@ func (w *Watcher) updateAlive(watcherContext *contexter.Watcher, domain string, 
 	}
 }
 
-func (w *Watcher) recordWatch(watcherContext *contexter.Watcher ,domain string, groupName string, record *contexter.DynamicRecord) {
-	var firstTask *targetTask
-	// run target watch task
-	for _, target := range record.TargetList {
-		newTask := &targetTask {
-			target: target,
-		        waitChan: make(chan bool),
-			next: nil,
-		}
-		if firstTask != nil {
-			newTask.next = firstTask
-		}
-		firstTask = newTask
-		go w.targetWatch(newTask)
-	}
-	// wait target watch task
-	for task := firstTask; task != nil; task = task.next {
-		<-task.waitChan
-	}
+func (w *Watcher) updateRecord(watcherContext *contexter.Watcher ,domain string, groupName string, record *contexter.DynamicRecord) {
 	// create replacer
-	replaceNameList := make([]string, 0, 2 * len(record.TargetList))
+	replaceNameList := make([]string, 0, 2 * len(record.TargetNameList))
 	targetResult := ""
-	for _, target := range record.TargetList {
-		replaceNameList = append(replaceNameList, fmt.Sprintf("%%(%v)", target.Name), fmt.Sprintf("%v", target.GetAlive()))
+	for _, targetName := range record.TargetNameList {
+		target, err := watcherContext.GetTarget(targetName.String())
+		if err != nil {
+			belog.Warn("%v", errors.Wrap(err, fmt.Sprintf("not found target (%v)", targetName)))
+			replaceNameList = append(replaceNameList, fmt.Sprintf("%%(%v)", targetName), "false")
+			targetResult = targetResult + fmt.Sprintf("%v %v %v %v %v %v %v %v\n",
+				domain, groupName, record.Name, record.Type, record.Content, targetName, "(no dest)", "false")
+			continue
+		}
+		replaceNameList = append(replaceNameList, fmt.Sprintf("%%(%v)", targetName), fmt.Sprintf("%v", target.GetAlive()))
 		targetResult = targetResult + fmt.Sprintf("%v %v %v %v %v %v %v %v\n",
-			domain, groupName, record.Name, record.Type, record.Content, target.Name, target.Dest, target.GetAlive())
+			domain, groupName, record.Name, record.Type, record.Content, targetName, target.Dest, target.GetAlive())
+
 	}
         replacer := strings.NewReplacer(replaceNameList...)
-
 	// exec eval
 	evalString := replacer.Replace(record.EvalRule)
 	belog.Debug("%v %v %v: eval = %v", record.Name, record.Type, record.Content, evalString)
@@ -162,44 +133,71 @@ func (w *Watcher) recordWatch(watcherContext *contexter.Watcher ,domain string, 
 	} else {
 		w.updateAlive(watcherContext, domain, groupName, record, targetResult, constant.BoolVal(tv.Value))
 	}
-	record.SetProgress(false)
 }
 
-func (w *Watcher) zoneWatch(watcherContext *contexter.Watcher, domain string, zone *contexter.Zone) {
-	dynamicGroupNameList := zone.GetDynamicGroupNameList()
-	for _, dynamicGroupName := range dynamicGroupNameList {
-		dynamicGroup, err := zone.GetDynamicGroup(dynamicGroupName)
-		if err != nil {
-			belog.Notice("%v", err)
-			continue
-		}
-		for _, record := range dynamicGroup.GetDynamicRecordList() {
-			if (record.GetCurrentIntervalCount() >= record.WatchInterval) {
-				if (record.CompareAndSwapProgress(false, true)) {
-					// run record waatch task
-					go w.recordWatch(watcherContext, domain, dynamicGroupName, record)
-					record.ClearCurrentIntervalCount()
-				} else {
-					// already progress last record watch task
-				}
-			}
-			record.IncrementCurrentIntervalCount()
-		}
+func (w *Watcher) update(watcherContext *contexter.Watcher) {
+        domainList := watcherContext.GetDomainList()
+        for _, domain := range domainList {
+                zone, err := watcherContext.GetZone(domain)
+                if err != nil {
+                        belog.Notice("%v", err)
+                        continue
+                }
+                dynamicGroupNameList := zone.GetDynamicGroupNameList()
+                for _, dynamicGroupName := range dynamicGroupNameList {
+                        dynamicGroup, err := zone.GetDynamicGroup(dynamicGroupName)
+                        if err != nil {
+                                belog.Notice("%v", err)
+                                continue
+                        }
+                        for _, record := range dynamicGroup.GetDynamicRecordList() {
+                                w.updateRecord(watcherContext, domain, dynamicGroupName, record)
+                        }
+                }
+        }
+}
+
+func (w *Watcher) targetWatch(target *contexter.Target) {
+	protoWatcherNewFunc, ok := protoWatcherNewFuncMap[strings.ToUpper(target.Protocol)]
+	if !ok {
+		belog.Error("unsupported protocol type (%v)", target.Protocol)
+		target.SetAlive(false)
+		return
 	}
+	protoWatcher, err := protoWatcherNewFunc(target)
+	if err != nil {
+		belog.Error("%v", errors.Wrap(err, fmt.Sprintf("can not create protocol watcher (%v)", target.Protocol)))
+		target.SetAlive(false)
+		return
+	}
+	target.SetAlive(protoWatcher.isAlive())
+	target.SetProgress(false)
 }
 
 func (w *Watcher) watchLoop() {
 	for atomic.LoadUint32(&w.running) == 1 {
 		watcherContext := w.context.GetWatcher()
-		domainList := watcherContext.GetDomainList()
-		for _, domain := range domainList {
-			zone, err := watcherContext.GetZone(domain)
+		targetNameList := watcherContext.GetTargetNameList()
+		for _, targetName := range targetNameList {
+			target, err := watcherContext.GetTarget(targetName)
 			if err != nil {
 				belog.Notice("%v", err)
 				continue
 			}
-			go w.zoneWatch(watcherContext, domain, zone)
+			if (target.GetCurrentIntervalCount() >= target.WatchInterval) {
+				if (target.CompareAndSwapProgress(false, true)) {
+					// run record waatch task
+					go w.targetWatch(target)
+					target.ClearCurrentIntervalCount()
+					continue
+				} else {
+					// already progress last record watch task
+					continue
+				}
+			}
+			target.IncrementCurrentIntervalCount()
 		}
+		w.update(watcherContext)
 		time.Sleep(time.Second)
 	}
 }
@@ -207,25 +205,16 @@ func (w *Watcher) watchLoop() {
 // Init is Init
 func (w *Watcher) Init() {
 	watcherContext := w.context.GetWatcher()
-	domainList := watcherContext.GetDomainList()
-	for _, domain := range domainList {
-		zone, err := watcherContext.GetZone(domain)
+	targetNameList := watcherContext.GetTargetNameList()
+	for _, targetName := range targetNameList {
+		target, err := watcherContext.GetTarget(targetName)
 		if err != nil {
 			belog.Notice("%v", err)
 			continue
 		}
-		dynamicGroupNameList := zone.GetDynamicGroupNameList()
-		for _, dynamicGroupName := range dynamicGroupNameList {
-			dynamicGroup, err := zone.GetDynamicGroup(dynamicGroupName)
-			if err != nil {
-				belog.Notice("%v", err)
-				continue
-			}
-			for _, record := range dynamicGroup.GetDynamicRecordList() {
-				w.recordWatch(watcherContext, domain, dynamicGroupName, record)
-			}
-		}
+		w.targetWatch(target)
 	}
+	w.update(watcherContext)
 }
 
 // Start is run 

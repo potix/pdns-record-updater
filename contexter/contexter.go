@@ -40,9 +40,6 @@ type DynamicRecord struct {
 	Content              string          `json:"content"           yaml:"content"           toml:"content"`           // DNSレコード内容                  
 	TargetNameList       []*TargetName   `json:"targetNameList"    yaml:"targetNameList"    toml:"targetNameList"`    // ターゲットリスト
 	EvalRule             string          `json:"evalRule"          yaml:"evalRule"          toml:"evalRule"`          // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
-	WatchInterval        uint32          `json:"watchInterval"     yaml:"watchInterval"     toml:"watchInterval"`     // 監視する間隔
-	currentIntervalCount uint32                                                                                       // 現在の時間                       [mutable]
-	progress             bool                                                                                         // 監視中を示すフラグ               [mutable]
 	Alive                bool            `json:"alive"             yaml:"alive"             toml:"alive"`             // 生存フラグ                       [mutable]
 	ForceDown            bool            `json:"forceDown"         yaml:"forceDown"         toml:"forceDown"`         // 強制的にダウンしたとみなすフラグ [mutable]
 	NotifyTriggerList    []NotifyTrigger `json:"notifyTriggerList" yaml:"notifyTriggerList" toml:"notifyTriggerList"` // notifierを送信するトリガー changed, latestDown, latestUp
@@ -50,7 +47,7 @@ type DynamicRecord struct {
 
 func (d *DynamicRecord) validate() (bool) {
 	if d.Name == "" || d.Type == "" || d.TTL == 0 || d.Content == "" ||
-            d.WatchInterval == 0 || d.EvalRule == "" || d.TargetNameList == nil {
+           d.EvalRule == "" || d.TargetNameList == nil {
 		belog.Error("no name or no type or no ttl or no content or no watchInterval or no evalRule or no targetList")
 		return false
 	}
@@ -67,45 +64,6 @@ func (d *DynamicRecord) validate() (bool) {
 		}
 	}
 	return true
-}
-
-// GetCurrentIntervalCount is get currentIntervalCount
-func (d *DynamicRecord) GetCurrentIntervalCount() (uint32) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	return d.currentIntervalCount
-}
-
-// IncrementCurrentIntervalCount is increment currentIntervalCount
-func (d *DynamicRecord) IncrementCurrentIntervalCount() {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	d.currentIntervalCount++
-}
-
-// ClearCurrentIntervalCount is clear currentIntervalCount
-func (d *DynamicRecord) ClearCurrentIntervalCount() {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	d.currentIntervalCount = 0
-}
-
-// SetProgress is set progress
-func (d *DynamicRecord) SetProgress(progress bool) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	d.progress = progress
-}
-
-// CompareAndSwapProgress is set progress
-func (d *DynamicRecord) CompareAndSwapProgress(oldProgress bool, newProgress bool) (bool) {
-	mutableMutex.Lock()
-	defer mutableMutex.Unlock()
-	if d.progress == oldProgress {
-		d.progress = newProgress
-		return true
-	}
-	return false
 }
 
 // SwapAlive is swap alive
@@ -743,22 +701,25 @@ func (z *Zone) DeleteDynamicGroup(dynamicGroupName string) (error) {
 
 // Target is config of target
 type Target struct {
-	Protocol       string   `json:"protocol"       yaml:"protocol"       toml:"protocol"`       // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
-	Dest           string   `json:"dest"           yaml:"dest"           toml:"dest"`           // 宛先
-	TCPTLS         bool     `json:"tcpTls"         yaml:"tcpTls"         toml:"tcpTls"`         // TCPにTLSを使う
-	HTTPMethod     string   `json:"httpMethod"     yaml:"httpMethod"     toml:"httpMethod"`     // HTTPメソッド
-	HTTPStatusList []string `json:"httpStatusList" yaml:"httpStatusList" toml:"httpStatusList"` // OKとみなすHTTPステータスコード
-	Regexp         string   `json:"regexp"         yaml:"regexp"         toml:"regexp"`         // OKとみなす正規表現  
-	ResSize        uint32   `json:"resSize"        yaml:"resSize"        toml:"resSize"`        // 受信する最大レスポンスサイズ   
-	Retry          uint32   `json:"retry"          yaml:"retry"          toml:"retry"`          // リトライ回数 
-	RetryWait      uint32   `json:"retryWait"      yaml:"retryWait"      toml:"retryWait"`      // 次のリトライまでの待ち時間   
-	Timeout        uint32   `json:"timeout"        yaml:"timeout"        toml:"timeout"`        // タイムアウトしたとみなす時間  
-	TLSSkipVerify  bool     `json:"tlsSkipVerify"  yaml:"tlsSkipVerify"  toml:"tlsSkipVerify"`  // TLSの検証をスキップする 
-	alive          bool                                                                         // 生存フラグ                    [mutable]
+	Protocol             string   `json:"protocol"       yaml:"protocol"       toml:"protocol"`       // プロトコル icmp, udp, udpRegexp, tcp, tcpRegexp, http, httpRegexp
+	Dest                 string   `json:"dest"           yaml:"dest"           toml:"dest"`           // 宛先
+	TCPTLS               bool     `json:"tcpTls"         yaml:"tcpTls"         toml:"tcpTls"`         // TCPにTLSを使う
+	HTTPMethod           string   `json:"httpMethod"     yaml:"httpMethod"     toml:"httpMethod"`     // HTTPメソッド
+	HTTPStatusList       []string `json:"httpStatusList" yaml:"httpStatusList" toml:"httpStatusList"` // OKとみなすHTTPステータスコード
+	Regexp               string   `json:"regexp"         yaml:"regexp"         toml:"regexp"`         // OKとみなす正規表現  
+	ResSize              uint32   `json:"resSize"        yaml:"resSize"        toml:"resSize"`        // 受信する最大レスポンスサイズ   
+	Retry                uint32   `json:"retry"          yaml:"retry"          toml:"retry"`          // リトライ回数 
+	RetryWait            uint32   `json:"retryWait"      yaml:"retryWait"      toml:"retryWait"`      // 次のリトライまでの待ち時間   
+	Timeout              uint32   `json:"timeout"        yaml:"timeout"        toml:"timeout"`        // タイムアウトしたとみなす時間  
+	TLSSkipVerify        bool     `json:"tlsSkipVerify"  yaml:"tlsSkipVerify"  toml:"tlsSkipVerify"`  // TLSの検証をスキップする 
+	WatchInterval        uint32   `json:"watchInterval"  yaml:"watchInterval"  toml:"watchInterval"`  // 監視する間隔
+	currentIntervalCount uint32                                                                       // 現在の時間                       [mutable]
+	progress             bool                                                                         // 監視中を示すフラグ               [mutable]
+	alive                bool     `json:"alive"          yaml:"alive"          toml:"alive"`          // 生存フラグ                       [mutable]
 }
 
 func (t *Target) validate() (bool) {
-	if t.Protocol == "" || t.Dest == "" {
+	if t.Protocol == "" || t.Dest == "" || t.WatchInterval == 0 {
 		belog.Error("no name or no protocol or no dest")
 		return false
 	}
@@ -769,6 +730,45 @@ func (t *Target) validate() (bool) {
 		}
 	}
 	return true
+}
+
+// GetCurrentIntervalCount is get currentIntervalCount
+func (t *Target) GetCurrentIntervalCount() (uint32) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	return t.currentIntervalCount
+}
+
+// IncrementCurrentIntervalCount is increment currentIntervalCount
+func (t *Target) IncrementCurrentIntervalCount() {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	t.currentIntervalCount++
+}
+
+// ClearCurrentIntervalCount is clear currentIntervalCount
+func (t *Target) ClearCurrentIntervalCount() {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	t.currentIntervalCount = 0
+}
+
+// SetProgress is set progress
+func (t *Target) SetProgress(progress bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	t.progress = progress
+}
+
+// CompareAndSwapProgress is set progress
+func (t *Target) CompareAndSwapProgress(oldProgress bool, newProgress bool) (bool) {
+	mutableMutex.Lock()
+	defer mutableMutex.Unlock()
+	if t.progress == oldProgress {
+		t.progress = newProgress
+		return true
+	}
+	return false
 }
 
 // SetAlive is set alive
