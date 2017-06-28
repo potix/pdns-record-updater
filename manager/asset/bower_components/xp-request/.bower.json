@@ -1,0 +1,25 @@
+{
+  "name": "xp-request",
+  "description": "A class used to provide XHR functionality",
+  "version": "1.1.1",
+  "license": "BSD-3-Clause",
+  "homepage": "https://expandjs.com/classes/xp-request",
+  "authors": [
+    "Giuliano Rullo <g.rullo@expandjs.com>",
+    "Maurizio Stefàno <m.stefano@expandjs.com>",
+    "Robert Manolea <r.manolea@expandjs.com>"
+  ],
+  "keywords": [
+    "expandjs",
+    "nodejs"
+  ],
+  "_release": "1.1.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "v1.1.1",
+    "commit": "2a6564f15116343d8999ca761e667409ea63caf0"
+  },
+  "_source": "https://github.com/ExpandJS/xp-request.git",
+  "_target": "^1.0.0",
+  "_originalSource": "ExpandJS/xp-request"
+}
