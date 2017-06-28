@@ -1,0 +1,100 @@
+<!--
+@license
+Copyright (c) 2017 The expand.js authors. All rights reserved.
+This code may only be used under the BSD style license found at https://expandjs.github.io/LICENSE.txt
+The complete set of authors may be found at https://expandjs.github.io/AUTHORS.txt
+The complete set of contributors may be found at https://expandjs.github.io/CONTRIBUTORS.txt
+-->
+
+<!--
+A behavior used to add overlay injection capabilities on a web component.
+
+@behavior xp-overlay-injector
+@since 1.0.0
+@category behaviors
+@description A behavior used to add overlay injection capabilities on a web component
+@keywords expandjs, web components
+
+@homepage https://expandjs.com/components/xp-overlay-injector
+@repository https://github.com/expandjs/xp-elements
+@source https://github.com/expandjs/xp-elements/blob/master/xp-overlay-injector.html
+
+@behavior xp-base-behavior /bower_components/xp-elements/xp-base-behavior.html
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../expandjs/expandjs.html">
+<link rel="import" href="xp-base-behavior.html">
+
+<script>
+
+    /**
+     * @polymerBehavior Polymer.XPOverlayInjectorImp
+     */
+    Polymer.XPOverlayInjectorImp = {
+
+        /**
+         * Injects the overlay.
+         *
+         * @method inject
+         * @param {Element | string} element
+         * @param {Element} [context]
+         * @param {*} [data]
+         * @param {Function} [callback]
+         */
+        inject(element, context, data, callback) {
+
+            // Preparing
+            if (XP.isFunction(context)) { callback = context; data = undefined; context = undefined; }
+            if (XP.isFunction(data)) { callback = data; data = undefined; }
+
+            // Asserting
+            XP.assertArgument(XP.isElement(element) || XP.isString(element, true), 1, 'Element or string');
+            XP.assertArgument(XP.isVoid(context) || XP.isElement(context), 2, 'Element');
+            XP.assertArgument(XP.isVoid(callback) || XP.isFunction(callback), 4, 'Function');
+
+            // Let
+            let showed,
+                remover  = XP.once(remove),
+                injected = XP.isString(element) ? document.createElement(element.toLowerCase()) : element,
+                shell    = XP.matches(this, '.shell') ? this : XP.findParentElement(this, '.shell') || document.body,
+                handler1 = event => this.firer(event) === injected && requestAnimationFrame(() => injected.show()),
+                handler2 = event => this.firer(event) === injected && showed && !event.detail.value ? this.wait(remover, 500) : showed = event.detail.value;
+
+            // Function
+            function remove() {
+
+                // Unlistening
+                XP.unlisten(injected, 'xp-overlay', handler1);
+                XP.unlisten(injected, 'showed-changed', handler2);
+
+                // Removing
+                Polymer.dom(Polymer.dom(injected).parentNode).removeChild(injected);
+            }
+
+            // Ensuring
+            if (injected) { this.ensure('target', this, injected); }
+            if (context)  { this.ensure('context', context, injected); }
+            if (data)     { this.ensure('data', data, injected); }
+            if (callback) { this.ensure('callback', callback, injected); }
+
+            // Listening
+            XP.listen(injected, 'xp-overlay', handler1);
+            XP.listen(injected, 'showed-changed', handler2);
+
+            // Appending
+            Polymer.dom(shell.root || shell).appendChild(injected);
+
+            // Returning
+            return injected;
+        }
+    };
+
+    /**
+     * @polymerBehavior Polymer.XPOverlayInjector
+     */
+    Polymer.XPOverlayInjector = [
+        Polymer.XPBaseBehavior,
+        Polymer.XPOverlayInjectorImp
+    ];
+</script>

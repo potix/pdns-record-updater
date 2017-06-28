@@ -1,0 +1,25 @@
+{
+  "name": "xp-queue",
+  "description": "A class used to provide live queuing functionality",
+  "version": "1.0.2",
+  "license": "BSD-3-Clause",
+  "homepage": "https://expandjs.com/classes/xp-queue",
+  "authors": [
+    "Giuliano Rullo <g.rullo@expandjs.com>",
+    "Maurizio Stefàno <m.stefano@expandjs.com>",
+    "Robert Manolea <r.manolea@expandjs.com>"
+  ],
+  "keywords": [
+    "expandjs",
+    "nodejs"
+  ],
+  "_release": "1.0.2",
+  "_resolution": {
+    "type": "version",
+    "tag": "v1.0.2",
+    "commit": "fb38b9691ad1684e9433b80e7006e2ddf20d2afb"
+  },
+  "_source": "https://github.com/ExpandJS/xp-queue.git",
+  "_target": "^1.0.0",
+  "_originalSource": "ExpandJS/xp-queue"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "xp-doc-parser",
+  "description": "A class used to parse the documentation inside an html or javascript file",
+  "version": "1.0.2",
+  "license": "BSD-3-Clause",
+  "homepage": "https://expandjs.com/classes/xp-doc-parser",
+  "authors": [
+    "Giuliano Rullo <g.rullo@expandjs.com>",
+    "Maurizio Stefàno <m.stefano@expandjs.com>",
+    "Robert Manolea <r.manolea@expandjs.com>"
+  ],
+  "keywords": [
+    "expandjs",
+    "nodejs"
+  ],
+  "_release": "1.0.2",
+  "_resolution": {
+    "type": "version",
+    "tag": "v1.0.2",
+    "commit": "2c886ccb8f20ba9c432bff0c4a179421e24d815b"
+  },
+  "_source": "https://github.com/ExpandJS/xp-doc-parser.git",
+  "_target": "^1.0.0",
+  "_originalSource": "ExpandJS/xp-doc-parser"
+}

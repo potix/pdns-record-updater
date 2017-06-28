@@ -1,0 +1,45 @@
+{
+  "name": "xp-elements",
+  "description": "A collection of core web components from the expand.js team",
+  "version": "1.2.0",
+  "license": "BSD-3-Clause",
+  "main": "xp-elements.html",
+  "homepage": "https://expandjs.com/components",
+  "authors": [
+    "Giuliano Rullo <g.rullo@expandjs.com>",
+    "Maurizio Stefàno <m.stefano@expandjs.com>",
+    "Robert Manolea <r.manolea@expandjs.com>"
+  ],
+  "keywords": [
+    "expandjs",
+    "custom elements"
+  ],
+  "dependencies": {
+    "cookies": "ScottHamper/cookies#^1.0.0",
+    "expandjs": "ExpandJS/expandjs#^1.0.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^1.0.0",
+    "markdown-it": "Markdown-it/markdown-it#^8.0.0",
+    "polymer": "Polymer/polymer#1.7.0",
+    "prism": "PrismJS/prism#^1.5.0",
+    "web-animations-js": "Web-Animations/web-animations-js#^2.0.0",
+    "xp-buffer": "ExpandJS/xp-buffer#^1.0.0",
+    "xp-doc-parser": "ExpandJS/xp-doc-parser#^1.0.0",
+    "xp-emitter": "ExpandJS/xp-emitter#^1.0.0",
+    "xp-house": "ExpandJS/xp-house#^1.0.0",
+    "xp-primus": "ExpandJS/xp-primus#^1.0.0",
+    "xp-queue": "ExpandJS/xp-queue#^1.0.0",
+    "xp-request": "ExpandJS/xp-request#^1.0.0",
+    "xp-schema": "ExpandJS/xp-schema#^1.0.0",
+    "xp-script": "ExpandJS/xp-script#^1.0.0",
+    "xp-uploader": "ExpandJS/xp-uploader#^1.0.0"
+  },
+  "_release": "1.2.0",
+  "_resolution": {
+    "type": "version",
+    "tag": "v1.2.0",
+    "commit": "cc8e6585e6402d003328d2f2cc7a6b909dd8ad91"
+  },
+  "_source": "https://github.com/ExpandJS/xp-elements.git",
+  "_target": "^1.0.0",
+  "_originalSource": "ExpandJS/xp-elements"
+}
