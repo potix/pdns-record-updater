@@ -60,6 +60,6 @@
   },
   "_source": "https://github.com/PolymerElements/iron-flex-layout.git",
   "_target": "^2.0.0",
-  "_originalSource": "iron-flex-layout",
+  "_originalSource": "PolymerElements/iron-flex-layout",
   "_direct": true
 }

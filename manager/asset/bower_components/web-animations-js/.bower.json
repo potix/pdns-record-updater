@@ -34,7 +34,7 @@
     "tag": "2.2.5",
     "commit": "2720e1e5a1b42790613af461b62c4e238ae88d48"
   },
-  "_source": "https://github.com/web-animations/web-animations-js.git",
-  "_target": "^2.2.0",
-  "_originalSource": "web-animations/web-animations-js"
+  "_source": "https://github.com/Web-Animations/web-animations-js.git",
+  "_target": "^2.0.0",
+  "_originalSource": "Web-Animations/web-animations-js"
 }

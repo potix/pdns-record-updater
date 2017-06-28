@@ -1,12 +1,115 @@
 <html>
 	<head>
+		<link href="https://fonts.googleapis.com/css?family=Dancing+Script" rel="stylesheet">
 		<script src="../bower_components/webcomponentsjs/webcomponents-loader.js"></script>
-		<link rel="import" href="../bower_components/polymer/polymer.html">
+		<link rel="import" href="../bower_components/polymer/polymer.html"></link>
+		<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html"></link>
+		<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html"></link>
+		<link rel="import" href="../bower_components/mat-elements/mat-divider.html">
+		<link rel="import" href="../bower_components/mat-elements/mat-icon-button.html">
+		<link rel="import" href="../bower_components/mat-elements/mat-icons.html">
+		<link rel="import" href="../bower_components/mat-elements/mat-menu.html">
+		<link rel="import" href="../bower_components/mat-elements/mat-submenu.html">
+		<link rel="import" href="../bower_components/mat-elements/mat-item.html">
+		<link rel="import" href="../bower_components/mat-elements/mat-list.html">
+		<link rel="import" href="../bower_components/mat-elements/mat-sublist.html">
+		<link rel="import" href="../bower_components/sliding-pages/sliding-pages.html">
+
+		<custom-style>
+			<style include="iron-flex iron-flex-alignment">
+				html, body {
+					border: 0;
+					margin: 0;
+					padding: 0;
+					box-sizing: border-box;
+					color: dimgray;
+					background-color: snow;
+				}
+				body {
+					display: flex;
+				}
+				div {
+					padding: 0;
+				}
+				div.page {
+					width: 100%;
+					height: 100%;
+				}
+				div.header {
+					border-bottom: medium ridge silver;
+				}
+				div.title {
+					text-align: center;
+					color: firebrick;
+					font-size: 30px;
+					font-family: 'Dancing Script', cursive;
+				}
+				div.menu {
+					border-right: thin solid lightgrey;
+				}
+				div.main {
+					border-left: thin solid lightgrey;
+				}
+				sliding-pages div {
+					--page-background-color: snow;
+			        }
+			</style>
+		</custom-style>
+
 	</head>
-	</body>
-
-
-	hello!!!
-
 	<body>
+		<div class="page layout vertical">
+			<div class="header layout horizontal">
+				<div class="title layput flex">
+				pdns record updater manager
+				</div>
+				<div class="site-menu-button">
+					<mat-icon-button action="toggle" icon="mat:more-vert" target="site-menu"></mat-icon-button>
+					<mat-menu id="site-menu">
+						<mat-option id="logout" label="logout"></mat-option>
+					</mat-menu>
+				</div>
+			</div>
+			<div class="body layout horizontal flex">
+				<div class="menu">
+					<mat-list id="main-menu-list" style="height: 70px" selectable>
+						<mat-sublist label="Target" collapsible>
+							<mat-item label="Edit target"></mat-item>
+						</mat-sublist>
+						<mat-sublist label="Zone" collapsible>
+							<mat-item label="Edit zone"></mat-item>
+							<mat-item label="Edit name server"></mat-item>
+							<mat-item label="Edit static record"></mat-item>
+						</mat-sublist>
+							<mat-sublist label="Dynamic group" collapsible>
+							<mat-item label="Edit dynamic group"></mat-item>
+							<mat-item label="Edit dynamic record"></mat-item>
+							<mat-item label="edit negative record"></mat-item>
+						</mat-sublist>
+					</mat-list>
+				</div>
+				<div class="content layout flex">
+					<sliding-pages class="main-view" id="main-views" active-index="0">
+						<div></div>
+						<div>edit target</div>
+						<div>edit zone</div>
+						<div>edit name server</div>
+						<div>edit static record</div>
+						<div>edit dynamic group</div>
+						<div>edit dynamic record</div>
+						<div>edit negative record</div>
+					</sliding-pages>
+				</div>
+			</div>
+		</div>
+		<script>
+			document.querySelector('#logout').addEventListener('click', function(e) {
+				window.location.href="../logout";
+			})
+			document.querySelector('#main-menu-list').addEventListener('xp-select', function(e) {
+				console.log(e)
+				document.querySelector('#main-views').setAttribute('active-index', e.detail.index + 1)
+			})
+		</script>
+	</body>
 </html>

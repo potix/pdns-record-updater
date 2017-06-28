@@ -128,12 +128,23 @@ func (m *Manager) login(context *gin.Context) {
 	}
 }
 
+func (m *Manager) logout(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodGet:
+		m.clearSession(context)
+		context.Redirect(http.StatusSeeOther, "./")
+	}
+}
+
 func (m *Manager) mngmnt(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
                 fallthrough
         case http.MethodGet:
-		m.replyFromAsset(context, filepath.Join("asset", "template", "mngmnt", "index.html"), nil)
+		//m.replyFromAsset(context, filepath.Join("asset", "template", "mngmnt", "index.html"), nil)
+		// for debug
+		context.Header("Content-Type", "text/html")
+		context.File("./manager/asset/template/mngmnt/index.html")
 	}
 }
 

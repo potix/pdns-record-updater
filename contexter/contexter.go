@@ -10,7 +10,6 @@ import (
 	"sync"
 	"bytes"
 	"strings"
-	"fmt"
 )
 
 var mutableMutex *sync.Mutex
@@ -38,7 +37,7 @@ type DynamicRecord struct {
 	Type                 string          `json:"type"              yaml:"type"              toml:"type"`              // DNSレコードタイプ
 	TTL                  int32           `json:"ttl"               yaml:"ttl"               toml:"ttl"`               // DNSレコードTTL 
 	Content              string          `json:"content"           yaml:"content"           toml:"content"`           // DNSレコード内容                  
-	TargetNameList       []*TargetName   `json:"targetNameList"    yaml:"targetNameList"    toml:"targetNameList"`    // ターゲットリスト
+	TargetNameList       []string        `json:"targetNameList"    yaml:"targetNameList"    toml:"targetNameList"`    // ターゲットリスト
 	EvalRule             string          `json:"evalRule"          yaml:"evalRule"          toml:"evalRule"`          // 生存を判定する際のターゲットの評価ルール example: "(%(a) && (%(b) || !%(c))) || ((%(d) && %(e)) || !%(f))"  (a,b,c,d,e,f is target name)
 	Alive                bool            `json:"alive"             yaml:"alive"             toml:"alive"`             // 生存フラグ                       [mutable]
 	ForceDown            bool            `json:"forceDown"         yaml:"forceDown"         toml:"forceDown"`         // 強制的にダウンしたとみなすフラグ [mutable]
@@ -52,7 +51,7 @@ func (d *DynamicRecord) validate() (bool) {
 		return false
 	}
 	for _, targetName := range d.TargetNameList {
-		if !targetName.validate() {
+		if targetName == "" {
 			return false
 		}
 	}
@@ -821,7 +820,7 @@ func (t TargetName) String() (string) {
 // Watcher is watcher
 type Watcher struct {
 	ZoneMap       map[string]*Zone       `json:"zoneMap"      yaml:"zoneMap"        toml:"zoneMap"`       // ゾーン [mutable]
-	TargetMap     map[TargetName]*Target `json:"targetMap"    yaml:"targetMap"      toml:"targetMap"`     // ゾーン [mutable]
+	TargetMap     map[string]*Target `json:"targetMap"    yaml:"targetMap"      toml:"targetMap"`     // ゾーン [mutable]
 	NotifySubject string                 `json:"notifySybject" yaml:"notifySybject" toml:"notifySybject"` // Notifyの題名テンプレート 
 	NotifyBody    string                 `json:"notifyBody"    yaml:"notifyBody"    toml:"notifyBody"`    // Notifyの本文テンプレート
 }
@@ -840,7 +839,7 @@ func (w *Watcher) validate() (bool) {
 	}
 	if w.TargetMap != nil {
 		for targetName, target := range w.TargetMap {
-			if !targetName.validate() {
+			if targetName == "" {
 				return false
 			}
 			if !target.validate() {
@@ -920,11 +919,11 @@ func (w *Watcher) GetTargetNameList() ([]string) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if w.TargetMap == nil {
-		w.TargetMap = make(map[TargetName]*Target)
+		w.TargetMap = make(map[string]*Target)
 	}
 	targetNameList := make([]string, 0, len(w.TargetMap))
 	for tn := range w.TargetMap {
-		targetNameList = append(targetNameList, tn.String())
+		targetNameList = append(targetNameList, tn)
 	}
 	return targetNameList
 }
@@ -934,9 +933,9 @@ func (w *Watcher) GetTarget(targetName string) (*Target, error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if w.TargetMap == nil {
-		w.TargetMap = make(map[TargetName]*Target)
+		w.TargetMap = make(map[string]*Target)
 	}
-	target, ok := w.TargetMap[TargetName(targetName)]
+	target, ok := w.TargetMap[targetName]
 	if !ok {
 		return nil, errors.Errorf("not exist domain")
 	}
@@ -951,13 +950,13 @@ func (w *Watcher) AddTarget(targetName string, target *Target) (error) {
 		return errors.Errorf("invalid zone")
 	}
 	if w.TargetMap == nil {
-		w.TargetMap = make(map[TargetName]*Target)
+		w.TargetMap = make(map[string]*Target)
 	}
-	_, ok := w.TargetMap[TargetName(targetName)]
+	_, ok := w.TargetMap[targetName]
 	if ok {
 		return errors.Errorf("already exist domain")
 	}
-	w.TargetMap[TargetName(targetName)] = target
+	w.TargetMap[targetName] = target
 	return nil
 }
 
@@ -966,13 +965,13 @@ func (w *Watcher) DeleteTarget(targetName string) (error) {
 	mutableMutex.Lock()
 	defer mutableMutex.Unlock()
 	if w.TargetMap == nil {
-		w.TargetMap = make(map[TargetName]*Target)
+		w.TargetMap = make(map[string]*Target)
 	}
-	_, ok := w.TargetMap[TargetName(targetName)]
+	_, ok := w.TargetMap[targetName]
 	if !ok {
 		return errors.Errorf("not exist domain")
 	}
-	delete(w.TargetMap, TargetName(targetName))
+	delete(w.TargetMap, targetName)
 	return nil
 }
 
@@ -1303,7 +1302,6 @@ func (c *Contexter) LoadConfig() (error){
 	}
 	mutableMutex.Lock()
         defer mutableMutex.Unlock()
-	fmt.Printf("XXX %v %v ", c,  newContext)
 	c.replaceContext(newContext)
 	return nil
 }

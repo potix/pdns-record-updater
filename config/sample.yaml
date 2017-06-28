@@ -1,6 +1,38 @@
 watcher:
   notifySubject: "%(hostname) %(domain) %(groupName) %(name) %(content): old alive = %(oldAlive) -> new alive = %(newAlive)" 
   notifyBody: "hostname: %(hostname)\ndomain: %(domain)\ngroupName: %(groupName)\nrecord: %(name) %(type) %(content)\n%(time) old alive = %(oldAlive) -> new alive = %(newAlive)\n\n-----\n%(detail)\n" 
+  targetMap:
+    "target1":
+      protocol: "icmp"
+      dest: "192.168.0.1"
+      retry: 3
+      retryWait: 1
+      timeout: 1
+      tlsSkipVerify: true
+      watchInterval: 5
+    "target2":
+      protocol: "tcpRegexp"
+      dest: "192.168.0.1:80"
+      regexp: "hogehoge2"
+      resSize: 2000
+      retry: 3
+      retryWait: 1
+      timeout: 2
+      tcptls: true
+      tlsSkipVerify: true
+      watchInterval: 5
+    "target3":
+      protocol: "httpRegexp"
+      dest: "192.168.0.1:80"
+      regexp: "hogehoge3"
+      resSize: 3000
+      httpMethod: "GET"
+      httpStatusList: ["200"]
+      retry: 3
+      retryWait: 1
+      timeout: 3
+      tlsSkipVerify: true
+      watchInterval: 5
   zoneMap:
     "example.jp":
       primaryNameServer: "foo.example.jp"
@@ -27,36 +59,11 @@ watcher:
             notifyTrigger:
             - "changed"
             - "latestDown"
-            targetList:
-            - name: "t1"
-              protocol: "icmp"
-              dest: "192.168.0.1"
-              retry: 3
-              retryWait: 1
-              timeout: 1
-              tlsSkipVerify: true
-            - name: "t2"
-              protocol: "tcpRegexp"
-              dest: "192.168.0.1:80"
-              regexp: "hogehoge2"
-              resSize: 2000
-              retry: 3
-              retryWait: 1
-              timeout: 2
-              tcptls: true
-              tlsSkipVerify: true
-            - name: "t3"
-              protocol: "httpRegexp"
-              dest: "192.168.0.1:80"
-              regexp: "hogehoge3"
-              resSize: 3000
-              httpMethod: "GET"
-              httpStatusList: ["200"]
-              retry: 3
-              retryWait: 1
-              timeout: 3
-              tlsSkipVerify: true
-            evalRule: "%(t1) && %(t2) && %(t3)"
+            targetNameList:
+            - "target1"
+            - "target2"
+            - "target3"
+            evalRule: "%(target1) && %(target2) && %(target3)"
           negativeRecordList:
           - name: "foo"
             type: "a"

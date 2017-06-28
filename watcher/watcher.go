@@ -109,7 +109,7 @@ func (w *Watcher) updateRecord(watcherContext *contexter.Watcher ,domain string,
 	replaceNameList := make([]string, 0, 2 * len(record.TargetNameList))
 	targetResult := ""
 	for _, targetName := range record.TargetNameList {
-		target, err := watcherContext.GetTarget(targetName.String())
+		target, err := watcherContext.GetTarget(targetName)
 		if err != nil {
 			belog.Warn("%v", errors.Wrap(err, fmt.Sprintf("not found target (%v)", targetName)))
 			replaceNameList = append(replaceNameList, fmt.Sprintf("%%(%v)", targetName), "false")
