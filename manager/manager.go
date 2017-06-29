@@ -78,10 +78,11 @@ func (m *Manager) Start() (err error) {
 	m.addEnginePostHandler(engine, "/login", m.login)                     // login
 	m.addEngineGetHandler(engine, "/logout", m.logout)                    // logout
 	newGroup := engine.Group("/mngmnt", m.checkSession)
-	m.addGroupGetHandler(newGroup, "/", m.mngmnt)                         // management index
-	m.addGroupGetHandler(newGroup, "/index.html", m.mngmnt)               // management insex
-	m.addGroupGetHandler(newGroup, "/config", m.mngmntConfig)             // get config on memory
-	m.addGroupPostHandler(newGroup, "/config", m.mngmntConfig)            // update config on memory / save config to disk / load config from disk
+	m.addGroupGetHandler(newGroup, "/", m.mngmntIndex)                    // management index
+	m.addGroupGetHandler(newGroup, "/index", m.mngmntIndex)               // management index
+	m.addGroupGetHandler(newGroup, "/s/*wildcard", m.mngmntStatic)        // management static
+	m.addGroupGetHandler(newGroup, "/a/config", m.mngmntConfig)           // get config on memory
+	m.addGroupPostHandler(newGroup, "/a/config", m.mngmntConfig)          // update config on memory / save config to disk / load config from disk
 	if managerContext.LetsEncryptPath != "" {
 		engine.Static("/.well-known", filepath.Join(managerContext.LetsEncryptPath, ".well-known"))
 	}

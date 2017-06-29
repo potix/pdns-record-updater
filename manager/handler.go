@@ -136,7 +136,7 @@ func (m *Manager) logout(context *gin.Context) {
 	}
 }
 
-func (m *Manager) mngmnt(context *gin.Context) {
+func (m *Manager) mngmntIndex(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
                 fallthrough
@@ -144,7 +144,28 @@ func (m *Manager) mngmnt(context *gin.Context) {
 		//m.replyFromAsset(context, filepath.Join("asset", "template", "mngmnt", "index.html"), nil)
 		// for debug
 		context.Header("Content-Type", "text/html")
-		context.File("./manager/asset/template/mngmnt/index.html")
+		context.File("./manager/" + filepath.Join("asset", "template", "mngmnt", "index.html"))
+	}
+
+
+}
+
+func (m *Manager) mngmntStatic(context *gin.Context) {
+        switch context.Request.Method {
+        case http.MethodHead:
+                fallthrough
+        case http.MethodGet:
+		elems := strings.Split(context.Request.URL.Path, "/")
+		if len(elems) == 0 {
+			context.String(http.StatusNotFound, "400 bad request")
+		}
+		newElems := make([]string, 0, len(elems))
+		newElems = append(newElems, "asset", "template")
+		newElems = append(newElems, elems[1:]...)
+		//m.replyFromAsset(context, filepath.Join(newElems...), nil)
+		// for debug
+		context.Header("Content-Type", "text/html")
+		context.File("./manager/" + filepath.Join(newElems...))
 	}
 }
 
@@ -153,6 +174,8 @@ func (m *Manager) mngmntConfig(context *gin.Context) {
         case http.MethodHead:
                 context.Status(http.StatusOK)
         case http.MethodGet:
+		context.Header("Content-Type", "application/json")
+		context.File("./manager/" + filepath.Join("asset", "template", "mngmnt", "a", "config.js"))
         case http.MethodPost:
 	}
 }
