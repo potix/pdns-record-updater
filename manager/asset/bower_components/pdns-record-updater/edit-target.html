@@ -1,0 +1,73 @@
+<link rel="import" href="../iron-ajax/iron-ajax.html">
+<link rel="import" href="../mat-elements/mat-button.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-table.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-column.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-active-item-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-row-details-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-data-provider-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-array-data-provider-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-dynamic-columns-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-selection-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-sort-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-filter-behavior.html">
+<link rel="import" href="../vaadin-grid/vaadin-grid-column-reordering-behavior.html">
+
+<dom-module id="edit-target">
+	<template>
+		<style>
+		</style>
+		<div>
+			<mat-button class="add-target" label="add target"></mat-button>
+		</div>
+		<div>
+			<vaadin-grid aria-label="Example" items='[{"name": "John", "surname": "Lennon", "role": "singer"}, {"name": "Ringo", "surname": "Starr", "role": "drums"}]'>
+				<vaadin-grid-column>
+					<template class="header">index</template>
+					<template>[[index]]</template>
+				</vaadin-grid-column>
+				<vaadin-grid-column>
+					<template class="header">Name</template>
+					<template>[[item.name]]</template>
+				</vaadin-grid-column>
+				<vaadin-grid-column>
+					<template class="header">Surname</template>
+					<template>[[item.surname]]</template>
+				</vaadin-grid-column>
+				<vaadin-grid-column>
+					<template class="header">Role</template>
+					<template>[[item.role]]</template>
+				</vaadin-grid-column>
+			</vaadin-grid>
+		</div>
+		<iron-ajax 
+		    auto
+	  	    with-credentials
+		    url="../bower_components/pdns-record-updater/test.js"
+		    method="GET"
+		    handle-as="json"
+		    on-response="_response"
+		    on-error="_error">
+		</iron-ajax>
+	</template>
+	<script>
+		Polymer({
+			is: 'edit-target',
+			listeners: {
+			    'xp-activate': '_click'
+			},
+			_refresh: function(e) {
+				// irom-ajax.generateRequest()
+			},
+			_click: function(e) {
+				console.log(e);
+			},
+			_response: function(e) { 
+				console.log(e);
+				// grid property change
+			},
+			_error: function(e) {
+				console.error(e);
+			}
+		});
+	</script>
+</dom-module>
