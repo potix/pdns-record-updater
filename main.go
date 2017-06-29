@@ -110,7 +110,7 @@ func main() {
 			os.Exit(1);
 		}
 	}
-	dump, err := contexter.GetContext("toml")
+	dump, err := contexter.GetContext("json")
 	if err != nil {
 		belog.Error("%v", err)
                 os.Exit(1);

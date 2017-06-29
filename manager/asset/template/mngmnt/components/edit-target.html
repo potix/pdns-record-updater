@@ -7,12 +7,16 @@
 <dom-module id="edit-target">
 	<template>
 		<style>
+			mat-button {
+				border: 1px;
+				border-style: groove;
+			}
 		</style>
 		<div>
 			<mat-button class="add-target" label="add target"></mat-button>
 		</div>
 		<div>
-			<paper-datatable-api data='[{"fruit":"apple", "color":"red"}, {"fruit":"banana", "color":"yellow"}, {"fruit":"peach", "color":"pink"}]'>
+			<paper-datatable-api class="edit-target">
 				<paper-datatable-api-column draggable-column header="Fruit" property="fruit">
 					<template>
 						<span>{{value}}</span>
@@ -26,9 +30,8 @@
 			</paper-datatable-api>
 		</div>
 		<iron-ajax 
-		    auto
 	  	    with-credentials
-		    url="./a/config"
+		    url="./api/config"
 		    method="GET"
 		    handle-as="json"
 		    on-response="_response"
@@ -41,17 +44,34 @@
 			listeners: {
 			    'xp-activate': '_click'
 			},
-			_refresh: function(e) {
+			refresh: function(e) {
+				console.log("refresh");
 				// irom-ajax.generateRequest()
 			},
 			_click: function(e) {
+				console.log("click");
 				console.log(e);
 			},
 			_response: function(e) { 
-				console.log(e);
+				console.log("response");
+				var newData = []
+				for (key in e.detail.xhr.response.watcher.zoneMap) {
+					var zone = e.detail.xhr.response.watcher.zoneMap[key]
+					newData.push({
+						domain: key,
+						primaryNameServer: zone.primaryNameServer,
+						email: zone.email,
+						nameServerList: zone.nameServerList.length,
+						staticRecordList: zone.staticRecordList.length,
+						dynamicGroupMap: Object.keys(zone.dynamicGroupMap).length
+					})
+
+				}
+				console.log(newData)
 				// grid property change
 			},
 			_error: function(e) {
+				console.log("error");
 				console.error(e);
 			}
 		});

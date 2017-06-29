@@ -14,7 +14,8 @@
 		<link rel="import" href="../bower_components/mat-elements/mat-list.html">
 		<link rel="import" href="../bower_components/mat-elements/mat-sublist.html">
 		<link rel="import" href="../bower_components/sliding-pages/sliding-pages.html">
-		<link rel="import" href="./s/edit-target.html">
+		<link rel="import" href="./components/edit-target.html">
+		<link rel="import" href="./components/edit-zone.html">
 
 		<custom-style>
 			<style include="iron-flex iron-flex-alignment">
@@ -97,10 +98,10 @@
 					</mat-list>
 				</div>
 				<div class="content layout flex">
-					<sliding-pages class="main-view" id="main-views" active-index="0">
+					<sliding-pages id="main-views" active-index="0">
 						<div><div class="view"></div></div>
 						<div><edit-target class="view"></edit-target></div>
-						<div><div class="view">edit zone</div></div>
+						<div><edit-zone class="view"></edit-zone></div>
 						<div><div class="view">edit name server</div></div>
 						<div><div class="view">edit static record</div></div>
 						<div><div class="view">edit dynamic group</div></div>
@@ -115,15 +116,25 @@
 		</div>
 		<script>
 			window.addEventListener('WebComponentsReady', function(e) {
-				  console.log(e);
 				  console.log('Components are ready');
+				  var divs = document.querySelectorAll('#main-views > div');
+				  for (i = 1; i < divs.length; i++) { 
+					  var view = divs[i].querySelectorAll('.view')[0];
+					  if ('refresh' in view) {
+						  view.refresh();
+					  }
+				  }
 			});
 			document.querySelector('#logout').addEventListener('click', function(e) {
 				window.location.href="../logout";
 			})
 			document.querySelector('#main-menu-list').addEventListener('xp-select', function(e) {
 				document.querySelector('#main-views').setAttribute('active-index', e.detail.index + 1)
-				console.log(document.querySelectorAll('#main-views > div')[e.detail.index + 1].querySelectorAll('.view')[0])
+				console.log("reload view")
+				var view = document.querySelectorAll('#main-views > div')[e.detail.index + 1].querySelectorAll('.view')[0];
+				if ('refresh' in view) {
+					view.refresh();
+				}
 			})
 		</script>
 	</body>
