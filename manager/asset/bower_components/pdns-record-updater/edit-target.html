@@ -1,16 +1,8 @@
 <link rel="import" href="../iron-ajax/iron-ajax.html">
 <link rel="import" href="../mat-elements/mat-button.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-table.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-column.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-active-item-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-row-details-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-data-provider-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-array-data-provider-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-dynamic-columns-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-selection-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-sort-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-filter-behavior.html">
-<link rel="import" href="../vaadin-grid/vaadin-grid-column-reordering-behavior.html">
+<link rel="import" href="../paper-datatable-api/paper-datatable-api-column.html">
+<link rel="import" href="../paper-datatable-api/paper-datatable-api.html">
+
 
 <dom-module id="edit-target">
 	<template>
@@ -20,24 +12,18 @@
 			<mat-button class="add-target" label="add target"></mat-button>
 		</div>
 		<div>
-			<vaadin-grid aria-label="Example" items='[{"name": "John", "surname": "Lennon", "role": "singer"}, {"name": "Ringo", "surname": "Starr", "role": "drums"}]'>
-				<vaadin-grid-column>
-					<template class="header">index</template>
-					<template>[[index]]</template>
-				</vaadin-grid-column>
-				<vaadin-grid-column>
-					<template class="header">Name</template>
-					<template>[[item.name]]</template>
-				</vaadin-grid-column>
-				<vaadin-grid-column>
-					<template class="header">Surname</template>
-					<template>[[item.surname]]</template>
-				</vaadin-grid-column>
-				<vaadin-grid-column>
-					<template class="header">Role</template>
-					<template>[[item.role]]</template>
-				</vaadin-grid-column>
-			</vaadin-grid>
+			<paper-datatable-api data='[{"fruit":"apple", "color":"red"}, {"fruit":"banana", "color":"yellow"}, {"fruit":"peach", "color":"pink"}]'>
+				<paper-datatable-api-column draggable-column header="Fruit" property="fruit">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Color" property="color">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+			</paper-datatable-api>
 		</div>
 		<iron-ajax 
 		    auto
