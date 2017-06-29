@@ -81,34 +81,48 @@
 							<mat-item label="Edit name server"></mat-item>
 							<mat-item label="Edit static record"></mat-item>
 						</mat-sublist>
-							<mat-sublist label="Dynamic group" collapsible>
+						<mat-sublist label="Dynamic group" collapsible>
 							<mat-item label="Edit dynamic group"></mat-item>
 							<mat-item label="Edit dynamic record"></mat-item>
-							<mat-item label="edit negative record"></mat-item>
+							<mat-item label="Edit negative record"></mat-item>
+						</mat-sublist>
+						<mat-sublist label="Config" collapsible>
+							<mat-item label="Sync Config"></mat-item>
+							<mat-item label="Edit config"></mat-item>
+						</mat-sublist>
+						<mat-sublist label="Api Server" collapsible>
+							<mat-item label="Edit api server"></mat-item>
 						</mat-sublist>
 					</mat-list>
 				</div>
 				<div class="content layout flex">
 					<sliding-pages class="main-view" id="main-views" active-index="0">
-						<div></div>
-						<div>edit target</div>
-						<div>edit zone</div>
-						<div>edit name server</div>
-						<div>edit static record</div>
-						<div>edit dynamic group</div>
-						<div>edit dynamic record</div>
-						<div>edit negative record</div>
+						<div><div class="view"></div></div>
+						<div><div class="view">edit target</div></div>
+						<div><div class="view">edit zone</div></div>
+						<div><div class="view">edit name server</div></div>
+						<div><div class="view">edit static record</div></div>
+						<div><div class="view">edit dynamic group</div></div>
+						<div><div class="view">edit dynamic record</div></div>
+						<div><div class="view">edit negative record</div></div>
+						<div><div class="view">sync config</div></div>
+						<div><div class="view">edit config</div></div>
+						<div><div class="view">edit api server</div></div>
 					</sliding-pages>
 				</div>
 			</div>
 		</div>
 		<script>
+			window.addEventListener('WebComponentsReady', function(e) {
+				  console.log(e);
+				  console.log('Components are ready');
+			});
 			document.querySelector('#logout').addEventListener('click', function(e) {
 				window.location.href="../logout";
 			})
 			document.querySelector('#main-menu-list').addEventListener('xp-select', function(e) {
-				console.log(e)
 				document.querySelector('#main-views').setAttribute('active-index', e.detail.index + 1)
+				console.log(document.querySelectorAll('#main-views > div')[e.detail.index + 1].querySelectorAll('.view')[0])
 			})
 		</script>
 	</body>

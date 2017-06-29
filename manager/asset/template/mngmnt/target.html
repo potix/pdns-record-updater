@@ -1,0 +1,43 @@
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/mat-elements/mat-button.html">
+
+<dom-module id="edit-target">
+	<template>
+		<style>
+		</style>
+		<div>
+			<mat-button class="add-target" label="add target"></mat-button>
+		</div>
+		<div>
+
+		</div>
+
+		<iron-ajax 
+	  	    auto
+	  	    with-credentials
+		    url="http://api.hogehoge.com/status"
+		    method="GET"
+		    handle-as="json"
+		    on-response="_response"
+		    on-error="_error">
+		</iron-ajax>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'edit-target',
+			listeners: {
+			    'xp-activate': '_click'
+			},
+			_click: function(e) {
+				console.log(e);
+			},
+			_response: function(e) { 
+				console.log(e);
+			},
+			_error: function(e) {
+				console.error(e);
+			}
+		});
+	</script>
+</dom-module>
