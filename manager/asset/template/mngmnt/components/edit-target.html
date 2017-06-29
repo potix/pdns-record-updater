@@ -1,35 +1,101 @@
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-icons/editor.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-icon-button.html">
 <link rel="import" href="../../bower_components/mat-elements/mat-button.html">
+<link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-icons.html">
+<link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-th-content.html">
 <link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-column.html">
 <link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api.html">
 
 
 <dom-module id="edit-target">
 	<template>
-		<style>
+		<style is="custom-style">
 			mat-button {
 				border: 1px;
 				border-style: groove;
+				margin: 4px;
+				background-color: whitesmoke;
+			}
+			paper-datatable-api {
+                                --paper-datatable-api-horizontal-padding: 8px;
+				--paper-datatable-api-tr-selected-background: lightgrey;
+				--paper-datatable-api-tr-odd-background-color: ghostwhite;
 			}
 		</style>
 		<div>
-			<mat-button class="add-target" label="add target"></mat-button>
+			<mat-button id="new-target-button" class="add-target" label="new target"></mat-button>
 		</div>
 		<div>
-			<paper-datatable-api class="edit-target">
-				<paper-datatable-api-column draggable-column header="Fruit" property="fruit">
+			<paper-datatable-api id="edit-target-datatable" selectable=true data=[]>
+				<paper-datatable-api-column sortable header="Name" property="name">
 					<template>
 						<span>{{value}}</span>
 					</template>
 				</paper-datatable-api-column>
-				<paper-datatable-api-column header="Color" property="color">
+				<paper-datatable-api-column header="Protocol" property="protocol">
 					<template>
 						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Destination" property="dest">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="TCP TLS" property="tcpTls">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Http Method" property="httpMethod">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="HTTP Status List" property="httpStatusList">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Regexp" property="regexp">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Response Size" property="resSize">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Retry" property="retry">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Retry Wait" property="retryWait">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Timeout" property="timeout">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Watch Interval" property="watchInterval">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="" property="">
+					<template>
+						<span><mat-icon-button icon="editor:mode-edit" dimmed></mat-icon-button></span>
 					</template>
 				</paper-datatable-api-column>
 			</paper-datatable-api>
 		</div>
-		<iron-ajax 
+		<iron-ajax id="get-config-ajax"
 	  	    with-credentials
 		    url="./api/config"
 		    method="GET"
@@ -46,7 +112,7 @@
 			},
 			refresh: function(e) {
 				console.log("refresh");
-				// irom-ajax.generateRequest()
+				this.shadowRoot.querySelector("#get-config-ajax").generateRequest();
 			},
 			_click: function(e) {
 				console.log("click");
@@ -54,21 +120,29 @@
 			},
 			_response: function(e) { 
 				console.log("response");
-				var newData = []
-				for (key in e.detail.xhr.response.watcher.zoneMap) {
-					var zone = e.detail.xhr.response.watcher.zoneMap[key]
+				var newData = [];
+				for (key in e.detail.xhr.response.watcher.targetMap) {
+					var target = e.detail.xhr.response.watcher.targetMap[key];
 					newData.push({
-						domain: key,
-						primaryNameServer: zone.primaryNameServer,
-						email: zone.email,
-						nameServerList: zone.nameServerList.length,
-						staticRecordList: zone.staticRecordList.length,
-						dynamicGroupMap: Object.keys(zone.dynamicGroupMap).length
-					})
+						name: key,
+						protocol: target.protocol,
+						dest: target.dest,
+						tcpTls: target.tcpTls,
+						httpMethod: target.httpMethod,
+						httpStatusList: target.httpStatusList,
+						regexp: target.regexp,
+						resSize: target.resSize,
+						retry: target.retry,
+						retryWait: target.retryWait,
+						timeout: target.timeout,
+						tlsSkipVerify: target.tlsSkipVerify,
+						watchInterval: target.watchInterval
+					});
 
 				}
-				console.log(newData)
-				// grid property change
+				console.log(newData);
+				this.shadowRoot.querySelector("#edit-target-datatable").data = newData;
+				this.shadowRoot.querySelector("#edit-target-datatable").positionSortIcon = "right";
 			},
 			_error: function(e) {
 				console.log("error");
