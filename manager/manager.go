@@ -80,7 +80,7 @@ func (m *Manager) Start() (err error) {
 	newGroup := engine.Group("/mngmnt", m.checkSession)
 	m.addGroupGetHandler(newGroup, "/", m.mngmntIndex)                    // management index
 	m.addGroupGetHandler(newGroup, "/index", m.mngmntIndex)               // management index
-	m.addGroupGetHandler(newGroup, "/s/*wildcard", m.mngmntStatic)        // management static
+	m.addGroupGetHandler(newGroup, "/s/*wildcard", m.mngmntAsset)         // management Asset
 	m.addGroupGetHandler(newGroup, "/a/config", m.mngmntConfig)           // get config on memory
 	m.addGroupPostHandler(newGroup, "/a/config", m.mngmntConfig)          // update config on memory / save config to disk / load config from disk
 	if managerContext.LetsEncryptPath != "" {

@@ -150,7 +150,7 @@ func (m *Manager) mngmntIndex(context *gin.Context) {
 
 }
 
-func (m *Manager) mngmntStatic(context *gin.Context) {
+func (m *Manager) mngmntAsset(context *gin.Context) {
         switch context.Request.Method {
         case http.MethodHead:
                 fallthrough
