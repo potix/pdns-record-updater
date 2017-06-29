@@ -175,7 +175,7 @@ func (m *Manager) mngmntConfig(context *gin.Context) {
                 context.Status(http.StatusOK)
         case http.MethodGet:
 		context.Header("Content-Type", "application/json")
-		context.File("./manager/" + filepath.Join("asset", "template", "mngmnt", "a", "config.js"))
+		context.File("./manager/" + filepath.Join("asset", "template", "mngmnt", "api", "config.js"))
         case http.MethodPost:
 	}
 }

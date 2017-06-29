@@ -72,17 +72,17 @@ func (m *Manager) Start() (err error) {
 	engine.Use(sessions.Sessions("pdns-record-updater-session", store))
 
 	// setup resource
-	m.addEngineGetHandler(engine, "/", m.index)                           // index
-	m.addEngineGetHandler(engine, "/index.html", m.index)                 // index
-	m.addEngineGetHandler(engine, "/bower_components/*wildcard", m.asset) // asset
-	m.addEnginePostHandler(engine, "/login", m.login)                     // login
-	m.addEngineGetHandler(engine, "/logout", m.logout)                    // logout
+	m.addEngineGetHandler(engine, "/", m.index)                            // index
+	m.addEngineGetHandler(engine, "/index.html", m.index)                  // index
+	m.addEngineGetHandler(engine, "/bower_components/*wildcard", m.asset)  // asset
+	m.addEnginePostHandler(engine, "/login", m.login)                      // login
+	m.addEngineGetHandler(engine, "/logout", m.logout)                     // logout
 	newGroup := engine.Group("/mngmnt", m.checkSession)
-	m.addGroupGetHandler(newGroup, "/", m.mngmntIndex)                    // management index
-	m.addGroupGetHandler(newGroup, "/index", m.mngmntIndex)               // management index
-	m.addGroupGetHandler(newGroup, "/s/*wildcard", m.mngmntAsset)         // management Asset
-	m.addGroupGetHandler(newGroup, "/a/config", m.mngmntConfig)           // get config on memory
-	m.addGroupPostHandler(newGroup, "/a/config", m.mngmntConfig)          // update config on memory / save config to disk / load config from disk
+	m.addGroupGetHandler(newGroup, "/", m.mngmntIndex)                     // management index
+	m.addGroupGetHandler(newGroup, "/index", m.mngmntIndex)                // management index
+	m.addGroupGetHandler(newGroup, "/components/*wildcard", m.mngmntAsset) // management Asset
+	m.addGroupGetHandler(newGroup, "/api/config", m.mngmntConfig)          // get config on memory
+	m.addGroupPostHandler(newGroup, "/api/config", m.mngmntConfig)         // update config on memory / save config to disk / load config from disk
 	if managerContext.LetsEncryptPath != "" {
 		engine.Static("/.well-known", filepath.Join(managerContext.LetsEncryptPath, ".well-known"))
 	}
