@@ -1,12 +1,18 @@
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
-<link rel="import" href="../../bower_components/mat-elements/mat-icons/editor.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-icons/action.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-icons/image.html">
 <link rel="import" href="../../bower_components/mat-elements/mat-icon-button.html">
 <link rel="import" href="../../bower_components/mat-elements/mat-button.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-text-field.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-option.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-dropdown.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-checkbox.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-text-area.html">
+<link rel="import" href="../../bower_components/paper-dialog/paper-dialog.html">
 <link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-icons.html">
 <link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-th-content.html">
 <link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-column.html">
 <link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api.html">
-
 
 <dom-module id="edit-target">
 	<template>
@@ -21,13 +27,14 @@
                                 --paper-datatable-api-horizontal-padding: 8px;
 				--paper-datatable-api-tr-selected-background: lightgrey;
 				--paper-datatable-api-tr-odd-background-color: ghostwhite;
+				--paper-datatable-api-tr-even-background-color: snow;
 			}
 		</style>
 		<div>
-			<mat-button id="new-target-button" class="add-target" label="new target"></mat-button>
+			<mat-button id="new-target-button" data='{"type":"new"}' label="new target"></mat-button>
 		</div>
 		<div>
-			<paper-datatable-api id="edit-target-datatable" selectable=true data=[]>
+			<paper-datatable-api id="edit-target-datatable" data=[]>
 				<paper-datatable-api-column sortable header="Name" property="name">
 					<template>
 						<span>{{value}}</span>
@@ -88,13 +95,74 @@
 						<span>{{value}}</span>
 					</template>
 				</paper-datatable-api-column>
-				<paper-datatable-api-column header="" property="">
+				<paper-datatable-api-column header="Edit" property="edit">
 					<template>
-						<span><mat-icon-button icon="editor:mode-edit" dimmed></mat-icon-button></span>
+						<span><mat-icon-button data='{"type":"edit", "name":"{{value}}"}' icon="image:edit" dimmed></mat-icon-button></span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Remove" property="remove">
+					<template>
+						<span><mat-icon-button data='{"type":"remove", "name":"{{value}}"}' icon="action:delete" dimmed></mat-icon-button></span>
 					</template>
 				</paper-datatable-api-column>
 			</paper-datatable-api>
 		</div>
+
+		<paper-dialog id="edit-target-modal" label="edit target">
+			<div>
+				<div>
+					<mat-text-field label="Target name" readonly float-disabled inline></mat-text-field>	      
+				</div>
+				<div>
+					<mat-dropdown label="Protocol" float-disabled inline>
+						<mat-option value="icmp" label="icmp"></mat-option>
+						<mat-option value="tcp" label="tcp"></mat-option>
+						<mat-option value="tcpRegexp" label="tcpRegexp"></mat-option>
+						<mat-option value="http" label="http"></mat-option>
+						<mat-option value="httpRegexp" label="httpRegexp"></mat-option>
+					</mat-dropdown>
+				</div>
+				<div>
+					<mat-text-field label="Destination" float-disabled inline></mat-text-field>	      
+				</div>
+				<div>
+					<mat-checkbox label="Use TLS by TCP"></mat-checkbox>
+				</div>
+				<div>
+					<mat-dropdown label="HTTP method" float-disabled inline>
+						<mat-option value="GET" label="GET"></mat-option>
+						<mat-option value="HEAD" label="HEAD"></mat-option>
+					</mat-dropdown>
+				</div>
+				<div>
+					<mat-text-area label="HTTP status list" float-disabled inline></mat-text-area>
+				</div>
+				<div>
+					<mat-text-field label="Regexp" float-disabled inline></mat-text-field>	      
+				</div>
+				<div>
+					<mat-text-field label="Response Size" number  float-disabled inline></mat-text-field>	      
+				</div>
+				<div>
+					<mat-text-field label="Retry" number float-disabled inline></mat-text-field>	      
+				</div>
+				<div>
+					<mat-text-field label="Retry wait"  number float-disabled inline></mat-text-field>	      
+				</div>
+				<div>
+					<mat-text-field label="timeout" number float-disabled inline></mat-text-field>	      
+				</div>
+				<div>
+					<mat-checkbox label="TLS skip verify"></mat-checkbox>
+				</div>
+				<div>
+					<mat-text-field label="Watch interval"  number float-disabled inline></mat-text-field>	      
+				</div>
+			</div>
+			<mat-button id="edit-target-dialog-ok" data='{"type":"edit-ok"}' slot="actions" action="toggle" label="ok" target="edit-target-modal"></mat-button>
+			<mat-button id="edit-target-dialog-cancel" slot="actions" action="toggle" label="cancel" target="edit-target-modal"></mat-button>
+		</paper-dialog>
+
 		<iron-ajax id="get-config-ajax"
 	  	    with-credentials
 		    url="./api/config"
@@ -105,23 +173,42 @@
 		</iron-ajax>
 	</template>
 	<script>
-		Polymer({
-			is: 'edit-target',
-			listeners: {
-			    'xp-activate': '_click'
-			},
-			refresh: function(e) {
+		class editTarget extends Polymer.Element {
+			static get is() {return 'edit-target'}
+			ready() {
+				super.ready();
+				this.shadowRoot.querySelector("#edit-target-datatable").setProperties({"positionSortIcon" : "right"});
+				this.addEventListener('xp-activate', this._click);
+			}
+			refresh() {
 				console.log("refresh");
 				this.shadowRoot.querySelector("#get-config-ajax").generateRequest();
-			},
-			_click: function(e) {
-				console.log("click");
-				console.log(e);
-			},
-			_response: function(e) { 
+			}
+			_click(e) {
+				console.log("_click");
+				if (e.detail.data == undefined || e.detail.data == null) {
+					return
+				}
+				var data = JSON.parse(e.detail.data);
+				console.log(data);
+				if (data.type == "new") {
+					console.log("new");
+					//this.shadowRoot.querySelector("#edit-target-modal").setProperties({"active" : true});
+					this.shadowRoot.querySelector("#edit-target-modal").open();
+				} else if (data.type == "edit") {
+					console.log("edit");
+					//this.shadowRoot.querySelector("#edit-target-modal").setProperties({"active" : true});
+					this.shadowRoot.querySelector("#edit-target-modal").open();
+				} else if (data.type == "edit-ok") {
+					console.log("edit-ok");
+				} else if (data.type == "remove") {
+					console.log("remove");
+				}	
+			}
+			_response(e) {
 				console.log("response");
 				var newData = [];
-				for (key in e.detail.xhr.response.watcher.targetMap) {
+				for (var key in e.detail.xhr.response.watcher.targetMap) {
 					var target = e.detail.xhr.response.watcher.targetMap[key];
 					newData.push({
 						name: key,
@@ -136,18 +223,20 @@
 						retryWait: target.retryWait,
 						timeout: target.timeout,
 						tlsSkipVerify: target.tlsSkipVerify,
-						watchInterval: target.watchInterval
+						watchInterval: target.watchInterval,
+						edit: key,
+						remove: key 
 					});
 
 				}
 				console.log(newData);
-				this.shadowRoot.querySelector("#edit-target-datatable").data = newData;
-				this.shadowRoot.querySelector("#edit-target-datatable").positionSortIcon = "right";
-			},
-			_error: function(e) {
+				this.shadowRoot.querySelector("#edit-target-datatable").setProperties({"data" : newData});
+			}
+			_error(e) {
 				console.log("error");
 				console.error(e);
 			}
-		});
+		}
+		customElements.define(editTarget.is, editTarget);
 	</script>
 </dom-module>
