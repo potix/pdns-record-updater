@@ -1,0 +1,109 @@
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-icons/action.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-icons/image.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-icon-button.html">
+<link rel="import" href="../../bower_components/mat-elements/mat-button.html">
+<link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-icons.html">
+<link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-th-content.html">
+<link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api-column.html">
+<link rel="import" href="../../bower_components/paper-datatable-api/paper-datatable-api.html">
+
+<dom-module id="edit-zone">
+	<template>
+		<style is="custom-style">
+			mat-button {
+				border: 1px;
+				border-style: groove;
+				margin: 4px;
+				background-color: whitesmoke;
+			}
+			paper-datatable-api {
+				--paper-datatable-api-horizontal-padding: 8px;
+				--paper-datatable-api-tr-selected-background: lightgrey;
+				--paper-datatable-api-tr-odd-background-color: ghostwhite;
+				--paper-datatable-api-tr-even-background-color: snow;
+			}
+		</style>
+		<div>
+			<mat-button id="new-zone-button" class="new-target" label="new zone"></mat-button>
+		</div>
+		<div>
+			<paper-datatable-api id="edit-zone-datatable" data=[]>
+				<paper-datatable-api-column sortable header="Domain" property="domain">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Primary Name Server" property="primaryNameServer">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+				<paper-datatable-api-column header="Email" property="email">
+					<template>
+						<span>{{value}}</span>
+					</template>
+				</paper-datatable-api-column>
+                                <paper-datatable-api-column header="Edit" property="edit">
+                                        <template>
+                                                <span><mat-icon-button class="edit-target-button" edit-key={{value}} icon="image:edit" dimmed></mat-icon-button></span>
+                                        </template>
+                                </paper-datatable-api-column>
+                                <paper-datatable-api-column header="Remove" property="remove">
+                                        <template>
+                                                <span><mat-icon-button class="remove-target-button" remove-key={{value}} icon="action:delete" dimmed></mat-icon-button></span>
+                                        </template>
+                                </paper-datatable-api-column>
+			</paper-datatable-api>
+		</div>
+		<iron-ajax id="get-config-ajax"
+	  	    with-credentials
+		    url="./api/config"
+		    method="GET"
+		    handle-as="json"
+		    on-response="_response"
+		    on-error="_error">
+		</iron-ajax>
+	</template>
+	<script>
+		Polymer({
+			is: 'edit-zone',
+			listeners: {
+			    'xp-activate': '_click'
+			},
+			refresh: function(e) {
+				console.log("refresh");
+				this.shadowRoot.querySelector("#get-config-ajax").generateRequest();
+			},
+			_click: function(e) {
+				console.log("click");
+				console.log(e);
+			},
+			_response: function(e) { 
+				console.log("response");
+				var newData = [];
+				for (key in e.detail.xhr.response.watcher.zoneMap) {
+					var zone = e.detail.xhr.response.watcher.zoneMap[key];
+					newData.push({
+						domain: key,
+						primaryNameServer: zone.primaryNameServer,
+						email: zone.email,
+						nameServerList: zone.nameServerList.length,
+						staticRecordList: zone.staticRecordList.length,
+						dynamicGroupMap: Object.keys(zone.dynamicGroupMap).length,
+						edit: key,
+						remove: key
+					});
+
+				}
+				console.log(newData);
+				this.shadowRoot.querySelector("#edit-zone-datatable").data = newData;
+				this.shadowRoot.querySelector("#edit-zone-datatable").positionSortIcon = "right";
+			},
+			_error: function(e) {
+				console.log("error");
+				console.error(e);
+			}
+		});
+	</script>
+</dom-module>
